@@ -141,7 +141,7 @@ BSX.define('core/run', function (require) {
     if (eff.chain) s.events.chains.push({ id: eff.chain.id, at: s.day + eff.chain.after });
     if (eff.unlockDish) s.unlocked[eff.unlockDish] = true;
     if (eff.renew) { s.flags.renewed = true; if (!eff.borrowNeighbors) s.cash -= Cond.renewCost(s); else s.flags.neighborLoan = true; }
-    if (eff.leave) { s.early = { day: s.day, reason: 'leave' }; }
+    if (eff.leave) { s.early = { day: s.day, reason: 'leave' }; if (s.mode === 'story' && ST.all.X_LEAVE) s.pending.splice(1, 0, { kind: 'story', id: 'X_LEAVE' }); }
     if (eff.recall) s.flags.recalled = true;
     s.today.eventCash += s.cash - before;
   }

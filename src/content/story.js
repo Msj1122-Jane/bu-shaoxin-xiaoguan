@@ -127,14 +127,12 @@ BSX.define('content/story', function () {
     { light: 'dusk' }, { cam: [640, 360, 1.1], t: 0 },
     { say: 'zhou', text: '第二十八天。', face: 0 },
     { visitors: 3 },
-    { if: { ending: 'E_HONEST' }, then: [{ say: 'best', text: '贵一点没关系，吃得放心。' }] },
-    { if: { ending: 'E_PRIVATE' }, then: [{ say: 'best', text: '下周三还给我留个位子。' }] },
-    { if: { ending: 'E_CANTEEN' }, then: [{ say: 'man', text: '明天我早点来帮你。' }] },
-    { if: { ending: 'E_REOPEN' }, then: [{ say: 'best', text: '重新开张那天，我第一个来。' }] },
-    { if: { ending: 'E_PILLS' }, then: [{ say: 'zhou', text: '胃药……放哪了。', face: 4 }] },
-    { if: { ending: 'E_FAREWELL' }, then: [{ say: 'best', text: '老周，路上慢点。' }] },
-    { if: { ending: 'E_TRANSFER' }, then: [{ say: 'zhou', text: '钥匙，交给下一个人吧。', face: 4 }] },
-    { if: { ending: 'E_SOMEONE' }, then: [{ say: 'best', text: '明天还开吧？' }] },
+    { if: { ending: 'E_HONEST' }, then: [{ narr: '门口的公示板上，进货单一张压一张，贴得满满当当。' }, { say: 'qin', text: '贵一点没关系，吃得放心。' }, { say: 'best', text: '我把你家推给全楼了。' }, { say: 'zhou', text: '明天的油，还是新的。', face: 1 }] },
+    { if: { ending: 'E_PRIVATE' }, then: [{ narr: '小本子上，熟客的口味记了满满三页。' }, { say: 'best', text: '下周三还给我留个位子。' }, { say: 'zhou', text: '老位子，少放葱。', face: 1 }] },
+    { if: { ending: 'E_CANTEEN' }, then: [{ crowd: 6 }, { narr: '天还没亮透，门口已经排起了队。' }, { say: 'man', text: '明天我早点来帮你。' }, { say: 'zhao', text: '孙子说，就爱吃这一口。' }, { say: 'zhou', text: '街坊的早饭，管饱。', face: 1 }] },
+    { if: { ending: 'E_REOPEN' }, then: [{ narr: '整改通知书旁边，新贴了一张“重新开张”的红纸。' }, { say: 'best', text: '重新开张那天，我第一个来。' }, { say: 'zhou', text: '这回，一滴旧油都不留。', face: 2 }] },
+    { if: { ending: 'E_PILLS' }, then: [{ crowd: 0 }, { narr: '对面没人排队，这边也没有。灯笼的光是浑的。' }, { say: 'zhou', text: '省下的那点钱……', face: 4 }, { narr: '收银台上，胃药和账单压在一起。' }, { say: 'zhou', text: '胃药……放哪了。', face: 4 }] },
+    { if: { ending: 'E_SOMEONE' }, then: [{ say: 'best', text: '明天还开吧？' }, { say: 'zhou', text: '开。五点半，锅先热上。', face: 1 }] },
     { act: { kind: 'hold', label: '按住，拉下卷帘门', x: 640, y: 420, prop: 'shutter' } }, { shutter: 'down' }, { sfx: 'shutter' },
     { cam: [640, 360, 1.0], t: 1200 }
   ] };
@@ -167,6 +165,17 @@ BSX.define('content/story', function () {
   R.R_qin_5 = node('R_qin_5', 'qin', 'A', [{ prop: 'crate', x: 860, y: 470 }, { say: 'qin', text: '最好的一筐，我给你留着。' }, { say: 'qin', text: '老南瓜，熬粥甜。' }, { unlockDish: 'pumpkin' }, { hide: 'crate' }]);
   R.R_qin_7 = node('R_qin_7', 'qin', 'A', [{ prop: 'pumpkin', x: 860, y: 470 }, { say: 'qin', text: '自家地里的，送你。' }, { act: { kind: 'hold', label: '抱起南瓜', x: 860, y: 470 } }, { say: 'zhou', text: '好沉！', face: 1 }, { photo: 'qin' }, { hide: 'pumpkin' }]);
   var all = {};
+  // 提前收摊（S26 选“不签了”后紧接着播放，读取结局：送行 / 转让）
+  all.X_LEAVE = { id: 'X_LEAVE', tier: 'B', title: '收摊那天', stage: { time: 'dusk', weather: 'auto', view: 'ext' }, beats: [
+    { light: 'dusk' }, { cam: [640, 360, 1.05], t: 0 },
+    { prop: 'box', x: 470, y: 540 },
+    { say: 'zhou', text: '锅碗都捆好了。', face: 2 },
+    { visitors: 3 },
+    { if: { ending: 'E_FAREWELL' }, then: [{ narr: '三轮车上捆着锅碗，门口却站满了人。' }, { say: 'zhao', text: '老周，路上慢点。' }, { say: 'song', text: '这是给你的饭盒，别空着肚子赶路。' }, { say: 'best', text: '你在哪儿开，我们就去哪儿吃。' }, { say: 'zhou', text: '……都回去吧，天冷。', face: 3 }] },
+    { if: { ending: 'E_TRANSFER' }, then: [{ crowd: 0 }, { narr: '玻璃门上贴着“旺铺转让”，没人停下来看。' }, { say: 'zhou', text: '当初要是多换几次油……', face: 4 }, { say: 'zhou', text: '钥匙，交给下一个人吧。', face: 4 }] },
+    { act: { kind: 'hold', label: '按住，最后一次拉下卷帘门', x: 640, y: 420, prop: 'shutter' } }, { shutter: 'down' }, { sfx: 'shutter' },
+    { cam: [640, 360, 1.0], t: 1200 }
+  ] };
   Object.keys(S).forEach(function (k) { all[k] = S[k]; });
   Object.keys(R).forEach(function (k) { all[k] = R[k]; });
   var storyDays = {};

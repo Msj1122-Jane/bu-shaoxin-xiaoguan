@@ -61,7 +61,7 @@ BSX.define('ui/s_story', function (require) {
     else if (it.kind === 'rescue') script = rescueScript();
     this.item = it; this.script = script;
     var time = s.phase === 'dusk' ? (s.today.weather === 'rain' ? 'night' : 'dusk') : 'morning';
-    var ending = it.id === 'S28' ? Run.prospectiveEnding(s) : null;
+    var ending = it.id === 'S28' || it.id === 'X_LEAVE' ? Run.prospectiveEnding(s) : null;
     var self = this;
     this.dir = new Cut.Director(script, { state: s, time: time, weather: s.today.weather, ending: ending, auto: app.settings.autoPlay, log: app.storyLog, onLog: function () { app.openOverlay(BSX.require('ui/s_basic').Log, {}); } });
     var seenKey = it.kind + ':' + (it.id || '');
