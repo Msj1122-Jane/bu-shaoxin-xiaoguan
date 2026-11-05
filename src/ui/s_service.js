@@ -113,7 +113,7 @@ BSX.define('ui/s_service', function (require) {
       c.sick = Run.sickRoll(this.app.state, c.o.id, c.cheats || 0); c.sickPending = c.sick;
       if (!c.sick && grade !== 'rush') { this.combo++; this.maxCombo = Math.max(this.maxCombo, this.combo); if (this.combo >= 2) { var tip = Math.min(this.combo, C.combo.max) * C.combo.tipPer; this.comboTips += tip; this.comboFx = { n: this.combo, tip: tip, t: 0 }; for (var ci = 0; ci < Math.min(18, 4 + this.combo * 2); ci++) this.kitchen.parts.push({ x: 1125, y: 120, vx: (Math.random() - 0.5) * 300, vy: -200 - Math.random() * 200, t: 0, life: 1.1, kind: 'coin' }); Au.play('perfect'); } }
       else if (this.combo >= 2) { this.comboFx = { n: 0, t: 0 }; this.combo = 0; } else this.combo = 0;
-      if (c.o.regular) { var r = R.byId[c.o.regular]; c.talk = { text: grade === 'rush' ? r.lines.meh : r.lines.happy, t: 1.6 }; }
+      if (c.o.regular) { var r = R.byId[c.o.regular]; c.talk = { text: this.app.state.burn >= 60 ? '……味道好像变了' : grade === 'rush' ? r.lines.meh : r.lines.happy, t: 1.6, mood: this.app.state.burn >= 60 ? 'wary' : null }; }
       else if (this.app.state.burn >= 30 && (c.seed + this.results.length) % 3 === 0) { c.frown = true; c.talk = { text: this.app.state.burn >= 60 ? '胃有点烧…' : '有点腻', t: 1.6 }; }
     } else { c.state = 'out'; c.tx = -200; Au.play('wrong'); if (c.o.regular) c.talk = { text: R.byId[c.o.regular].lines.wait, t: 1.6 }; if (this.combo >= 2) this.comboFx = { n: 0, t: 0 }; this.combo = 0; }
     var st0 = this.app.state, refund = c.sick ? c.o.items.reduce(function (n, id) { return n + Math.round(D.byId[id].price * C.price.mult[st0.price]) * 100; }, 0) : 0;
@@ -300,7 +300,7 @@ BSX.define('ui/s_service', function (require) {
     if (o.regular) Act.draw(ctx, who, c.x + wrongX, FOOT, who === 'zhao' ? H * 0.95 : H, { t: t, flip: flip, ph: c.seed });
     else Act.draw(ctx, 'neighbor', c.x + wrongX, FOOT, H * 0.95, { t: t, seed: c.seed, flip: flip, walk: c.state === 'enter' || c.state === 'out' });
     ctx.restore();
-    if (c.state === 'sick') { var sk = Math.sin(this.t * 30) * 4; ctx.save(); ctx.globalAlpha = 0.85; for (var q = 0; q < 3; q++) { ctx.strokeStyle = '#7ab040'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(c.x + sk, 230 - q * 6, 14 + q * 8, this.t * 6 + q, this.t * 6 + q + 4); ctx.stroke(); } ctx.restore(); A.cell(ctx, 'atlas_ui', 14, c.x - 30 + sk, 120, 60, 60, { trim: true, fit: true, anchor: 'center' }); if (c.talk) { var tw0 = 40 + c.talk.text.length * 26; U.bubble(ctx, c.x - tw0 / 2 + 60, 60, tw0, 46, c.x + 30, { fill: '#b8432f', line: '#6d2014' }); U.text(ctx, c.talk.text, c.x + 60, 92, { size: 24, align: 'center', color: '#fff8e8', bold: true }); } return; }
+    if (c.state === 'sick') { var sk = Math.sin(this.t * 30) * 4; ctx.save(); ctx.globalAlpha = 0.85; for (var q = 0; q < 3; q++) { ctx.strokeStyle = '#7ab040'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(c.x + sk, 230 - q * 6, 14 + q * 8, this.t * 6 + q, this.t * 6 + q + 4); ctx.stroke(); } ctx.restore(); A.cell(ctx, 'atlas_ui', 14, c.x - 30 + sk, 120, 60, 60, { trim: true, fit: true, anchor: 'center' }); if (c.talk) { var tw0 = 40 + c.talk.text.length * 26; U.bubble(ctx, c.x - tw0 / 2 + 60, 198, tw0, 46, c.x + 30, { fill: '#b8432f', line: '#6d2014' }); U.text(ctx, c.talk.text, c.x + 60, 230, { size: 24, align: 'center', color: '#fff8e8', bold: true }); } return; }
     if (c.state === 'out' || c.state === 'enter') return;
     // 订单气泡：食物图案为主
     var n = o.items.length, bw = 30 + n * 70, bx = c.x - bw / 2, by = 112;
@@ -325,7 +325,7 @@ BSX.define('ui/s_service', function (require) {
       if (icon != null) A.cell(ctx, 'atlas_vfx', icon, c.x - 40, 150 - k2 * 40, 80, 80, { trim: true, fit: true, anchor: 'center' });
       A.cell(ctx, 'atlas_vfx', 8, c.x + 30, 220 - k2 * 120, 46, 46, { trim: true, fit: true, anchor: 'center' });
     }
-    if (c.talk) { var tw = 40 + c.talk.text.length * 26, wary = c.talk.mood === 'wary', fr = c.talk.mood === 'friend'; U.bubble(ctx, c.x - tw / 2 + 60, 60, tw, 46, c.x + 30, { fill: wary ? '#8a5a3a' : fr ? '#c88a30' : '#2f6f66', line: '#1f4d47' }); U.text(ctx, c.talk.text, c.x + 60, 92, { size: 24, align: 'center', color: '#fff8e8', bold: true }); }
+    if (c.talk) { var tw = 40 + c.talk.text.length * 26, wary = c.talk.mood === 'wary', fr = c.talk.mood === 'friend'; U.bubble(ctx, c.x - tw / 2 + 60, 198, tw, 46, c.x + 30, { fill: wary ? '#8a5a3a' : fr ? '#c88a30' : '#2f6f66', line: '#fff3d6' }); U.text(ctx, c.talk.text, c.x + 60, 230, { size: 24, align: 'center', color: '#fff8e8', bold: true }); }
   };
   P.describe = function () {
     var k = this.kitchen;
@@ -345,7 +345,17 @@ BSX.define('ui/s_service', function (require) {
     U.text(ctx, '奇遇 · ' + q.name, 460, 220, { size: 28, bold: true, color: '#2f6f66' });
     U.para(ctx, q.text, 460, 262, 520, { size: 22, lh: 32 });
     if (!this.picked) q.choices.forEach(function (c, i) { U.button(ctx, 'enc_' + c.id, 300 + i * 350, 400, 330, 70, c.label, { kind: 'paper', size: 21, onTap: function () { self.picked = c; self.pt = 0; self.p.onPick(c); } }); });
-    else { U.para(ctx, self.picked.result, 300, 430, 680, { size: 24, color: '#7d5a35', lh: 34 }); U.hit('enc_close', 0, 0, 1280, 720, { minSize: 0, onTap: function () { app.closeOverlay(); } }); }
+    else {
+      U.para(ctx, self.picked.result, 300, 420, 680, { size: 24, color: '#7d5a35', lh: 34 });
+      var ef = self.picked.effect || {}, tags = [];
+      if (ef.cash) tags.push([(ef.cash > 0 ? '+' : '−') + Math.abs(ef.cash) / 100 + ' 元', ef.cash > 0 ? '#2f6f66' : '#7d5a35']);
+      if (ef.rep) tags.push(['口碑 ' + (ef.rep > 0 ? '+' : '−') + Math.abs(ef.rep), ef.rep > 0 ? '#2f6f66' : '#b8432f']);
+      if (ef.burn) tags.push([ef.burn > 0 ? '良心灯笼暗了' : '良心灯笼亮了', ef.burn > 0 ? '#b8432f' : '#2f6f66']);
+      if (ef.aff) tags.push(['常客好感 +', '#c88a30']);
+      if (!tags.length) tags.push(['什么也没发生', '#8d7a60']);
+      tags.forEach(function (tg, i) { var tw = 30 + tg[0].length * 20; ctx.save(); ctx.fillStyle = tg[1]; U.rr(ctx, 300 + i * 200, 500, tw, 40, 10); ctx.fill(); ctx.restore(); U.text(ctx, tg[0], 300 + i * 200 + tw / 2, 528, { size: 20, bold: true, align: 'center', color: '#fff8e8' }); });
+      U.text(ctx, '点任意处继续', 980, 560, { size: 18, align: 'right', color: '#8d7a60' });
+      U.hit('enc_close', 0, 0, 1280, 720, { minSize: 0, onTap: function () { app.closeOverlay(); } }); }
   };
   EncounterCard.prototype.describe = function () { return { id: this.p.q.id, choices: this.p.q.choices.map(function (c) { return c.id; }), picked: this.picked && this.picked.id }; };
   return { Service: Service, EncounterCard: EncounterCard };

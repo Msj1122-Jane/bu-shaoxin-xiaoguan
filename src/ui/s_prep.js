@@ -105,11 +105,101 @@ BSX.define('ui/s_prep', function (require) {
     if (s.history.length && s.day >= 7) U.button(ctx, 'prep_yesterday', 820, 650, 170, 58, '沿用昨日', { kind: 'paper', size: 22, onTap: function () { self.app.dispatch({ t: 'yesterday' }); Au.play('knob'); } });
     if (s.day >= 2 || s.mode === 'week') U.button(ctx, 'prep_shop', 70, 664 - 0, 230, 48, '升级小馆 ' + s.upgrades.length + '/' + C.upgrades.length, { kind: 'wood', size: 20, onTap: function () { self.app.openOverlay(Shop); } });
     U.button(ctx, 'prep_open', 1010, 650, 250, 60, '开门营业', { size: 28, disabled: !s.menu.length || this.tutorial >= 0 && this.tutorial < 3, onTap: function () { Au.play('open'); self.app.dispatch({ t: 'confirmPrep' }); self.app.route(); } });
+    // 今日小目标 + 盘店基金（D042/D041）
+    drawGoals(ctx, s, 430, 104);
+    // 验货（D040）
+    var dv = s.today.delivery;
+    if (dv && dv.state === 'pending' && this.tutorial < 0) {
+      if (!this.dlvShown) { this.dlvShown = true; self.app.openOverlay(Delivery); }
+      U.button(ctx, 'prep_delivery', 310, 664, 200, 48, '送货待验', { kind: 'primary', size: 20, onTap: function () { self.app.openOverlay(Delivery); } });
+    }
     if (this.tutorial >= 0 && this.tutorial < 3) U.text(ctx, ['先看看油壶', '再看看食材篮', '最后定价牌'][this.tutorial], 70 + this.tutorial * 250 + 110, 396, { size: 22, bold: true, align: 'center', color: '#ffe28a', stroke: '#4a2a12' });
   };
+  function drawGoals(ctx, s, x, y) {
+    var goals = s.today.goals || [], buy = s.mode === 'story' && !s.flags.owner && s.day <= C.buyout.day;
+    if (!goals.length && !buy) return;
+    var h = 36 + goals.length * 30 + (buy ? 46 : 0);
+    U.panel(ctx, x, y, 370, h, 'paper', { alpha: 0.95 });
+    U.text(ctx, goals.length ? '今日小目标' : '盘店基金', x + 18, y + 30, { size: 20, bold: true });
+    if (goals.length) U.text(ctx, '每个 +' + C.goals.reward / 100 + ' 元，全中再 +' + C.goals.allBonus / 100, x + 352, y + 30, { size: 15, align: 'right', color: '#7d5a35' });
+    goals.forEach(function (g, i) {
+      var gy = y + 60 + i * 30;
+      ctx.strokeStyle = g.id === 'nocheat' ? '#2f6f66' : '#7d5a35'; ctx.lineWidth = 2; ctx.strokeRect(x + 20, gy - 15, 16, 16);
+      if (g.done) U.text(ctx, '✓', x + 28, gy, { size: 18, bold: true, align: 'center', color: '#2f6f66' });
+      U.text(ctx, g.label, x + 46, gy, { size: 18, color: g.id === 'nocheat' ? '#2f6f66' : '#3b2a1a', maxW: 310 });
+    });
+    if (buy) {
+      var by = y + h - 26, k = Math.max(0, Math.min(1, s.cash / C.buyout.price));
+      if (goals.length) U.text(ctx, '盘店基金', x + 20, by + 6, { size: 16, bold: true, color: '#7d5a35' });
+      ctx.fillStyle = 'rgba(122,90,53,.2)'; U.rr(ctx, x + 96, by - 8, 190, 16, 8); ctx.fill();
+      ctx.fillStyle = k >= 1 ? '#2f6f66' : '#e8b54a'; U.rr(ctx, x + 96, by - 8, Math.max(16, 190 * k), 16, 8); ctx.fill();
+      U.text(ctx, Math.round(s.cash / 100) + '/' + C.buyout.price / 100, x + 352, by + 6, { size: 15, align: 'right', color: '#7d5a35' });
+    }
+  }
+  // 验货：把试纸拖到货上，假货会变色（参考深空当铺色卡鉴定）
+  function Delivery(app) { this.name = 'delivery'; this.app = app; this.t = 0; this.strip = { x: 300, y: 470, drag: false }; this.tested = false; this.done = null; }
+  var DP = Delivery.prototype;
+  DP.update = function (dt) { this.t += dt; if (this.done && (this.t - this.done.t > 1.8)) this.app.closeOverlay(); };
+  DP.draw = function (ctx) {
+    var app = this.app, s = app.state, self = this, dv = s.today.delivery;
+    if (!dv) { app.closeOverlay(); return; }
+    var it = C.delivery.items.filter(function (x) { return x.id === dv.item; })[0];
+    ctx.fillStyle = 'rgba(20,14,8,.72)'; ctx.fillRect(0, 0, 1280, 720);
+    U.panel(ctx, 160, 60, 960, 600, 'paper');
+    U.text(ctx, '送货上门', 640, 112, { size: 32, bold: true, align: 'center' });
+    Act.draw(ctx, 'supplier', 300, 380, 230, { t: this.t, noShadow: true });
+    ctx.fillStyle = '#fff'; U.rr(ctx, 390, 150, 420, 64, 14); ctx.fill();
+    U.text(ctx, '“' + it.name + '，老板，这批便宜点。”', 410, 190, { size: 22, maxW: 390 });
+    // 货
+    var gx = 700, gy = 340;
+    ctx.save(); ctx.translate(gx, gy); drawGoods(ctx, dv.item, dv.fake && this.tested); ctx.restore();
+    // 试纸
+    var tint = !this.tested ? '#e8e0a0' : dv.fake ? '#8a2a5a' : '#c8d880';
+    var sx = this.strip.x, sy = this.strip.y;
+    if (!this.done) {
+      U.hit('strip', sx - 30, sy - 70, 60, 140, { label: '试纸', minSize: 56, onDown: function (x0, y0) {
+        self.strip.drag = true; Au.play('pickup');
+        return function (type, x2, y2) {
+          self.strip.x = x2; self.strip.y = y2;
+          if (type === 'up') { self.strip.drag = false; if (Math.hypot(x2 - gx, y2 - gy) < 140) { self.tested = true; Au.play(dv.fake ? 'wrong' : 'perfect'); app.P.vibrate(dv.fake ? 'heavy' : 'light'); } self.strip.x = 300; self.strip.y = 470; }
+        };
+      } });
+    }
+    ctx.save(); ctx.translate(sx, sy); ctx.rotate(this.strip.drag ? 0.15 : 0);
+    ctx.fillStyle = '#f6efe0'; ctx.fillRect(-18, -64, 36, 128); ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = 2; ctx.strokeRect(-18, -64, 36, 128);
+    ctx.fillStyle = tint; ctx.fillRect(-14, 10, 28, 46); ctx.restore();
+    if (!this.tested && !this.done) U.text(ctx, '把试纸拖到货上验一验', 300, 590, { size: 20, align: 'center', color: '#7d5a35' });
+    if (this.tested) U.text(ctx, dv.fake ? '试纸变紫了——有问题！' : '颜色正常，是好货', gx, 540, { size: 26, bold: true, align: 'center', color: dv.fake ? '#b8432f' : '#2f6f66' });
+    if (this.done) { U.para(ctx, this.done.text, 640, 590, 760, { size: 22, align: 'center', color: '#3b2a1a' }); return; }
+    var save = it.save / 100;
+    U.button(ctx, 'dlv_accept', 520, 580, 220, 58, '收下', { kind: 'paper', size: 24, onTap: function () { self.finish(true); } });
+    U.button(ctx, 'dlv_reject', 760, 580, 220, 58, '退货', { kind: 'primary', size: 24, onTap: function () { self.finish(false); } });
+    if (!this.tested) U.text(ctx, '收下能省 ' + save + ' 元', 630, 656, { size: 16, align: 'center', color: '#8d7a60' });
+  };
+  DP.finish = function (accept) {
+    var app = this.app, dv = app.state.today.delivery, fake = dv.fake;
+    if (!app.dispatch({ t: 'delivery', accept: accept, tested: this.tested })) { app.closeOverlay(); return; }
+    Au.play(accept ? 'coin' : 'page');
+    var it = C.delivery.items.filter(function (x) { return x.id === dv.item; })[0];
+    var text = accept && fake ? (this.tested ? '省了 ' + it.save / 100 + ' 元。门口的灯笼，暗了一点。' : '收下了。没人知道这批货有问题——至少现在没人知道。') : !accept && fake ? '假货当场退回。街坊听说了，都说老周眼尖。' : accept ? '好货，收下。' : '货其实没问题，白搭了 3 元运费。';
+    this.done = { t: this.t, text: text };
+  };
+  DP.describe = function () { var dv = this.app.state.today.delivery; return { item: dv && dv.item, tested: this.tested, fake: this.tested ? dv.fake : undefined, done: !!this.done, strip: { x: 300, y: 470 }, target: { x: 700, y: 340 } }; };
+  function drawGoods(ctx, id, bad) {
+    if (id === 'oil') { A.cell(ctx, 'atlas_ui', 8, -90, -100, 180, 180, { trim: true, fit: true, anchor: 'center' }); if (bad) { ctx.fillStyle = 'rgba(90,40,10,.45)'; U.rr(ctx, -40, -20, 80, 90, 10); ctx.fill(); } }
+    else if (id === 'egg') {
+      ctx.fillStyle = '#c8a070'; ctx.fillRect(-110, -10, 220, 90); ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = 4; ctx.strokeRect(-110, -10, 220, 90);
+      for (var i = 0; i < 6; i++) { ctx.fillStyle = bad ? '#e8dcc8' : '#f4e2c4'; ctx.beginPath(); ctx.ellipse(-80 + i * 32, -16, 14, 18, 0, 0, 7); ctx.fill(); ctx.strokeStyle = '#b89a70'; ctx.lineWidth = 2; ctx.stroke(); }
+      ctx.fillStyle = '#b8432f'; ctx.fillRect(-60, 20, 120, 34); U.text(ctx, '土鸡蛋', 0, 46, { size: 22, bold: true, align: 'center', color: '#fff3d6' });
+    } else {
+      ctx.fillStyle = '#efe6d2'; U.rr(ctx, -80, -90, 160, 180, 24); ctx.fill(); ctx.strokeStyle = '#a89070'; ctx.lineWidth = 4; ctx.stroke();
+      ctx.fillStyle = '#2f6f66'; ctx.fillRect(-50, -20, 100, 40); U.text(ctx, '面粉', 0, 10, { size: 24, bold: true, align: 'center', color: '#fff' });
+      if (bad) { ctx.fillStyle = 'rgba(120,120,60,.35)'; ctx.beginPath(); ctx.arc(30, 50, 18, 0, 7); ctx.fill(); }
+    }
+  }
   function drawTierObject(ctx, k, v) {
     if (k === 'oil') {
-      if (v === 0) { ctx.fillStyle = '#5a4020'; U.rr(ctx, -40, -60, 80, 110, 14); ctx.fill(); ctx.fillStyle = '#3a2810'; ctx.fillRect(-14, -78, 28, 22); ctx.fillStyle = 'rgba(160,110,40,.8)'; ctx.fillRect(-32, -10, 64, 52); }
+      if (v === 0) { A.cell(ctx, 'atlas_ui', 8, -70, -80, 140, 140, { trim: true, fit: true, anchor: 'center' }); ctx.fillStyle = 'rgba(70,40,10,.55)'; U.rr(ctx, -34, -22, 68, 78, 10); ctx.fill(); ctx.fillStyle = '#d8c8a0'; ctx.save(); ctx.rotate(-0.12); ctx.fillRect(-30, -6, 60, 20); ctx.restore(); U.text(ctx, '回收', 0, 10, { size: 16, bold: true, align: 'center', color: '#5a3418' }); }
       else if (v === 1) A.cell(ctx, 'atlas_ui', 8, -70, -80, 140, 140, { trim: true, fit: true, anchor: 'center' });
       else { A.cell(ctx, 'atlas_ui', 8, -70, -80, 140, 140, { trim: true, fit: true, anchor: 'center' }); ctx.fillStyle = '#fff8e8'; ctx.fillRect(-26, -4, 52, 22); ctx.fillStyle = '#2f6f66'; ctx.fillRect(-22, 0, 44, 4); ctx.fillRect(-22, 8, 30, 4); }
     } else if (k === 'material') {
@@ -130,28 +220,31 @@ BSX.define('ui/s_prep', function (require) {
   Shop.prototype.draw = function (ctx) {
     var app = this.app, s = app.state, self = this;
     ctx.fillStyle = 'rgba(20,14,8,.72)'; ctx.fillRect(0, 0, 1280, 720);
-    U.panel(ctx, 110, 50, 1060, 620, 'paper');
-    U.text(ctx, '升级小馆', 640, 108, { size: 34, bold: true, align: 'center' });
-    U.text(ctx, '钱匣 ' + Math.round(s.cash / 100) + ' 元', 1130, 108, { size: 22, bold: true, align: 'right', color: '#2f6f66' });
+    U.panel(ctx, 90, 30, 1100, 660, 'paper');
+    U.text(ctx, '升级小馆', 640, 80, { size: 32, bold: true, align: 'center' });
+    U.text(ctx, '钱匣 ' + Math.round(s.cash / 100) + ' 元', 1160, 80, { size: 22, bold: true, align: 'right', color: '#2f6f66' });
     C.upgrades.forEach(function (u, i) {
-      var x = 150 + (i % 4) * 250, y = 140 + Math.floor(i / 4) * 230, own = s.upgrades.indexOf(u.id) >= 0, can = !own && s.cash >= u.cost;
-      ctx.save(); ctx.fillStyle = own ? '#e6f4ea' : '#fff8e8'; U.rr(ctx, x, y, 230, 210, 12); ctx.fill(); ctx.strokeStyle = own ? '#2f6f66' : '#c8a878'; ctx.lineWidth = own ? 4 : 2; ctx.stroke(); ctx.restore();
-      upIcon(ctx, u.id, x + 115, y + 58);
-      U.text(ctx, u.name, x + 115, y + 118, { size: 24, bold: true, align: 'center' });
-      U.para(ctx, u.desc, x + 16, y + 146, 198, { size: 16, color: '#7d5a35', lh: 21 });
-      if (own) U.text(ctx, '已添置', x + 115, y + 198, { size: 20, bold: true, align: 'center', color: '#2f6f66' });
-      else U.button(ctx, 'buy_' + u.id, x + 40, y + 168, 150, 38, u.cost / 100 + ' 元', { kind: can ? 'primary' : 'paper', size: 20, disabled: !can, minSize: 44, onTap: function () { if (app.dispatch({ t: 'buy', id: u.id })) { Au.play('coin'); Au.play('perfect'); app.notice('添置了 ' + u.name); } } });
+      var cw = 200, ch = 262, x = 120 + (i % 5) * 210, y = 100 + Math.floor(i / 5) * 272, own = s.upgrades.indexOf(u.id) >= 0, can = !own && s.cash >= u.cost;
+      ctx.save(); ctx.fillStyle = own ? '#e6f4ea' : '#fff8e8'; U.rr(ctx, x, y, cw, ch, 12); ctx.fill(); ctx.strokeStyle = own ? '#2f6f66' : '#c8a878'; ctx.lineWidth = own ? 4 : 2; ctx.stroke(); ctx.restore();
+      ctx.save(); ctx.translate(x + cw / 2, y + 54); ctx.scale(0.8, 0.8); upIcon(ctx, u.id, 0, 0); ctx.restore();
+      if (u.passive) { ctx.fillStyle = '#2f6f66'; U.rr(ctx, x + 8, y + 8, 64, 24, 8); ctx.fill(); U.text(ctx, '夜间进账', x + 40, y + 26, { size: 13, bold: true, align: 'center', color: '#fff' }); }
+      U.text(ctx, u.name, x + cw / 2, y + 122, { size: 22, bold: true, align: 'center', maxW: cw - 16 });
+      U.para(ctx, u.desc, x + 12, y + 146, cw - 24, { size: 15, color: '#7d5a35', lh: 19, maxLines: 4 });
+      if (own) U.text(ctx, '已添置', x + cw / 2, y + 246, { size: 20, bold: true, align: 'center', color: '#2f6f66' });
+      else U.button(ctx, 'buy_' + u.id, x + 30, y + 216, cw - 60, 38, u.cost / 100 + ' 元', { kind: can ? 'primary' : 'paper', size: 20, disabled: !can, minSize: 44, onTap: function () { if (app.dispatch({ t: 'buy', id: u.id })) { Au.play('coin'); Au.play('perfect'); app.notice('添置了 ' + u.name); } } });
     });
-    U.button(ctx, 'shop_close', 540, 610, 200, 52, '好了', { onTap: function () { app.closeOverlay(); } });
+    U.button(ctx, 'shop_close', 1010, 40, 160, 48, '好了', { onTap: function () { app.closeOverlay(); } });
   };
   Shop.prototype.describe = function () { return { owned: this.app.state.upgrades, cash: this.app.state.cash }; };
   function upIcon(ctx, id, x, y) {
     ctx.save(); ctx.translate(x, y);
-    var I = { fire: [2, 'equipment'], tray: [7, 'equipment'], pot2: [1, 'equipment'], counter: [5, 'equipment'], sign: [10, 'ui'], board: [11, 'ui'], tables: [0, 'ui'], helper: [null] }[id];
+    var I = { fire: [2, 'equipment'], tray: [7, 'equipment'], pot2: [1, 'equipment'], counter: [5, 'equipment'], sign: [10, 'ui'], board: [11, 'ui'], soymaker: [3, 'equipment'] }[id];
     if (I && I[0] != null) A.cell(ctx, I[1] === 'ui' ? 'atlas_ui' : 'atlas_equipment', I[0], -50, -46, 100, 92, { trim: true, fit: true, anchor: 'center' });
+    else if (id === 'tables') { ctx.fillStyle = '#8a5a2a'; ctx.fillRect(-46, -14, 92, 12); ctx.fillStyle = '#6a4220'; ctx.fillRect(-40, -2, 8, 44); ctx.fillRect(32, -2, 8, 44); ctx.fillStyle = '#a87040'; ctx.fillRect(-46, -18, 92, 6); ctx.fillStyle = '#7a4a22'; ctx.fillRect(-62, 14, 22, 8); ctx.fillRect(40, 14, 22, 8); ctx.fillRect(-58, 22, 4, 20); ctx.fillRect(54, 22, 4, 20); }
+    else if (id === 'preorder') { ctx.fillStyle = '#2a3a32'; ctx.fillRect(-48, -40, 96, 72); ctx.strokeStyle = '#a87040'; ctx.lineWidth = 6; ctx.strokeRect(-48, -40, 96, 72); ctx.fillStyle = '#f0f0e8'; for (var i = 0; i < 4; i++) ctx.fillRect(-36, -28 + i * 15, 50 + (i % 2) * 18, 4); }
     else Act.draw(ctx, 'helper', 0, 46, 100, { noShadow: true });
     if (id === 'fire') { ctx.fillStyle = 'rgba(255,120,30,.8)'; ctx.beginPath(); ctx.ellipse(0, 40, 30, 8, 0, 0, 7); ctx.fill(); }
     ctx.restore();
   }
-  return { Prep: Prep, TIERS: TIERS, Shop: Shop };
+  return { Prep: Prep, TIERS: TIERS, Shop: Shop, Delivery: Delivery, drawGoals: drawGoals };
 });

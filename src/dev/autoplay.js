@@ -71,6 +71,19 @@ BSX.define('dev/autoplay', function (require) {
     if (name === 'encounter') { var d0 = scr.describe(); if (d0.picked) { this.tapHit('enc_close'); this.wait = 0.3; return; } var qq = BSX.require('content/encounters').byId[d0.id], greedy = this.pol.greedy; var pk = qq.choices.slice().sort(function (x, y) { return greedy ? (y.effect.cash || 0) - (x.effect.cash || 0) : (x.effect.burn || 0) - (y.effect.burn || 0) || (y.effect.rep || 0) - (x.effect.rep || 0); })[0]; this.stats.choices.push(qq.id + ':' + pk.id); this.tapHit('enc_' + pk.id, 0.4); this.wait = 0.6; return; }
     if (name === 'leisure') { var d1 = scr.describe(); if (d1.done) this.tapHit('rps_close'); else this.tapHit('rps_' + ['rock', 'scissors', 'paper'][Math.floor(Math.random() * 3)], 0.3); this.g('leisure'); this.wait = 0.4; return; }
     if (name === 'shop') { var want = (this.pol.buy || []).filter(function (id) { return s.upgrades.indexOf(id) < 0; }); var aff = want.filter(function (id) { return s.cash >= BSX.require('core/run').upgradeById(id).cost + 40000; })[0]; if (aff) { this.tapHit('buy_' + aff); this.stats.choices.push('buy:' + aff); } else { this.tapHit('shop_close'); this.shopDay = s.day; } this.wait = 0.3; return; }
+    if (name === 'delivery') {
+      var dd = scr.describe(), sly = this.pol.cheat || this.pol.greedy;
+      if (dd.done) { this.wait = 0.5; return; }
+      if (!sly && !dd.tested) { var sx = dd.strip.x, sy = dd.strip.y, tx = dd.target.x, ty = dd.target.y; this.ev('down', sx, sy, 0.1); for (var k = 1; k <= 8; k++) this.ev('move', sx + (tx - sx) * k / 8, sy + (ty - sy) * k / 8, 0.03); this.ev('up', tx, ty, 0.05); this.g('test'); this.wait = 0.4; return; }
+      var fk = dd.tested ? dd.fake : false; this.stats.choices.push('dlv:' + (sly || !fk ? 'accept' : 'reject')); this.tapHit(sly || !fk ? 'dlv_accept' : 'dlv_reject', 0.3); this.wait = 0.5; return;
+    }
+    if (name === 'chores') {
+      var dc = scr.describe(), lazy = !!this.pol.cheat;
+      var flip = ['hood', 'waste', 'sanitize'].filter(function (c) { return dc.plan[c] === lazy; })[0];
+      if (flip) { this.tapHit('chore_' + flip); this.wait = 0.2; return; }
+      this.tapHit('chores_done'); this.wait = 0.5; return;
+    }
+    if (name === 'origin') { this.tapHit('origin_go'); this.wait = 0.5; return; }
     if (name === 'title') { if (!this.tapHit('title_continue')) this.tapHit('title_start'); this.wait = 0.5; return; }
     if (name === 'newMonth') { this.tapHit('nm_go'); this.wait = 0.5; return; }
     if (name === 'prep') return this.prep(scr, s);

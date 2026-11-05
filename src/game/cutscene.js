@@ -22,7 +22,7 @@ BSX.define('game/cutscene', function (require) {
     Sc.set({ view: view, time: time, weather: weather, shutter: view === 'ext' && script.id === 'S01' ? 1 : view === 'ext' && script.id === 'S28' ? 0 : 0, crowd: 0 });
     Sc.moveCam(640, 360, 1, 0);
     this.view = view;
-    this.foot = view === 'ext' ? 690 : 640; this.h = view === 'ext' ? 250 : 330;
+    this.foot = view === 'ext' ? 650 : 600; this.h = view === 'ext' ? 250 : 330;
     if (view === 'room') this.actors.zhou = { who: 'zhou', x: 230, tx: 230, a: 1, ta: 1, pose: 'idle' };
     else if (script.id !== 'S01') this.actors.zhou = { who: 'zhou', x: 520, tx: 520, a: 1, ta: 1, pose: 'idle' };
     Au.setAmbience(time === 'night' ? 'night' : weather === 'rain' ? 'rain' : time === 'dusk' ? 'dusk' : 'story', weather === 'rain');
@@ -56,7 +56,7 @@ BSX.define('game/cutscene', function (require) {
     if (b.cam) { Sc.moveCam(b.cam[0], b.cam[1], b.cam[2], b.t || 0); if (b.t && !this.skipping) { this.wait = b.t / 1000; return true; } return false; }
     if (b.light) { Sc.set({ time: b.light === 'rain' ? Sc.time : b.light }); if (b.light === 'rain') Sc.set({ weather: 'rain' }); return false; }
     if (b.weather) { Sc.set({ weather: b.weather }); Au.setAmbience(Au.mood, b.weather === 'rain'); return false; }
-    if (b.view) { Sc.set({ view: b.view }); this.view = b.view; this.foot = b.view === 'ext' ? 690 : 640; this.h = b.view === 'ext' ? 250 : 330; return false; }
+    if (b.view) { Sc.set({ view: b.view }); this.view = b.view; this.foot = b.view === 'ext' ? 650 : 600; this.h = b.view === 'ext' ? 250 : 330; return false; }
     if (b.enter) { var w = this.resolveWho(b.enter); var from = b.x > 640 ? 1400 : -120; this.actors[b.enter] = { who: w, x: from, tx: b.x, a: 1, ta: 1, pose: 'walk', flip: b.x > 640 }; if (!this.skipping) { this.wait = 0.9; return true; } this.actors[b.enter].x = b.x; return false; }
     if (b.exit) { var a = this.actors[b.exit]; if (a) { a.tx = a.x > 640 ? 1450 : -150; a.leaving = true; a.pose = 'walk'; a.flip = !a.flip; } return false; }
     if (b.prop) { this.props[b.prop] = { x: b.x, y: b.y, a: 0 }; Au.play('drop'); return false; }
@@ -189,13 +189,13 @@ BSX.define('game/cutscene', function (require) {
     }
     // 对白框
     if (this.line) {
-      var L = this.line, bx = 120, by = 540, bw = 1040, bh = 150;
+      var L = this.line, bx = 120, by = 562, bw = 1040, bh = 122;
       U.panel(ctx, bx, by, bw, bh, L.narr ? 'dark' : 'cream');
       if (!L.narr) {
-        ctx.save(); ctx.fillStyle = '#efe0bf'; U.rr(ctx, bx + 16, by + 14, 122, 122, 12); ctx.fill(); ctx.beginPath(); U.rr(ctx, bx + 16, by + 14, 122, 122, 12); ctx.clip(); Act.portrait(ctx, L.who, bx + 16, by + 14, 122, L.face); ctx.restore();
-        U.text(ctx, Act.nameOf(L.who), bx + 160, by + 44, { size: 24, bold: true, color: '#2f6f66' });
+        ctx.save(); ctx.fillStyle = '#efe0bf'; U.rr(ctx, bx + 14, by + 11, 100, 100, 12); ctx.fill(); ctx.beginPath(); U.rr(ctx, bx + 14, by + 11, 100, 100, 12); ctx.clip(); Act.portrait(ctx, L.who, bx + 14, by + 11, 100, L.face); ctx.restore();
+        U.text(ctx, Act.nameOf(L.who), bx + 134, by + 38, { size: 24, bold: true, color: '#2f6f66' });
       }
-      U.para(ctx, L.text.slice(0, Math.floor(this.typed)), L.narr ? bx + 40 : bx + 160, by + (L.narr ? 60 : 88), L.narr ? bw - 80 : bw - 200, { size: 28, color: L.narr ? '#fff3d6' : '#3b2a1a', lh: 40 });
+      U.para(ctx, L.text.slice(0, Math.floor(this.typed)), L.narr ? bx + 40 : bx + 134, by + (L.narr ? 52 : 80), L.narr ? bw - 80 : bw - 174, { size: 26, color: L.narr ? '#fff3d6' : '#3b2a1a', lh: 34 });
       if (this.typed >= L.text.length) { ctx.save(); ctx.globalAlpha = 0.5 + Math.sin(this.t * 6) * 0.4; U.text(ctx, '▼', bx + bw - 34, by + bh - 20, { size: 22, color: L.narr ? '#fff3d6' : '#7d5a35' }); ctx.restore(); }
       U.hit('cs_next', 0, 0, 1280, 720, { label: '继续', onTap: function () { self.advance(); }, minSize: 0 });
     }
@@ -208,6 +208,7 @@ BSX.define('game/cutscene', function (require) {
     // 控制条：自动 / 跳过 / 回看
     if (!opts || !opts.noControls) {
       var y = 24, x = 1280 - 24;
+      ctx.save(); ctx.fillStyle = 'rgba(18,12,8,.6)'; U.rr(ctx, x - (this.o.onLog ? 392 : 262), y - 8, (this.o.onLog ? 392 : 262) + 12, 68, 14); ctx.fill(); ctx.restore();
       var sk = U.button(ctx, 'cs_skip', x - 120, y, 120, 52, '跳过', { kind: 'ghost', size: 22, disabled: !!(this.act || this.choice), onTap: function () { self.skip(); } });
       U.button(ctx, 'cs_auto', x - 250, y, 120, 52, this.auto ? '自动●' : '自动', { kind: 'ghost', size: 22, selected: this.auto, onTap: function () { self.auto = !self.auto; } });
       if (this.o.onLog) U.button(ctx, 'cs_log', x - 380, y, 120, 52, '回看', { kind: 'ghost', size: 22, onTap: function () { self.o.onLog(); } });

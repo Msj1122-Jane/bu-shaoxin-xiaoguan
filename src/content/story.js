@@ -116,6 +116,7 @@ BSX.define('content/story', function () {
     { if: { burnMin: 70 }, then: [{ say: 'zhou', text: '这个月……我心里不踏实。', face: 3 }],
       else: [{ if: { repMin: 70 }, then: [{ say: 'zhou', text: '街坊都等着我开门呢。', face: 1 }], else: [{ say: 'zhou', text: '钱是紧了点。', face: 2 }] }] },
     { choice: [
+      { id: 'buy', label: '直接盘下铺面（4000 元）', when: { canBuy: true }, effect: { buyout: true }, result: '房东愣了一下，把房产证推了过来：“行，这铺子归你了。”' },
       { id: 'renew', label: '签下续租', when: { canRenew: true }, effect: { renew: true }, result: '老周按下了红手印。' },
       { id: 'neighbors', label: '请街坊帮衬押金', when: { cantRenew: true, affSum: 14 }, effect: { renew: true, borrowNeighbors: true }, result: '小满、老秦凑了钱，压在账本下。' },
       { id: 'leave', label: '不签了，月底收摊', effect: { leave: true }, result: '老周把合同推了回去。' }
@@ -173,6 +174,7 @@ BSX.define('content/story', function () {
     { visitors: 3 },
     { if: { ending: 'E_FAREWELL' }, then: [{ narr: '三轮车上捆着锅碗，门口却站满了人。' }, { say: 'zhao', text: '老周，路上慢点。' }, { say: 'song', text: '这是给你的饭盒，别空着肚子赶路。' }, { say: 'best', text: '你在哪儿开，我们就去哪儿吃。' }, { say: 'zhou', text: '……都回去吧，天冷。', face: 3 }] },
     { if: { ending: 'E_TRANSFER' }, then: [{ crowd: 0 }, { narr: '玻璃门上贴着“旺铺转让”，没人停下来看。' }, { say: 'zhou', text: '当初要是多换几次油……', face: 4 }, { say: 'zhou', text: '钥匙，交给下一个人吧。', face: 4 }] },
+    { if: { ending: 'E_PILLS' }, then: [{ crowd: 0 }, { narr: '没有人来送。收银台抽屉里，胃药和欠条压在一起。' }, { say: 'zhou', text: '省下的那点钱，到底省到哪去了……', face: 4 }] },
     { act: { kind: 'hold', label: '按住，最后一次拉下卷帘门', x: 640, y: 420, prop: 'shutter' } }, { shutter: 'down' }, { sfx: 'shutter' },
     { cam: [640, 360, 1.0], t: 1200 }
   ] };

@@ -10,7 +10,7 @@ const E = BSX.require('content/events');
 const POLICIES = {
   canteen: { tiers: { oil: 1, material: 1, price: 0 }, skill: [0.6, 0.35, 0.05], buy: ['helper', 'pot2'], prefer: { E07: 'ask', E12: 'help', E29: 'take', E20: 'free', E03: 'more', E05: 'refuse', E14: 'refuse', S12: 'paper', S18: 'cook', S26: 'renew', E22: 'hire' }, menu: ['congee', 'youtiao', 'soy', 'scallion'] },
   private: { tiers: { oil: 2, material: 2, price: 2 }, skill: [0.75, 0.25, 0], buy: ['tables', 'counter'], prefer: { E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'open', S26: 'renew', E03: 'hold', E22: 'hire' }, menu: ['pidan', 'shengjian', 'noodle', 'soy'] },
-  honest: { tiers: { oil: 2, material: 2, price: 1 }, skill: [0.8, 0.2, 0], buy: ['board', 'tables', 'sign'], prefer: { E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'post', S26: 'renew', E08: 'public', E16: 'normal', E04: 'show', E01: 'normal', E22: 'hire', E11: 'some' }, menu: ['pidan', 'shengjian', 'congee', 'soy'] },
+  honest: { tiers: { oil: 2, material: 2, price: 1 }, skill: [0.8, 0.2, 0], buy: ['board', 'tables', 'sign'], prefer: { E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'post', S26: 'buy', E08: 'public', E16: 'normal', E04: 'show', E01: 'normal', E22: 'hire', E11: 'some' }, menu: ['pidan', 'shengjian', 'congee', 'soy'] },
   pills: { tiers: { oil: 0, material: 0, price: 1 }, skill: [0.4, 0.5, 0.1], cheat: 0.7, buy: ['fire', 'tray'], prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S12: 'cheap', S18: 'cook', S26: 'renew', CRISIS: 'hold', E23: 'deny', E18: 'go', E10: 'risk', E04: 'delay', E08: 'silent' }, menu: ['youtiao', 'scallion', 'congee', 'soy'] },
   reopen: { tiers: { oil: 0, material: 0, price: 1 }, skill: [0.6, 0.35, 0.05], cheat: 0.5, buy: ['fire'], prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S12: 'cheap', S18: 'cook', S26: 'renew', CRISIS: 'rectify', E23: 'deny', E18: 'go', E04: 'delay' }, after: { CRISIS: { oil: 2, material: 1, price: 1 } }, menu: ['youtiao', 'scallion', 'congee', 'soy'] },
   average: { tiers: { oil: 1, material: 1, price: 1 }, skill: [0.5, 0.45, 0.05], buy: ['fire'], prefer: { S26: 'renew' }, menu: ['congee', 'youtiao', 'soy', 'scallion'] },
@@ -75,10 +75,13 @@ function play(name, seed, opts) {
       const want = pol.menu.concat(['congee', 'youtiao', 'soy', 'scallion', 'egg', 'noodle']);
       for (const id of s.menu.slice()) if (!want.slice(0, 4).includes(id)) s = Run.reduce(s, { t: 'dish', id });
       for (const id of want) if (s.menu.length < Run.menuSize(s)) s = Run.reduce(s, { t: 'dish', id });
+      const dv = s.today.delivery, reformed = pol.after && ['rectify', 'refund'].includes(s.crisis.state), sly = (pol.cheat || pol.greedy) && !reformed;
+      if (dv && dv.state === 'pending') s = Run.reduce(s, { t: 'delivery', accept: sly ? true : !dv.fake, tested: !sly });
       s = Run.reduce(s, { t: 'confirmPrep' });
     } else if (s.phase === 'service') {
       s = Run.reduce(s, { t: 'serviceDone', result: serviceResult(s, pol, holder) });
     } else if (s.phase === 'ledger') {
+      { const reformed = pol.after && ['rectify', 'refund'].includes(s.crisis.state), lazy = pol.cheat && !reformed; for (const c of ['hood', 'waste', 'sanitize']) s = Run.reduce(s, { t: 'chore', id: c, on: !lazy }); }
       log.push({ day: s.day, cash: s.cash / 100, rep: s.rep, burn: s.burn, net: (s.ledger.cashClose - s.ledger.cashOpen) / 100, served: s.ledger.served, flow: s.ledger.flow });
       s = Run.reduce(s, { t: 'nextDay' });
     }

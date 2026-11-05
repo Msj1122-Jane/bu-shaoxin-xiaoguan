@@ -40,6 +40,18 @@ BSX.define('core/run', function (require) {
     };
     R.list.forEach(function (r) { s.regulars[r.id] = { aff: 0, visits: 0, last: 0, nodes: [] }; });
     D.list.forEach(function (d) { s.prof[d.id] = { n: 0, star: 0 }; });
+    // 开局身份与一正一负特性（D039）
+    var org = C.origins.filter(function (o) { return o.id === opts.origin; })[0] || C.origins[0];
+    s.origin = org.id; s.cash += org.cash; s.rep = clamp(s.rep + org.rep, 0, 100);
+    if (org.debt) s.flags.debt = org.debt;
+    if (org.prof) D.list.forEach(function (d) { if (d.unlock.type === 'start') { s.prof[d.id].n = org.prof; var st0 = 0; C.profThresholds.forEach(function (t) { if (org.prof >= t) st0++; }); s.prof[d.id].star = st0; } });
+    var plus = C.perks.plus.filter(function (p) { return p.id === opts.perkPlus; })[0], minus = C.perks.minus.filter(function (p) { return p.id === opts.perkMinus; })[0];
+    s.perks = plus && minus ? { plus: plus.id, minus: minus.id } : { plus: null, minus: minus ? minus.id : null };
+    if (s.perks.plus === 'savings') s.cash += 60000;
+    if (s.perks.plus === 'neighbors') { s.rep = clamp(s.rep + 8, 0, 100); R.list.forEach(function (r) { s.regulars[r.id].aff = 0.5; }); }
+    if (s.perks.plus === 'quickhands') s.upgrades.push('fire');
+    s.stats.startRep = s.rep; s.stats.startCash = s.cash;
+    s.chores = { plan: { hood: true, waste: true, sanitize: true }, missed: { hood: 0, waste: 0, sanitize: 0 } };
     if (opts.unlockAll) D.list.forEach(function (d) { s.unlocked[d.id] = true; });
     if (opts.unlocked) opts.unlocked.forEach(function (id) { s.unlocked[id] = true; });
     if (s.heirloom === 'H_NOTEBOOK') s.unlocked.friedrice = true;
@@ -84,8 +96,11 @@ BSX.define('core/run', function (require) {
     s.menu = s.menu.filter(function (id) { var d = D.byId[id]; return d && dishAvailable(s, d) && !dishLockedToday(s, d); });
     // 整改停业
     if (s.flags.closeToday === s.day) s.today.closed = true;
+    // 良心灯笼到“封条”档：贴封条停业一天（D031，评审 #4），四天内不重复
+    if (s.mode === 'story' && s.day > 1 && lanternTier(s.burn).idx === 4 && !(s.flags.sealDay > s.day - 4)) { s.today.closed = true; s.today.sealed = true; s.flags.sealDay = s.day; s.burn = clamp(s.burn - 12, 0, 100); s.today.notes.push('门口贴了封条：停业一天，整改'); }
     // 延期效果（开店前）
     applyDelayed(s, 'pre');
+    beginDayExtras(s);
     s.pending = [];
     if (s.rescue.pendingDay === s.day) s.pending.push({ kind: 'rescue' });
     if (s.mode === 'story') {
@@ -93,6 +108,57 @@ BSX.define('core/run', function (require) {
       if (sid && ST.main[sid].phase === 'pre') { s.today.story = sid; s.pending.push({ kind: 'story', id: sid }); }
     }
     s.phase = s.pending.length ? 'dawn' : 'prep';
+  }
+
+  // ───────────────────────── 深空当铺参考：收尾清单、验货、每日目标（D040–D043）
+  function hashU(s, k) { return RNG.hashSeed((s.seed * 2654435761 + s.day * 40503 + k * 9973) >>> 0) / 4294967296; }
+  function perk(s, id) { return s.perks && (s.perks.plus === id || s.perks.minus === id); }
+  var GOALS = [
+    { id: 'nocheat', label: '今天一次捷径都不走', test: function (x) { return x.cheats === 0 && x.orders > 0; } },
+    { id: 'combo5', min: 2, label: '早高峰连击 ≥5', test: function (x) { return x.maxCombo >= 5; } },
+    { id: 'combo8', min: 9, label: '早高峰连击 ≥8', test: function (x) { return x.maxCombo >= 8; } },
+    { id: 'sig3', min: 2, label: '做出 3 份招牌品质', test: function (x) { return x.sig >= 3; } },
+    { id: 'sig6', min: 9, label: '做出 6 份招牌品质', test: function (x) { return x.sig >= 6; } },
+    { id: 'nowait', min: 2, label: '不让一位客人空等走掉', test: function (x) { return x.lostOrders === 0 && x.orders > 0; } },
+    { id: 'regular', min: 2, label: '让一位常客满意离开', test: function (x) { return x.happyRegulars > 0; } },
+    { id: 'served', min: 4, label: '卖出 {n} 份', n: function (s) { return Math.round((50 + s.day * 1.5) / 5) * 5; }, test: function (x, g) { return x.served >= g.n; } }
+  ];
+  function pickGoals(s) {
+    if (s.day < 2 || s.today.closed) return [];
+    var pool = GOALS.filter(function (g) { return g.id !== 'nocheat' && (g.min || 1) <= s.day && !(g.id === 'combo5' && s.day >= 9) && !(g.id === 'sig3' && s.day >= 9); });
+    var out = [{ id: 'nocheat', label: GOALS[0].label, done: false }], k = 1;
+    while (out.length < 3 && pool.length) { var i = Math.floor(hashU(s, k++) * pool.length), g = pool.splice(i, 1)[0]; var n = g.n ? g.n(s) : null; out.push({ id: g.id, n: n, label: g.label.replace('{n}', n), done: false }); }
+    return out;
+  }
+  function beginDayExtras(s) {
+    if (!s.chores) s.chores = { plan: { hood: true, waste: true, sanitize: true }, missed: { hood: 0, waste: 0, sanitize: 0 } };
+    var m = s.chores.missed;
+    if (m.hood >= 2) { s.rep = clamp(s.rep - 1, 0, 100); s.burn = clamp(s.burn + 2, 0, 100); s.today.notes.push('油烟机两天没洗，进门的人直皱眉'); }
+    if (m.waste >= 2) { s.burn = clamp(s.burn + 4, 0, 100); s.today.notes.push('没交正规回收的泔水，被人半夜拉走了'); }
+    if (m.sanitize >= 2) { s.today.sickBoost = 0.08; s.today.notes.push('碗筷两天没消毒'); }
+    s.today.goals = pickGoals(s);
+    if (s.mode === 'story' && s.day >= 3 && !s.today.closed && hashU(s, 101) < C.delivery.chance) {
+      var it = C.delivery.items[Math.floor(hashU(s, 102) * C.delivery.items.length)];
+      s.today.delivery = { item: it.id, fake: hashU(s, 103) < C.delivery.fakeChance + Math.min(0.2, (s.day - 3) * 0.01), state: 'pending' };
+    }
+  }
+  function resolveDelivery(s, accept, tested) {
+    var dv = s.today.delivery; if (!dv || dv.state !== 'pending') return false;
+    var it = C.delivery.items.filter(function (x) { return x.id === dv.item; })[0];
+    dv.state = 'done'; dv.accept = !!accept; dv.tested = !!tested;
+    if (accept && dv.fake) { s.cash += it.save; s.burn = clamp(s.burn + it.burn, 0, 100); s.today.fakeUsed = true; s.stats.fakeAccepted = (s.stats.fakeAccepted || 0) + 1; s.today.notes.push(tested ? '明知是假货还是收了，省下 ' + it.save / 100 + ' 元' : '没验货，收下了一批有问题的' + it.name); }
+    else if (!accept && dv.fake) { s.rep = clamp(s.rep + 0.5, 0, 100); s.stats.fakeCaught = (s.stats.fakeCaught || 0) + 1; s.today.notes.push('验出假货，当场退了：' + it.name); }
+    else if (!accept && !dv.fake) { s.cash -= 300; s.today.notes.push('货没问题，退回去白搭了 3 元运费'); }
+    return true;
+  }
+  function choreCost(s) { return C.chores.reduce(function (n, c) { return n + (s.chores && s.chores.plan[c.id] ? c.cost : 0); }, 0); }
+  function applyChores(s) {
+    if (!s.chores || s.phase === 'ended') return;
+    var cost = choreCost(s);
+    if (s.today.closed) cost = 0;
+    s.cash -= cost;
+    C.chores.forEach(function (c) { s.chores.missed[c.id] = s.chores.plan[c.id] || s.today.closed ? 0 : s.chores.missed[c.id] + 1; });
+    if (s.ledger) { s.ledger.choreCost = cost; s.ledger.chores = C.chores.filter(function (c) { return s.chores.plan[c.id]; }).map(function (c) { return c.id; }); s.ledger.cashClose = s.cash; }
   }
 
   function regularWeight(s, r) {
@@ -143,6 +209,7 @@ BSX.define('core/run', function (require) {
     if (eff.renew) { s.flags.renewed = true; if (!eff.borrowNeighbors) s.cash -= Cond.renewCost(s); else s.flags.neighborLoan = true; }
     if (eff.leave) { s.early = { day: s.day, reason: 'leave' }; if (s.mode === 'story' && ST.all.X_LEAVE) s.pending.splice(1, 0, { kind: 'story', id: 'X_LEAVE' }); }
     if (eff.recall) s.flags.recalled = true;
+    if (eff.buyout) { s.flags.renewed = true; s.flags.owner = true; s.cash -= C.buyout.price; s.today.notes.push('铺面盘下来了，从此不用再看房东脸色'); }
     s.today.eventCash += s.cash - before;
   }
   function audit(s) {
@@ -228,6 +295,7 @@ BSX.define('core/run', function (require) {
     var cap = C.baseCapacity + (s.helper ? C.helper.capacity : 0) + (s.upgrades.indexOf('pot2') >= 0 ? 12 : 0) + (s.upgrades.indexOf('fire') >= 0 ? 8 : 0);
     cap += Math.min(C.starCapacity.max, Math.floor(totalStars(s) / C.starCapacity.per) * C.starCapacity.add);
     var th = theme(s); if (th && th.mods.capacity) cap += th.mods.capacity;
+    if (perk(s, 'oldstove')) cap -= 10;
     return cap;
   }
 
@@ -255,6 +323,7 @@ BSX.define('core/run', function (require) {
   // 吃坏肚子：确定性，浏览器/微信/模拟一致
   function sickRoll(s, orderId, cheats) {
     var p = cheats ? Math.min(0.85, C.honesty.sickBase + C.honesty.sickPer * (cheats - 1) + s.burn / C.honesty.sickBurnDiv) : (s.burn >= 60 ? 0.1 : 0);
+    if (s.today) p = Math.min(0.85, p + (s.today.sickBoost || 0) + (s.today.fakeUsed ? 0.05 : 0));
     if (!p) return false;
     var h = RNG.hashSeed((s.seed * 131 + s.day * 7919 + String(orderId).split('').reduce(function (a, c) { return a * 31 + c.charCodeAt(0); }, 7)) >>> 0);
     return h / 4294967296 < p;
@@ -325,7 +394,7 @@ BSX.define('core/run', function (require) {
     var hasOil = ds.some(function (d) { return d.oil; });
     var oilCost = s.today.closed ? 0 : Math.round(C.oil.daily[s.oil] * (hasOil ? 1 : 0.3));
     var tips = grades.sig * C.tipSignature;
-    var fixed = C.fixedCost, wage = s.helper ? C.helper.wage : 0;
+    var fixed = C.fixedCost + (perk(s, 'rent') ? 2000 : 0), wage = s.helper ? C.helper.wage : 0;
     var cheats = 0, sick = 0, cheatGain = 0, refunds = 0;
     orders.forEach(function (o) { cheats += o.cheats || 0; cheatGain += o.cheatGain || 0; if (o.sick) { sick++; refunds += o.refund || 0; } });
     var comboTips = Math.max(0, Math.round((result && result.comboTips) || 0)), maxCombo = (result && result.maxCombo) || 0;
@@ -334,7 +403,7 @@ BSX.define('core/run', function (require) {
     // 口碑
     var rep0 = s.rep, dRep = C.price.rep[s.price] + C.material.rep[s.material] + C.oil.rep[s.oil];
     dRep += grades.sig * C.qualityRep.signature / Math.max(1, orders.length) * 2 + grades.home * C.qualityRep.home / Math.max(1, orders.length) + grades.rush * C.qualityRep.rushed / Math.max(1, orders.length) * 2;
-    dRep -= Math.floor(lost / C.lostPer) * C.lostRep;
+    dRep -= Math.floor(lost / C.lostPer) * C.lostRep * (perk(s, 'picky') ? 2 : 1);
     if (s.oil === 0 && s.oilStreak >= 2) dRep -= 0.5;
     if (s.burn >= 80) dRep -= 0.6;
     if (s.crisis.state === 'hold') dRep -= 0.6;
@@ -367,6 +436,19 @@ BSX.define('core/run', function (require) {
       s.today.encounterDone = true; s.stats.encounters = (s.stats.encounters || []).concat([en.id + ':' + ch.id]);
       applyEffect(s, ch.effect, en.id); s.today.notes.push(q.name + '：' + ch.result);
     });
+    // 夜间被动进账（D044）
+    var passive = 0;
+    if (!s.today.closed) {
+      if (s.upgrades.indexOf('soymaker') >= 0 && s.burn < 50) passive += 1500;
+      if (s.upgrades.indexOf('preorder') >= 0) passive += 300 * R.list.filter(function (r) { return s.regulars[r.id].aff >= 3; }).length;
+    }
+    s.cash += passive;
+    // 每日目标（D042）
+    var gx = { cheats: cheats, maxCombo: maxCombo, sig: grades.sig, lostOrders: grades.lost, orders: orders.length, served: served, happyRegulars: orders.filter(function (o) { return o.regular && (o.grade === 'sig' || o.grade === 'home') && !o.sick; }).length };
+    var goalCash = 0, goals = (s.today.goals || []).map(function (g) { var def = GOALS.filter(function (x) { return x.id === g.id; })[0]; var ok = !!(def && def.test(gx, g)); if (ok) { goalCash += C.goals.reward; s.rep = clamp(s.rep + C.goals.rewardRep, 0, 100); } return Object.assign({}, g, { done: ok }); });
+    if (goals.length && goals.every(function (g) { return g.done; })) goalCash += C.goals.allBonus;
+    s.cash += goalCash; s.today.goals = goals;
+    if (goals.length) s.stats.goalsDone = (s.stats.goalsDone || 0) + goals.filter(function (g) { return g.done; }).length;
     // 检查员突击（开门时已决定）
     if (s.today.raid === 'bad') { s.cash -= C.honesty.raidFine; s.rep = clamp(s.rep - 3, 0, 100); s.burn = clamp(s.burn - 10, 0, 100); s.today.notes.push('检查员突击：罚款 ' + C.honesty.raidFine / 100 + ' 元，责令整改'); }
     if (s.today.raid === 'good') { s.rep = clamp(s.rep + 2, 0, 100); s.today.notes.push('检查员突击：门口贴上了“放心早餐”'); s.flags.praised = (s.flags.praised || 0) + 1; }
@@ -383,14 +465,15 @@ BSX.define('core/run', function (require) {
       day: s.day, weather: s.today.weather, oil: s.oil, material: s.material, price: s.price, menu: s.menu.slice(),
       flow: flow, cap: cap, served: served, lost: lost, sales: sales, revenue: revenue, tips: tips, ingredient: ingredient, oilCost: oilCost,
       fixed: fixed, wage: wage, eventCash: 0, cashOpen: cashBefore, cashClose: s.cash, rep0: rep0, rep1: s.rep, burnUp: s.burn > b0,
-      cheats: cheats, sick: sick, cheatGain: cheatGain, refunds: refunds, comboTips: comboTips, maxCombo: maxCombo, honestStreak: s.stats.honestStreak, raid: s.today.raid || null, burn: s.burn,
-      grades: grades, avgQ: Math.round(avgQ * 100) / 100, visitors: visitorsServed, quote: quoteLine, notes: s.today.notes.slice(), closed: s.today.closed
+      cheats: cheats, sick: sick, cheatGain: cheatGain, refunds: refunds, comboTips: comboTips, maxCombo: maxCombo, honestStreak: s.stats.honestStreak, raid: s.today.raid || null, burn: s.burn, passive: passive, goals: goals, goalCash: goalCash, delivery: s.today.delivery || null,
+      overflow: Math.max(0, flow - cap), lostOrders: grades.lost, grades: grades, avgQ: Math.round(avgQ * 100) / 100, visitors: visitorsServed, quote: quoteLine, notes: s.today.notes.slice(), closed: s.today.closed
     };
   }
   function pickQuote(s, orders) {
     var o = orders.filter(function (x) { return x.regular; })[0];
     if (!o) return s.burn >= 60 ? '有人说：“最近味道变了。”' : '有街坊说：“明天还来。”';
     var r = R.byId[o.regular];
+    if (s.burn >= 60 || o.sick) return r.name + '：“' + (o.sick ? '昨天吃完，肚子疼了一宿。' : '最近……味道好像不太对。') + '”';
     return r.name + '：“' + (o.grade === 'sig' ? r.lines.happy : o.grade === 'lost' ? r.lines.wait : r.lines.meh === undefined ? r.lines.happy : (o.grade === 'home' ? r.lines.happy : r.lines.meh)) + '”';
   }
 
@@ -406,9 +489,9 @@ BSX.define('core/run', function (require) {
     applyDelayed(s, 'any');
     var post = rollEvent(s, 'post');
     if (post) { s.today.postEvent = post; q.push({ kind: 'event', id: post }); }
-    // 常客节点（每日至多 2 个）
+    // 常客节点（每日至多 2 个；灯笼冒烟以上时温情节点暂缓，评审 #5）
     var nodes = [];
-    R.list.forEach(function (r) {
+    if (s.burn < 60) R.list.forEach(function (r) {
       var st = s.regulars[r.id];
       r.nodes.forEach(function (n, i) {
         if (st.aff >= n.aff && st.nodes.indexOf(i) < 0 && (i === 0 || st.nodes.indexOf(i - 1) >= 0)) nodes.push({ r: r.id, i: i, cs: n.cs });
@@ -427,8 +510,8 @@ BSX.define('core/run', function (require) {
   // ───────────────────────── 结局判定（GDD §10.1）
   function determineEnding(s) {
     var days = Math.max(1, s.stats.tierDays.price.reduce(function (a, b) { return a + b; }, 0));
+    if (s.crisis.state === 'hold' && (!s.early || s.early.reason === 'leave')) return { id: 'E_PILLS' };
     if (s.early) return { id: s.rep >= 60 ? 'E_FAREWELL' : 'E_TRANSFER' };
-    if (s.crisis.state === 'hold') return { id: 'E_PILLS' };
     if ((s.crisis.state === 'rectify' || s.crisis.state === 'refund') && s.burn < 70 && s.rep >= 55) return { id: 'E_REOPEN' };
     var peopleNodes = R.list.filter(function (r) { return s.regulars[r.id].nodes.length > 0; }).length;
     var highShare = s.stats.tierDays.price[2] / days, lowShare = s.stats.tierDays.price[0] / days;
@@ -524,6 +607,7 @@ BSX.define('core/run', function (require) {
   }
 
   function nextDay(s) {
+    applyChores(s);
     s.history.push(s.ledger);
     // 破产判定（GDD §7.7）
     s.negativeDays = s.cash < 0 ? s.negativeDays + 1 : 0;
@@ -576,8 +660,16 @@ BSX.define('core/run', function (require) {
         s.cash -= u.cost; s.upgrades.push(a.id);
         if (a.id === 'helper') s.helper = true;
         break;
+      case 'delivery':
+        if (s.phase !== 'prep' || !resolveDelivery(s, a.accept, a.tested)) return state;
+        break;
+      case 'chore':
+        if (s.phase !== 'ledger' || !s.chores || !C.chores.some(function (c) { return c.id === a.id; })) return state;
+        s.chores.plan[a.id] = !!a.on;
+        break;
       case 'confirmPrep':
         if (s.phase !== 'prep' || !s.menu.length) return state;
+        if (s.today.delivery && s.today.delivery.state === 'pending') resolveDelivery(s, true, false);
         pickVisitors(s);
         if (s.day >= 5 && !s.today.closed) { var rr = RNG.rand(s), tier = lanternTier(s.burn); s.today.raid = tier.raid && !(s.flags.lastRaid > s.day - 4) ? (rr < tier.raid ? 'bad' : null) : s.burn < 20 && rr < 0.12 ? 'good' : null; if (s.today.raid) s.flags.lastRaid = s.day; }
         if (s.day >= 2 && !s.today.closed && RNG.rand(s) < C.encounterChance) { var seenQ = s.stats.encounters || [], poolQ = Q.list.filter(function (q) { return !seenQ.some(function (x) { return x.indexOf(q.id + ':') === 0; }); }); if (!poolQ.length) poolQ = Q.list; s.today.encounter = RNG.pick(s, poolQ).id; }
@@ -647,7 +739,7 @@ BSX.define('core/run', function (require) {
 
   function likelyVisitors(s) { return R.list.map(function (r) { return { id: r.id, w: regularWeight(s, r) }; }).sort(function (a, b) { return b.w - a.w; }).slice(0, 3).map(function (x) { return x.id; }); }
   return {
-    likelyVisitors: likelyVisitors, sickRoll: sickRoll, festival: festival, lanternTier: lanternTier, greeting: greeting, flowMods: flowMods, rivalPhase: rivalPhase, upgradeById: upgradeById,
+    likelyVisitors: likelyVisitors, choreCost: choreCost, perk: perk, GOALS: GOALS, sickRoll: sickRoll, festival: festival, lanternTier: lanternTier, greeting: greeting, flowMods: flowMods, rivalPhase: rivalPhase, upgradeById: upgradeById,
     SCHEMA: SCHEMA, create: create, reduce: reduce, quote: quote, capacity: capacity, availableDishes: availableDishes, dishAvailable: dishAvailable,
     dishLockedToday: dishLockedToday, menuSize: menuSize, planOrders: planOrders, determineEnding: determineEnding, prospectiveEnding: prospectiveEnding,
     findStoryChoice: findStoryChoice, theme: theme, totalStars: totalStars
