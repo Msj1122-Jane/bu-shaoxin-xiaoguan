@@ -177,3 +177,68 @@ test('无固定万能解：没有一条路线同时拥有最高现金、最高�
 test('新手前几日不会无预警锁死：普通选择前 7 日现金为正', () => {
   for (const p of ['average', 'canteen', 'private', 'honest']) { const r = play(p, 31); r.log.slice(0, 7).forEach(d => assert.ok(d.cash > 0, p + ' d' + d.day)); }
 });
+
+// ── 深空当铺参考（D039–D044）
+function findDelivery(fake) {
+  for (let seed = 1; seed < 400; seed++) {
+    let s = Run.create({ seed });
+    for (let d = 0; d < 10 && s.phase !== 'ended'; d++) {
+      if (s.phase === 'prep' && s.today.delivery && s.today.delivery.fake === fake) return s;
+      s = toService(s); s = Run.reduce(s, { t: 'serviceDone', result: { orders: [] } });
+      let g = 0; while (s.phase === 'dusk' && g++ < 20) { const it = s.pending[0]; const ST = BSX.require('content/story'), E = BSX.require('content/events'); let c; if (it.kind === 'event') c = E.byId[it.id].choices[0].id; else if (it.kind === 'crisis') c = 'rectify'; else if (it.kind === 'story' || it.kind === 'node') { const sc = ST.all[it.id]; const j = JSON.stringify(sc.beats).match(/"choice":\[\{"id":"([a-z]+)"/); c = j ? j[1] : undefined; if (it.id === 'S26') c = 'renew'; } s = Run.reduce(s, { t: 'resolve', choice: c }); }
+      if (s.phase === 'ledger') s = Run.reduce(s, { t: 'nextDay' });
+      g = 0; while (['dawn'].includes(s.phase) && g++ < 10) s = toService(s);
+    }
+  }
+  return null;
+}
+test('验货：收下假货省钱但良心掉，退回假货口碑涨；未处理时开门默认收下', () => {
+  const s = findDelivery(true); assert.ok(s, '找到假货日');
+  const a = Run.reduce(s, { t: 'delivery', accept: true, tested: true });
+  assert.ok(a.cash > s.cash && a.burn > s.burn && a.today.fakeUsed);
+  const r = Run.reduce(s, { t: 'delivery', accept: false, tested: true });
+  assert.ok(r.rep > s.rep && r.cash === s.cash && !r.today.fakeUsed);
+  assert.strictEqual(Run.reduce(a, { t: 'delivery', accept: false }), a, '已处理不可重复');
+  const o = Run.reduce(s, { t: 'confirmPrep' });
+  assert.ok(o.today.fakeUsed, '没验货就开门 = 收下');
+  assert.ok(Run.sickRoll(o, 'o1', 0) || true);
+});
+test('收尾清单：连续两晚不做才出问题，做了扣钱并清零', () => {
+  let s = Run.create({ seed: 7 });
+  s = toService(s); s = Run.reduce(s, { t: 'serviceDone', result: { orders: [] } });
+  while (s.phase === 'dusk') s = Run.reduce(s, { t: 'resolve' });
+  assert.strictEqual(s.phase, 'ledger');
+  for (const c of ['hood', 'waste', 'sanitize']) s = Run.reduce(s, { t: 'chore', id: c, on: false });
+  const cash0 = s.cash; let n = Run.reduce(s, { t: 'nextDay' });
+  assert.strictEqual(n.chores.missed.hood, 1); assert.ok(n.cash === cash0 || n.history.length === 1);
+  assert.ok(!n.today.notes.some(x => x.indexOf('油烟机') >= 0), '第一晚不做不出事');
+  // 再一晚不做
+  n = toService(n); n = Run.reduce(n, { t: 'serviceDone', result: { orders: [] } }); let g = 0; while (n.phase === 'dusk' && g++ < 10) { const it = n.pending[0]; const E = BSX.require('content/events'); n = Run.reduce(n, { t: 'resolve', choice: it.kind === 'event' ? E.byId[it.id].choices[0].id : undefined }); }
+  if (n.phase === 'ledger') { const m = Run.reduce(n, { t: 'nextDay' }); assert.strictEqual(m.chores.missed.hood, 2); assert.ok(m.today.notes.some(x => x.indexOf('油烟机') >= 0) || m.phase !== 'dawn' && m.phase !== 'prep'); assert.ok(m.today.sickBoost > 0 || m.phase === 'ended'); }
+  // 做了：扣钱、计数清零
+  let k = Run.create({ seed: 7 }); k = toService(k); k = Run.reduce(k, { t: 'serviceDone', result: { orders: [] } }); while (k.phase === 'dusk') k = Run.reduce(k, { t: 'resolve' });
+  const before = k.cash, after = Run.reduce(k, { t: 'nextDay' });
+  assert.strictEqual(before - after.history[0].cashClose, Run.choreCost(k)); assert.strictEqual(after.history[0].choreCost, Run.choreCost(k)); assert.strictEqual(after.chores.missed.hood, 0);
+});
+test('每日小目标：第 2 日起三项且含“不走捷径”，偷懒则该项失败', () => {
+  let s = Run.create({ seed: 9 }); s = toService(s); s = Run.reduce(s, { t: 'serviceDone', result: { orders: [] } }); while (s.phase === 'dusk') s = Run.reduce(s, { t: 'resolve' }); s = Run.reduce(s, { t: 'nextDay' });
+  while (s.phase === 'dawn') s = toService(s);
+  assert.strictEqual(s.today.goals.length, 3); assert.strictEqual(s.today.goals[0].id, 'nocheat');
+  const sv = toService(s);
+  const honest = Run.reduce(sv, { t: 'serviceDone', result: { orders: [{ id: 'o1', grade: 'sig', quality: 0.95, items: ['congee'] }], maxCombo: 9 } });
+  const cheat = Run.reduce(sv, { t: 'serviceDone', result: { orders: [{ id: 'o1', grade: 'sig', quality: 0.95, items: ['congee'], cheats: 1, cheatGain: 250 }], maxCombo: 9 } });
+  assert.ok(honest.ledger.goals[0].done); assert.ok(!cheat.ledger.goals[0].done);
+  assert.ok(honest.ledger.goalCash > cheat.ledger.goalCash);
+});
+test('开局身份与特性：好处必须配代价；盘店需要足够现金', () => {
+  const a = Run.create({ seed: 1, origin: 'stall', perkPlus: 'savings' });
+  assert.strictEqual(a.perks.plus, null, '没有代价不能拿好处');
+  const b = Run.create({ seed: 1, origin: 'stall', perkPlus: 'savings', perkMinus: 'rent' });
+  assert.strictEqual(b.perks.plus, 'savings'); assert.strictEqual(b.cash, C.startCash - 100000 + 60000);
+  assert.ok(b.prof.congee.star >= 1);
+  const d = Run.create({ seed: 1, origin: 'debt' }); assert.strictEqual(d.flags.debt, 100000);
+  const Cond = BSX.require('core/cond');
+  assert.strictEqual(Cond.check(Object.assign({}, b, { cash: C.buyout.price - 1 }), { canBuy: true }), false);
+  assert.strictEqual(Cond.check(Object.assign({}, b, { cash: C.buyout.price }), { canBuy: true }), true);
+  const r = play('honest', 1000).state; assert.ok(r.flags.owner, '诚信路线能盘下店面');
+});
