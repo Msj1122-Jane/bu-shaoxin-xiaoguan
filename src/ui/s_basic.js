@@ -59,7 +59,7 @@ BSX.define('ui/s_basic', function (require) {
     U.text(ctx, '不烧心小馆', 60, 150 + bob, { size: 84, bold: true, color: '#fff3d6', stroke: '#4a2a12', strokeW: 12 });
     U.text(ctx, '一个月，一间早餐铺，一条街的人', 66, 200, { size: 24, color: '#fff3d6', stroke: '#4a2a12' });
     var y = 260, any = L.runs > 0;
-    U.button(ctx, 'title_start', 60, y, 340, 70, any ? '新的一月' : '开门营业', { size: 30, onTap: function () { if (any) app.openOverlay(X.NewMonth); else { app.newRun({ seed: (Date.now() % 1e9) >>> 0 }); } } });
+    var self2 = this; U.button(ctx, 'title_start', 60, y, 340, 70, any ? '新的一月' : '开门营业', { size: 30, onTap: function () { var go = function () { if (any) app.openOverlay(X.NewMonth); else app.newRun({ seed: (Date.now() % 1e9) >>> 0 }); }; if (self2.canContinue) app.openOverlay(X.Confirm, { text: '开新的一月会覆盖当前进度（' + (self2.contMode === 'week' ? '常营业' : '第' + self2.contDay + '日') + '）。店史、图鉴和结局印章不受影响。', ok: '覆盖并开始', onOk: go }); else go(); } });
     U.button(ctx, 'title_continue', 60, y + 88, 340, 66, this.canContinue ? '继续 · ' + (this.contMode === 'week' ? '常营业' : '第' + this.contDay + '日') : '继续', { kind: 'wood', disabled: !this.canContinue, onTap: function () { if (!app.continueRun()) app.notice('没有可继续的存档'); } });
     U.button(ctx, 'title_week', 60, y + 172, 160, 60, '常营业', { kind: 'paper', disabled: !any, onTap: function () { app.openOverlay(X.WeekPick); } });
     U.button(ctx, 'title_history', 240, y + 172, 160, 60, '店史', { kind: 'paper', onTap: function () { app.go(BSX.require('ui/s_codex').Codex, { from: 'title' }); } });
@@ -69,6 +69,18 @@ BSX.define('ui/s_basic', function (require) {
     if (L.runs) U.text(ctx, '店史：第 ' + L.runs + ' 个月 · 印章 ' + Object.keys(L.endings).length + '/8', 1240, 700, { size: 18, align: 'right', color: '#fff3d6', stroke: '#4a2a12' });
   };
   X.Title.prototype.describe = function () { return { canContinue: this.canContinue, continueDay: this.contDay, legacyRuns: this.app.legacy.runs, notice: this.notice }; };
+
+  // ───────── 确认弹窗
+  X.Confirm = function (app, p) { this.name = 'confirm'; this.app = app; this.p = p; };
+  X.Confirm.prototype.draw = function (ctx) {
+    var app = this.app, p = this.p;
+    ctx.fillStyle = 'rgba(20,14,8,.7)'; ctx.fillRect(0, 0, 1280, 720);
+    U.panel(ctx, 340, 220, 600, 280, 'paper');
+    U.para(ctx, p.text, 380, 290, 520, { size: 24, lh: 36 });
+    U.button(ctx, 'confirm_ok', 380, 410, 250, 64, p.ok || '确定', { kind: 'red', onTap: function () { app.closeOverlay(); p.onOk(); } });
+    U.button(ctx, 'confirm_cancel', 650, 410, 250, 64, '取消', { kind: 'paper', onTap: function () { app.closeOverlay(); } });
+  };
+  X.Confirm.prototype.describe = function () { return { text: this.p.text }; };
 
   // ───────── 新的一月：继承重开
   X.NewMonth = function (app) { this.name = 'newMonth'; this.app = app; this.pick = null; };

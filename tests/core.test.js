@@ -149,10 +149,10 @@ test('危机只结算一次；整改次日停业', () => {
 test('店史：结局写入、不随单月重开清空、传承物可用', () => {
   const r = play('canteen', 9);
   const L = Legacy.recordEnding(null, r.state);
-  assert.strictEqual(L.endings.E_CANTEEN, 1); assert.ok(L.letters.length === 1); assert.ok(L.heirlooms.length >= 2);
+  assert.strictEqual(L.endings[r.state.ending.id], 1); assert.ok(L.letters.length === 1); assert.ok(L.heirlooms.length >= 2);
   const st = Save.memoryStorage(); const store = new Save.Store(st);
   store.saveLegacy(L); store.saveRun(r.state); store.clearRun();
-  assert.strictEqual(store.loadLegacy().endings.E_CANTEEN, 1);
+  assert.strictEqual(store.loadLegacy().endings[r.state.ending.id], 1);
   const s2 = Run.create({ seed: 1, heirloom: 'H_NOTEBOOK', generation: 2, preferUnseen: Legacy.unseenEvents(L) });
   assert.ok(s2.unlocked.friedrice);
 });

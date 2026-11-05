@@ -16,7 +16,7 @@ BSX.define('game/cooking', function (require) {
   var VERB = { circle: '画圈', drag: '拖', hold: '按住', swipe: '滑', timing: '看准时机点' };
 
   function Kitchen(opts) {
-    this.menu = opts.menu; this.prof = opts.prof || {}; this.assist = !!opts.assist; this.reduceMotion = !!opts.reduceMotion; this.vibrate = opts.vibrate || function () {};
+    this.menu = opts.menu; this.prof = opts.prof || {}; this.oilAge = opts.oilAge || 0; this.burn = opts.burn || 0; this.assist = !!opts.assist; this.reduceMotion = !!opts.reduceMotion; this.vibrate = opts.vibrate || function () {};
     this.stations = []; this.tray = []; this.parts = []; this.floats = []; this.open = null; this.picker = null; this.t = 0; this.dragTray = null; this.log = [];
     var types = [];
     this.menu.forEach(function (id) { var st = D.byId[id].station; if (types.indexOf(st) < 0) types.push(st); });
@@ -105,7 +105,7 @@ BSX.define('game/cooking', function (require) {
       if (s.splash > 0) s.splash -= dt;
     });
     this.tray.forEach(function (it) { it.fly = Math.min(1, it.fly + dt * 2.5); });
-    this.parts = this.parts.filter(function (p) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.kind !== 'steam') p.vy += 300 * dt; else p.vx += Math.sin(p.t * 3) * 6 * dt; return p.t < p.life; });
+    this.parts = this.parts.filter(function (p) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.kind !== 'steam' && p.kind !== 'smoke') p.vy += 300 * dt; else p.vx += Math.sin(p.t * 3) * 6 * dt; return p.t < p.life; });
     this.floats = this.floats.filter(function (f) { f.t += dt; return f.t < 1.1; });
   };
 
@@ -273,6 +273,7 @@ BSX.define('game/cooking', function (require) {
     else if (view === 'steamer') miniSteamer(ctx, st.cx, st.y + 78);
     else if (view === 'stew') { A.cell(ctx, 'atlas_equipment', 0, st.x + 8, st.y + 8, st.w - 16, st.h - 16, { trim: true, fit: true }); ctx.fillStyle = 'rgba(90,50,20,.55)'; ctx.beginPath(); ctx.ellipse(st.cx, st.y + 52, 46, 12, 0, 0, 7); ctx.fill(); }
     else A.cell(ctx, 'atlas_equipment', job && view !== 'cup' ? (eq === 0 ? 1 : eq) : eq, st.x + 8, st.y + 4, st.w - 16, st.h - 8, { trim: true, fit: true });
+    if (view === 'fryer' && this.oilAge >= 2) { ctx.fillStyle = 'rgba(60,30,8,' + Math.min(0.55, this.oilAge * 0.12) + ')'; ctx.beginPath(); ctx.ellipse(st.cx - 4, st.y + 44, 40, 12, 0, 0, 7); ctx.fill(); if (this.oilAge >= 3 && Math.random() < 0.05 && this.parts.length < 120) this.parts.push({ x: st.cx, y: st.y + 30, vx: (Math.random() - 0.5) * 8, vy: -26, t: 0, life: 1.6, kind: 'smoke', r: 10 }); }
     ctx.restore();
     // 当前菜与熟度环
     if (job) {
@@ -357,7 +358,7 @@ BSX.define('game/cooking', function (require) {
     this.parts.forEach(function (p) {
       var k = p.t / p.life;
       ctx.save(); ctx.globalAlpha = (1 - k) * (p.kind === 'steam' ? 0.35 : 0.9);
-      if (p.kind === 'steam') { ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (1 + k), 0, 7); ctx.fill(); }
+      if (p.kind === 'steam' || p.kind === 'smoke') { ctx.fillStyle = p.kind === 'smoke' ? '#4a423e' : '#ffffff'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (1 + k), 0, 7); ctx.fill(); }
       else if (p.kind === 'spark') { A.cell(ctx, 'atlas_vfx', 15, p.x - 12, p.y - 12, 24, 24, { trim: true, fit: true }); }
       else { ctx.fillStyle = p.kind === 'splash' ? '#f4ead2' : p.kind === 'rice' ? '#f7e7b0' : p.kind === 'flour' ? '#fff' : '#d8ecf4'; ctx.fillRect(p.x - 3, p.y - 3, 6, 6); }
       ctx.restore();
@@ -372,7 +373,7 @@ BSX.define('game/cooking', function (require) {
     // 锅体（俯视）
     var rim = view === 'pan' || view === 'wok' ? '#2a2a2e' : view === 'fryer' ? '#2f5c58' : view === 'steamer' ? '#a8804a' : '#b8b8b0';
     ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x + 8, y + 16, r + 16, r * 0.62 + 12, 0, 0, 7); ctx.fill();
-    if (view === 'fryer') { ctx.fillStyle = rim; U.rr(ctx, x - r - 30, y - r * 0.7, (r + 30) * 2, r * 1.4, 26); ctx.fill(); ctx.fillStyle = '#c8952a'; U.rr(ctx, x - r - 12, y - r * 0.56, (r + 12) * 2, r * 1.12, 18); ctx.fill(); }
+    if (view === 'fryer') { ctx.fillStyle = rim; U.rr(ctx, x - r - 30, y - r * 0.7, (r + 30) * 2, r * 1.4, 26); ctx.fill(); ctx.fillStyle = lerpCol('#c8952a', '#5a3410', Math.min(1, this.oilAge / 4)); U.rr(ctx, x - r - 12, y - r * 0.56, (r + 12) * 2, r * 1.12, 18); ctx.fill(); if (this.oilAge >= 3 && !this.reduceMotion) { for (var sm = 0; sm < 4; sm++) { var sp2 = (t * 0.4 + sm * 0.25) % 1; ctx.fillStyle = 'rgba(70,60,55,' + (0.35 * (1 - sp2)) + ')'; ctx.beginPath(); ctx.arc(x - 80 + sm * 50 + Math.sin(t + sm) * 10, y - 60 - sp2 * 120, 18 + sp2 * 26, 0, 7); ctx.fill(); } } }
     else { var mg = ctx.createLinearGradient(x - r, y - r, x + r, y + r); mg.addColorStop(0, view === 'pan' || view === 'wok' ? '#55555c' : '#e2e2da'); mg.addColorStop(0.5, rim); mg.addColorStop(1, view === 'pan' || view === 'wok' ? '#1a1a1e' : '#7a7a72'); ctx.fillStyle = mg; ctx.beginPath(); ctx.ellipse(x, y, r + 18, (r + 18) * 0.66, 0, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = view === 'pan' || view === 'wok' ? '#3a3a40' : '#4a4a46'; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.64, 0, 0, 7); ctx.fill(); if (view !== 'pan' && view !== 'wok') { ctx.fillStyle = '#6a6a62'; ctx.fillRect(x - r - 46, y - 12, 30, 24); ctx.fillRect(x + r + 16, y - 12, 30, 24); } }
     // 内容
     var key = step.key, dish = job.dish;
