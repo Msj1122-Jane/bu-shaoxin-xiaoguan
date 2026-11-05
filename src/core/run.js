@@ -217,7 +217,9 @@ BSX.define('core/run', function (require) {
     var flow = C.baseFlow * C.price.flow[s.price] * (C.repFlow.base + s.rep / C.repFlow.div) * fit * C.weatherFlow[s.today.weather];
     if (th && th.mods.flow) flow *= th.mods.flow;
     var cap = capacity(s);
-    return { avgPrice: avgPrice, avgCost: avgCost, flowLow: Math.round(flow * 0.9), flowHigh: Math.round(flow * 1.1 * 1.1), cap: cap, margin: avgPrice - avgCost, fit: fit,
+    var expect = Math.max(1, Math.min(cap, flow)), hasOil = ds.some(function (d) { return d.oil; });
+    var oilPer = C.oil.daily[s.oil] * (hasOil ? 1 : 0.3) / 100 / expect;
+    return { avgPrice: avgPrice, avgCost: avgCost, oilPer: oilPer, flowLow: Math.round(flow * 0.9), flowHigh: Math.round(flow * 1.1 * 1.1), cap: cap, margin: avgPrice - avgCost - oilPer, fit: fit,
       risk: s.oil === 0 ? (s.oilStreak >= 1 ? 2 : 1) : 0, oilCost: C.oil.daily[s.oil] };
   }
   function totalStars(s) { var n = 0; for (var k in s.prof) n += s.prof[k].star; return n; }
@@ -418,7 +420,7 @@ BSX.define('core/run', function (require) {
     } else if (item.kind === 'crisis') {
       var cc = C.crisisChoices[choiceId];
       if (!cc) return false;
-      if (choiceId === 'rectify') { s.cash += cc.cash; s.burn = cc.burnTo; s.rep = clamp(s.rep + cc.rep, 0, 100); s.flags.closeToday = s.day + 1; s.crisis.state = 'rectify'; s.today.eventCash += cc.cash; }
+      if (choiceId === 'rectify') { s.cash += cc.cash; s.burn = cc.burnTo; s.rep = clamp(s.rep + cc.rep, 0, 100); s.flags.closeToday = s.day + 1; s.crisis.state = 'rectify'; s.today.eventCash += cc.cash;  s.events.delayed.push({ uid: 'crisis-rectify', at: s.day + 5, rep: 6, note: '街坊说：这店真改了' }); }
       if (choiceId === 'refund') { s.cash += cc.cash; s.rep = clamp(s.rep + cc.rep, 0, 100); s.burn = clamp(s.burn + cc.burn, 0, 100); s.crisis.state = 'refund'; s.today.eventCash += cc.cash;
         s.events.delayed.push({ uid: 'crisis-refund', at: s.day + cc.delayDays, rep: Math.min(10, 2 + Math.round(Cond.affSum(s) / 6)), note: '街坊们又回来了' }); }
       if (choiceId === 'hold') { s.crisis.state = 'hold'; }

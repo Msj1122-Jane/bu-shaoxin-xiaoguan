@@ -5,20 +5,20 @@ BSX.define('content/config', function () {
     days: 28,
     startCash: 300000,          // 3000 元
     startRep: 50,
-    baseCapacity: 48,           // 份/日
-    baseFlow: 36,               // 基础客流
+    baseCapacity: 70,           // 份/日（D030 上调）
+    baseFlow: 54,               // 基础客流（D030 上调）
     fixedCost: 10000,           // 房租 60 + 水电杂费 40
-    helper: { capacity: 18, wage: 3000 },
+    helper: { capacity: 24, wage: 4000 },
     starCapacity: { per: 6, add: 2, max: 10 },  // 每累计 6 星 +2 份，上限 +10
     // 三项晨备决策：0/1/2 档
-    price: { mult: [0.85, 1.0, 1.25], flow: [1.30, 1.0, 0.62], rep: [0.2, 0, -0.25] },
-    material: { cost: [0.8, 1.0, 1.42], rep: [-0.05, 0, 0.15] },
-    oil: { daily: [1200, 2600, 4200], rep: [0, 0, 0.1] }, // 当日用油成本（含油炸菜时全额，否则三成）
-    burnOil: { streak2: 4, streak3: 6, step: 2, cap: 14, newOilRelief: 3 },
+    price: { mult: [0.85, 1.0, 1.25], flow: [1.30, 1.0, 0.7], rep: [0.2, 0, -0.4] },
+    material: { cost: [0.8, 1.0, 1.26], rep: [-0.05, 0, 0.15] },
+    oil: { daily: [800, 3000, 5000], rep: [0, 0, 0.1] }, // 当日用油成本（含油炸菜时全额，否则三成）
+    burnOil: { streak2: 3, streak3: 5, step: 1, cap: 10, newOilRelief: 3 },
     flowRandom: [0.90, 1.10],
     repFlow: { base: 0.45, div: 80 },
     regularFlowCap: 0.20,
-    lostPer: 8, lostRep: 0.3,
+    lostPer: 12, lostRep: 0.3,
     quality: { signature: 0.88, home: 0.60 },  // 招牌 / 家常 / 匆忙
     qualityRep: { signature: 0.6, home: 0.1, rushed: -0.6 },
     qualityEff: { signature: 0.05, rushed: -0.05 },

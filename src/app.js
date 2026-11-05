@@ -176,7 +176,7 @@ BSX.define('app', function (require) {
     ctx.save();
     try {
       if (this.screen && this.screen.draw) this.screen.draw(ctx);
-      if (this.overlay && this.overlay.draw) this.overlay.draw(ctx);
+      if (this.overlay && this.overlay.draw) { U.hit('overlay_block', 0, 0, 1280, 720, { minSize: 0, kind: 'blocker', label: '弹层遮罩' }); this.overlay.draw(ctx); }
     } catch (e) { this.reportError(e); for (var r = 0; r < 64; r++) ctx.restore(); ctx.save(); }
     ctx.restore();
     ctx.setTransform(v.s, 0, 0, v.s, v.ox, v.oy);

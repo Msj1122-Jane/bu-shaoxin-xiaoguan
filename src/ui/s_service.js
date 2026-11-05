@@ -24,7 +24,7 @@ BSX.define('ui/s_service', function (require) {
     this.plan = Run.planOrders(s);
     this.queue = this.plan.slice();
     this.customers = []; this.results = [];
-    this.kitchen = new Cook.Kitchen({ menu: s.menu, prof: s.prof, assist: app.settings.assistCook, reduceMotion: app.settings.reduceMotion, vibrate: function (k) { if (app.settings.vibrate) app.P.vibrate(k); } });
+    this.kitchen = new Cook.Kitchen({ menu: s.menu, prof: s.prof, oilAge: s.oil === 0 ? s.oilStreak + 1 : 0, burn: s.burn, assist: app.settings.assistCook, reduceMotion: app.settings.reduceMotion, vibrate: function (k) { if (app.settings.vibrate) app.P.vibrate(k); } });
     this.tutorial = !app.settings.seenTutorial || (s.mode === 'story' && s.day === 1);
     this.closed = s.today.closed;
     this.coinSeed = 1;
@@ -32,7 +32,7 @@ BSX.define('ui/s_service', function (require) {
   var P = Service.prototype;
   P.onSettings = function () { this.kitchen.assist = this.app.settings.assistCook; this.kitchen.reduceMotion = this.app.settings.reduceMotion; };
   P.spawn = function (o) {
-    var free = [0, 1, 2].filter(function (i) { return !this.customers.some(function (c) { return c.slot === i && c.state !== 'gone'; }); }, this);
+    var free = [0, 1, 2].filter(function (i) { return !this.customers.some(function (c) { return c.slot === i && c.state !== 'gone' && c.state !== 'out'; }); }, this);
     if (!free.length) return false;
     var slot = free[0], s = this.app.state, reg = o.regular ? R.byId[o.regular] : null;
     var base = reg ? reg.patience : C.patience.normal[0] + ((o.id.charCodeAt(1) * 7) % (C.patience.normal[1] - C.patience.normal[0]));
@@ -48,7 +48,7 @@ BSX.define('ui/s_service', function (require) {
     if (this.cashFx) { this.cashFx.t += dt; if (this.cashFx.t > 1.2) this.cashFx = null; }
     if (this.closed) return;
     // 到店：按计划；若店里空着就提前叫下一位
-    var waiting = this.customers.filter(function (c) { return c.state !== 'gone'; }).length;
+    var waiting = this.customers.filter(function (c) { return c.state !== 'gone' && c.state !== 'out'; }).length;
     if (this.queue.length && (this.t >= this.queue[0].arrive || waiting === 0 && this.t > 1)) { if (this.spawn(this.queue[0])) this.queue.shift(); }
     this.customers.forEach(function (c) {
       var d = c.tx - c.x;
@@ -62,12 +62,12 @@ BSX.define('ui/s_service', function (require) {
       } else if (c.state === 'leaving') {
         c.grace -= dt; if (c.grace <= 0) self.finish(c, true);
       } else if (c.state === 'eat') { c.eat -= dt; if (c.eat <= 0) { c.state = 'out'; c.tx = 1400; } }
-      if (c.state === 'out' && c.x >= 1390) c.state = 'gone';
+      if (c.state === 'out' && (c.x >= 1390 || c.x <= -190)) c.state = 'gone';
     });
     this.customers = this.customers.filter(function (c) { return c.state !== 'gone'; });
     // 老周姿态
     var open = this.kitchen.open;
-    this.zhouPose = open ? ({ pot: 'stir', noodle: 'scoop', fryer: 'add', pan: 'add', wok: 'stir', soy: 'carry', stew: 'scoop', steamer: 'add' }[open.id] || 'stir') : this.customers.filter(function (c) { return c.state === 'leaving'; }).length ? 'wipe' : this.lastHappy > 0 ? 'happy' : 'idle';
+    this.zhouPose = open ? ({ pot: 'stir', noodle: 'scoop', fryer: 'add', pan: 'add', wok: 'stir', soy: 'carry', stew: 'scoop', steamer: 'add' }[open.id] || 'stir') : this.customers.filter(function (c) { return c.state === 'leaving'; }).length ? 'wipe' : this.lastHappy > 0 ? 'happy' : (s.burn >= 60 && Math.floor(this.t / 4) % 3 === 2) ? 'tired' : (s.burn >= 30 && Math.floor(this.t / 5) % 4 === 3) ? 'wipe' : 'idle';
     if (this.lastHappy > 0) this.lastHappy -= dt;
     // 收摊
     if (!this.done && !this.queue.length && !this.customers.length && this.results.length === this.plan.length) { this.done = true; this.endT = 0; Au.play('bell'); }
@@ -84,6 +84,7 @@ BSX.define('ui/s_service', function (require) {
       var price = c.o.items.reduce(function (n, id) { return n + Math.round(D.byId[id].price * C.price.mult[this.app.state.price]); }.bind(this), 0) + (grade === 'sig' ? 1 : 0);
       this.cashFx = { v: price, t: 0 }; Au.play('coin'); this.kitchen.burst(c.x, 300, 'spark', grade === 'sig' ? 10 : 4); this.lastHappy = grade === 'sig' ? 1.4 : 0;
       if (c.o.regular) { var r = R.byId[c.o.regular]; c.talk = { text: grade === 'rush' ? r.lines.meh : r.lines.happy, t: 1.6 }; }
+      else if (this.app.state.burn >= 30 && (c.seed + this.results.length) % 3 === 0) { c.frown = true; c.talk = { text: this.app.state.burn >= 60 ? '胃有点烧…' : '有点腻', t: 1.6 }; }
     } else { c.state = 'out'; c.tx = -200; Au.play('wrong'); if (c.o.regular) c.talk = { text: R.byId[c.o.regular].lines.wait, t: 1.6 }; }
     this.results.push({ id: c.o.id, regular: c.o.regular, items: c.o.items, grade: grade, quality: Math.round(q * 100) / 100 });
   };
@@ -210,7 +211,7 @@ BSX.define('ui/s_service', function (require) {
       if (o.regular) { ctx.save(); ctx.beginPath(); ctx.arc(bx + bw + 4, by + 8, 20, 0, 7); ctx.fillStyle = '#efe0bf'; ctx.fill(); ctx.clip(); Act.portrait(ctx, o.regular, bx + bw - 16, by - 12, 40); ctx.restore(); ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(bx + bw + 4, by + 8, 20, 0, 7); ctx.stroke(); }
     } else {
       // 接餐反应：招牌爱心、家常小花、匆忙点头
-      var k2 = 1 - c.eat / 1.6, icon = c.grade === 'sig' ? 10 : c.grade === 'home' ? 9 : null;
+      var k2 = 1 - c.eat / 1.6, icon = c.frown ? null : c.grade === 'sig' ? 10 : c.grade === 'home' ? 9 : null;
       if (icon != null) A.cell(ctx, 'atlas_vfx', icon, c.x - 40, 150 - k2 * 40, 80, 80, { trim: true, fit: true, anchor: 'center' });
       A.cell(ctx, 'atlas_vfx', 8, c.x + 30, 220 - k2 * 120, 46, 46, { trim: true, fit: true, anchor: 'center' });
     }

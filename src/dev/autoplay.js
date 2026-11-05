@@ -11,6 +11,7 @@ BSX.define('dev/autoplay', function (require) {
     canteen: { tiers: { oil: 1, material: 1, price: 0 }, prefer: { E07: 'ask', E12: 'help', E29: 'take', E20: 'free', E03: 'more', E05: 'refuse', E14: 'refuse', S12: 'paper', S18: 'cook', S26: 'renew', E22: 'hire' }, skill: 'good' },
     honest: { tiers: { oil: 2, material: 2, price: 1 }, prefer: { E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'post', S26: 'renew', E08: 'public', E04: 'show', E22: 'hire', E11: 'some' }, skill: 'great', menu: ['pidan', 'shengjian', 'congee', 'soy'] },
     pills: { tiers: { oil: 0, material: 0, price: 1 }, prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S12: 'cheap', S26: 'renew', CRISIS: 'hold', E23: 'deny', E18: 'go', E10: 'risk', E04: 'delay', E08: 'silent' }, skill: 'sloppy' },
+    neglect: { tiers: { oil: 1, material: 1, price: 1 }, prefer: { S26: 'renew' }, skill: 'sloppy', idle: 0.12 },
     chef: { tiers: { oil: 2, material: 2, price: 1 }, prefer: { S12: 'paper', S26: 'renew' }, skill: 'great', menu: ['chicken', 'mutton', 'pidan', 'shengjian'] },
     farewell: { tiers: { oil: 1, material: 1, price: 1 }, prefer: { S26: 'leave', E22: 'no' }, skill: 'good' }
   };
@@ -101,6 +102,7 @@ BSX.define('dev/autoplay', function (require) {
     this.wait = 0.2;
   };
   B.service = function (scr, s) {
+    if (this.pol.idle && !scr.done && Math.random() < this.pol.idle) { this.wait = 3; return; }
     var k = scr.kitchen, G = k.geometry(), self = this, skill = this.pol.skill;
     if (scr.closed) { this.tapHit('svc_closed_done'); this.wait = 0.5; return; }
     if (scr.done) { if (scr.endT > 0.7) this.tapHit('svc_done'); this.wait = 0.3; return; }
