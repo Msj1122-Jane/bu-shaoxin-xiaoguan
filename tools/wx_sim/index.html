@@ -1,0 +1,43 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>wx 模拟（仅测试用）</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style></head>
+<body>
+<script>
+// 极简微信小游戏运行时模拟：只用于自动化验证 dist/wechat 的入口、适配层、触摸映射、存储与生命周期。不代表真机。
+(function(){
+  var q = new URLSearchParams(location.search), W = +(q.get('w') || 844), H = +(q.get('h') || 390), DPR = +(q.get('dpr') || 2);
+  window.GameGlobal = window;
+  var first = true, touch = {}, life = { show: [], hide: [] };
+  window.__wxTouch = touch; window.__wxLife = life;
+  window.wx = {
+    getSystemInfoSync: function(){ return { windowWidth: W, windowHeight: H, pixelRatio: DPR, platform: 'devtools', safeArea: { left: q.get('notch') ? 44 : 0, top: 0, right: W - (q.get('notch') ? 34 : 0), bottom: H - 21 } }; },
+    createCanvas: function(){ var c = document.createElement('canvas'); if (first) { first = false; c.style.width = W + 'px'; c.style.height = H + 'px'; document.body.appendChild(c); c.toTempFilePath = function(o){ o.success({ tempFilePath: 'wxfile://tmp.png' }); }; } else { c.toTempFilePath = function(o){ o.success({ tempFilePath: 'wxfile://tmp.png' }); }; } return c; },
+    createImage: function(){ return new Image(); },
+    onTouchStart: function(f){ touch.start = f; }, onTouchMove: function(f){ touch.move = f; }, onTouchEnd: function(f){ touch.end = f; }, onTouchCancel: function(f){ touch.cancel = f; },
+    onShow: function(f){ life.show.push(f); }, onHide: function(f){ life.hide.push(f); },
+    getStorageSync: function(k){ var v = localStorage.getItem('wx:' + k); return v == null ? '' : v; },
+    setStorageSync: function(k, v){ localStorage.setItem('wx:' + k, v); }, removeStorageSync: function(k){ localStorage.removeItem('wx:' + k); },
+    getMenuButtonBoundingClientRect: function(){ return { left: W - 7 - 87, top: 8, width: 87, height: 32 }; },
+    vibrateShort: function(){ window.__wxVibrate = (window.__wxVibrate || 0) + 1; },
+    createWebAudioContext: function(){ return new (window.AudioContext || window.webkitAudioContext)(); },
+    saveImageToPhotosAlbum: function(o){ window.__wxSaved = true; o.success(); }
+  };
+  // 同步 require（仅模拟用）
+  var cache = {};
+  window.require = function(p){
+    var url = p.replace(/^\.\//, '');
+    if (cache[url]) return cache[url].exports;
+    var x = new XMLHttpRequest(); x.open('GET', '/dist/wechat/' + url + (url.endsWith('.js') ? '' : '.js'), false); x.send();
+    if (x.status !== 200) throw new Error('require 失败 ' + url);
+    var module = { exports: {} }; cache[url] = module;
+    new Function('module', 'exports', 'require', x.responseText + '\n//# sourceURL=wx/' + url)(module, module.exports, window.require);
+    return module.exports;
+  };
+  window.addEventListener('load', function(){
+    // 图片路径相对 dist/wechat
+    var base = document.createElement('base'); base.href = '/dist/wechat/'; document.head.appendChild(base);
+    require('./game.js');
+  });
+})();
+</script>
+</body></html>

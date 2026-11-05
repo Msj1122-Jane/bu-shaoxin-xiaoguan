@@ -1,0 +1,1 @@
+{"description":"不烧心小馆 七天切片，待真机验证","compileType":"game","appid":"touristappid","projectname":"bu-shaoxin-game","setting":{"es6":true},"packOptions":{"ignore":[{"type":"folder","value":"tests"},{"type":"folder","value":"tools"},{"type":"folder","value":"docs"},{"type":"file","value":"index.html"},{"type":"file","value":"src/web.js"}]}}
