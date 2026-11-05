@@ -44,14 +44,19 @@ BSX.define('ui/s_ledger', function (require) {
     lines.push(['🍚', '卖出 ' + L.served + ' 份' + (L.lost ? '，' + L.lost + ' 位没等到' : '，没让人空等')]);
     var best = L.sales.slice().sort(function (a, b) { return b.qty * b.price - a.qty * a.price; })[0];
     if (best && best.qty) lines.push(['dish:' + best.id, D.byId[best.id].name + '卖得最好（' + best.qty + ' 份）']);
+    if (L.maxCombo >= 3) lines.push(['★', '早高峰最高连击 ×' + L.maxCombo + '，小费 +' + U.coin(L.comboTips) + ' 元']);
+    if (L.honestStreak >= 2) lines.push(['★', '连续放心经营 ' + L.honestStreak + ' 天：门口排队的人更多了']);
+    if (L.cheats) lines.push(['⚠', '偷懒 ' + L.cheats + ' 次，当场多赚 ' + U.coin(L.cheatGain) + ' 元，良心灯笼暗了']);
+    if (L.sick) lines.push(['⚠', L.sick + ' 位客人吃坏肚子，退款 ' + U.coin(L.refunds) + ' 元，差评传开了']);
     lines.push(['💬', L.quote]);
     var clue = burnClue(s); if (clue) lines.push(['⚠', clue]);
     (L.choices || []).slice(0, 1).forEach(function (c) { lines.push(['✎', c.result]); });
     (L.notes || []).slice(0, 2).forEach(function (n) { lines.push(['✎', n]); });
-    lines.slice(0, 5).forEach(function (l, i) {
-      var ly = y + i * 50;
+    lines.slice(0, 6).forEach(function (l, i) {
+      var ly = y + i * 44;
       if (l[0].indexOf('dish:') === 0) A.food(ctx, l[0].slice(5), 214, ly - 34, 44);
       else if (l[0] === '⚠') A.cell(ctx, 'atlas_ui', 14, 214, ly - 34, 44, 44, { trim: true, fit: true, anchor: 'center' });
+      else if (l[0] === '★') A.cell(ctx, 'atlas_vfx', 15, 214, ly - 34, 44, 44, { trim: true, fit: true, anchor: 'center' });
       else { ctx.fillStyle = '#7d5a35'; ctx.beginPath(); ctx.arc(236, ly - 12, 6, 0, 7); ctx.fill(); }
       U.text(ctx, l[1], 274, ly, { size: 24, maxW: 820, color: l[0] === '⚠' ? '#b8432f' : '#3b2a1a' });
     });
@@ -66,6 +71,7 @@ BSX.define('ui/s_ledger', function (require) {
     var dr = Math.round((L.rep1 - L.rep0) * 10) / 10;
     A.cell(ctx, 'atlas_ui', 13, 820, 530, 50, 50, { trim: true, fit: true, anchor: 'center' });
     U.text(ctx, Math.round(L.rep1) + (dr ? (dr > 0 ? ' ↑' : ' ↓') : ''), 878, 566, { size: 28, bold: true, color: dr >= 0 ? '#2f6f66' : '#b8432f' });
+    BSX.require('ui/hud').lantern(ctx, 950, 528, s.burn, 0, this.t);
     if (s.day === 1 && s.mode === 'story') U.para(ctx, '明天开门前，可以挑油、挑料、定价牌。便宜省成本，好料留客人。', 640, 640 - 40, 460, { size: 18, color: '#7d5a35', align: 'left', lh: 24 });
     U.button(ctx, 'ledger_detail', 214, 616, 200, 52, this.open ? '收起明细' : '展开明细', { kind: 'paper', size: 22, onTap: function () { self.open = !self.open; Au.play('page'); } });
     var last = s.early || s.day >= s.days;
@@ -79,10 +85,10 @@ BSX.define('ui/s_ledger', function (require) {
   P.drawDetail = function (ctx, s, L) {
     U.panel(ctx, 180, 110, 920, 490, 'cream');
     U.text(ctx, '明细', 640, 154, { size: 28, bold: true, align: 'center' });
-    var rows = [['营业收入', L.revenue], ['招牌小费', L.tips], ['食材', -L.ingredient], ['用油（' + Prep.TIERS.oil.names[L.oil] + '）', -L.oilCost], ['房租水电', -L.fixed], ['帮工工资', -L.wage], ['事件', L.eventCash]];
-    rows.forEach(function (r, i) { if (!r[1] && i > 1) return; U.text(ctx, r[0], 230, 200 + i * 40, { size: 22 }); U.text(ctx, U.yuan(r[1], true), 560, 200 + i * 40, { size: 22, align: 'right', bold: true, color: r[1] < 0 ? '#b8432f' : '#2f6f66' }); });
-    U.text(ctx, '净', 230, 200 + 7 * 40 + 10, { size: 24, bold: true }); U.text(ctx, U.yuan(L.cashClose - L.cashOpen, true), 560, 200 + 7 * 40 + 10, { size: 24, align: 'right', bold: true });
-    U.text(ctx, '钱匣 ' + U.coin(L.cashClose) + ' 元', 230, 560, { size: 22, color: '#7d5a35' });
+    var rows = [['营业收入', L.revenue], ['招牌与连击小费', L.tips + (L.comboTips || 0)], ['偷懒省下', L.cheatGain || 0], ['吃坏肚子退款', -(L.refunds || 0)], ['食材', -L.ingredient], ['用油（' + Prep.TIERS.oil.names[L.oil] + '）', -L.oilCost], ['房租水电', -L.fixed], ['帮工工资', -L.wage], ['事件', L.eventCash]];
+    var ri = 0; rows.forEach(function (r, i) { if (!r[1] && i > 1) return; var i2 = ri++; U.text(ctx, r[0], 230, 200 + i2 * 36, { size: 22 }); U.text(ctx, U.yuan(r[1], true), 560, 200 + i2 * 36, { size: 22, align: 'right', bold: true, color: r[1] < 0 ? '#b8432f' : '#2f6f66' }); });
+    U.text(ctx, '净', 230, 548, { size: 24, bold: true }); U.text(ctx, U.yuan(L.cashClose - L.cashOpen, true), 560, 548, { size: 24, align: 'right', bold: true });
+    U.text(ctx, '钱匣 ' + U.coin(L.cashClose) + ' 元', 230, 584, { size: 22, color: '#7d5a35' });
     // 逐菜
     L.sales.forEach(function (x, i) { var y = 196 + i * 62; A.food(ctx, x.id, 640, y - 30, 52); U.text(ctx, D.byId[x.id].name, 702, y, { size: 20 }); U.text(ctx, x.qty + '份 × ' + U.coin(x.price) + '元', 1050, y, { size: 20, align: 'right' }); U.text(ctx, '成本 ' + U.coin(x.cost) + '元/份', 1050, y + 22, { size: 16, align: 'right', color: '#8d7a60' }); });
     U.text(ctx, '客流 ' + L.flow + ' · 产能 ' + L.cap + ' · 手做均分 ' + Math.round(L.avgQ * 100), 702, 520, { size: 18, color: '#7d5a35' });

@@ -20,15 +20,18 @@ BSX.define('game/cooking', function (require) {
     this.stations = []; this.tray = []; this.parts = []; this.floats = []; this.open = null; this.picker = null; this.t = 0; this.dragTray = null; this.log = [];
     var types = [];
     this.menu.forEach(function (id) { var st = D.byId[id].station; if (types.indexOf(st) < 0) types.push(st); });
-    var n = types.length, x0 = 190, x1 = 930, self = this;
-    types.forEach(function (tp, i) {
-      var cx = n === 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * i / (n - 1);
-      self.stations.push({ id: tp, name: D.stations[tp].name, x: cx - 72, y: 548, w: 144, h: 132, cx: cx, job: null, pulse: 0, dishes: self.menu.filter(function (d) { return D.byId[d].station === tp; }) });
+    this.trayMax = opts.trayMax || 4; this.heat = opts.heat || 1; this.cheatsUsed = 0;
+    var list = types.map(function (tp) { return { id: tp, type: tp }; });
+    if (opts.pot2) { var dup = types.filter(function (tp) { return ['pot', 'noodle', 'fryer', 'pan'].indexOf(tp) >= 0; })[0] || types[0]; var at = types.indexOf(dup); list.splice(at + 1, 0, { id: dup + '2', type: dup }); }
+    var n = list.length, x0 = n >= 5 ? 150 : 190, x1 = n >= 5 ? 950 : 930, self = this;
+    list.forEach(function (it, i) {
+      var cx = n === 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * i / (n - 1), w = n >= 5 ? 128 : 144;
+      self.stations.push({ id: it.id, type: it.type, name: D.stations[it.type].name + (it.id !== it.type ? '２' : ''), x: cx - w / 2, y: 548, w: w, h: 132, cx: cx, job: null, pulse: 0, dishes: self.menu.filter(function (d) { return D.byId[d].station === it.type; }) });
     });
     this.trayRect = { x: 1010, y: 560, w: 230, h: 120 };
   }
   var K = Kitchen.prototype;
-  K.station = function (id) { return this.stations.filter(function (s) { return s.id === id; })[0]; };
+  K.station = function (id) { var all = this.stations.filter(function (s) { return s.id === id || s.type === id; }); return all.filter(function (s) { return !s.job; })[0] || all[0]; };
   K.stars = function (dish) { var p = this.prof[dish]; return p ? p.star : 0; };
   K.windowFor = function (job, step) {
     var w = step.win.slice(), bonus = this.stars(job.dish) * C.starWindowBonus;
@@ -65,13 +68,25 @@ BSX.define('game/cooking', function (require) {
     job.scores.forEach(function (x) { sum += x.score * x.w; ws += x.w; });
     var q = ws ? sum / ws : 0.7;
     var grade = q >= C.quality.signature ? 'sig' : q >= C.quality.home ? 'home' : 'rush';
-    this.tray.push({ dish: job.dish, q: Math.round(q * 100) / 100, grade: grade, fly: 0, from: { x: this.open === st ? VC.x : st.cx, y: this.open === st ? VC.y : st.y } });
+    this.tray.push({ dish: job.dish, cheats: job.cheats || 0, cheatGain: job.cheatGain || 0, q: Math.round(q * 100) / 100, grade: grade, fly: 0, from: { x: this.open === st ? VC.x : st.cx, y: this.open === st ? VC.y : st.y } });
     this.float(this.open === st ? VC.x : st.cx, (this.open === st ? VC.y : st.y) - 40, grade === 'sig' ? '招牌' : grade === 'home' ? '家常' : '匆忙', grade === 'sig' ? '#ffd45a' : grade === 'home' ? '#fff3d6' : '#cdb79a', grade === 'sig' ? 40 : 30);
     Au.play(grade === 'sig' ? 'perfect' : 'bowl'); if (grade === 'sig') this.vibrate('light');
     this.log.push('done ' + job.dish + ' ' + grade + ' ' + q.toFixed(2));
     st.job = null;
     if (this.open === st) this.open = null;
     this.lastDone = { dish: job.dish, grade: grade, q: q };
+  };
+  // 黑心捷径：直接完成当前工序，当场多赚，黑心值上涨，顾客可能吃坏肚子（D031）
+  K.cheat = function (st) {
+    var job = st && st.job; if (!job || job.cheats) return false;
+    var c = D.stations[st.type].cheat;
+    job.cheats = 1; job.cheatGain = c.save; this.cheatsUsed++;
+    Au.play('coin'); Au.play('risk'); this.vibrate('light');
+    this.float(VC.x + 210, VC.y + 80, '+' + (c.save / 100) + '元', '#ffd45a', 34);
+    for (var i = 0; i < 6; i++) this.parts.push({ x: VC.x + 210, y: VC.y + 120, vx: (Math.random() - 0.5) * 160, vy: -120 - Math.random() * 120, t: 0, life: 0.9, kind: 'coin' });
+    if (this.onCheat) this.onCheat(st, c);
+    this.finishStep(st, 0.8);
+    return true;
   };
   K.float = function (x, y, text, col, size) { this.floats.push({ x: x, y: y, text: text, col: col, size: size || 30, t: 0 }); };
   K.burst = function (x, y, kind, n) {
@@ -86,14 +101,14 @@ BSX.define('game/cooking', function (require) {
     var self = this; this.t += dt;
     this.stations.forEach(function (st) {
       st.pulse += dt;
-      var job = st.job; if (!job) { if (Math.random() < dt * 0.4 && st.id !== 'soy') self.steam(st.cx, st.y + 10, 1); return; }
+      var job = st.job; if (!job) { if (Math.random() < dt * 0.4 && st.type !== 'soy') self.steam(st.cx, st.y + 10, 1); return; }
       var step = self.stepOf(st), s = job.s;
       if (s.g === 'timing' && (step.bg || self.open === st) && !s.committed) {
-        s.p += dt / (step.dur * (self.assist ? 1.15 : 1));
+        s.p += dt * self.heat / (step.dur * (self.assist ? 1.15 : 1));
         if (s.p > 1.6) s.p = 1.6;
         var w = self.windowFor(job, step);
         if (s.p >= w[0] && !s.pinged) { s.pinged = true; Au.play('bell'); }
-        if (Math.random() < dt * (2 + s.p * 6)) { self.steam(self.open === st ? VC.x : st.cx, self.open === st ? VC.y - 60 : st.y + 10, 1); if (self.open === st) Au.play(st.id === 'fryer' || st.id === 'pan' ? 'sizzle' : 'bubble'); }
+        if (Math.random() < dt * (2 + s.p * 6)) { self.steam(self.open === st ? VC.x : st.cx, self.open === st ? VC.y - 60 : st.y + 10, 1); if (self.open === st) Au.play(st.type === 'fryer' || st.type === 'pan' ? 'sizzle' : 'bubble'); }
         if (s.p > w[1] + 0.25 && !s.warned) { s.warned = true; self.float(self.open === st ? VC.x : st.cx, self.open === st ? VC.y - 100 : st.y - 20, '快！', '#ffb08a'); Au.play('risk'); }
       }
       if (s.g === 'hold' && s.holding) {
@@ -105,7 +120,7 @@ BSX.define('game/cooking', function (require) {
       if (s.splash > 0) s.splash -= dt;
     });
     this.tray.forEach(function (it) { it.fly = Math.min(1, it.fly + dt * 2.5); });
-    this.parts = this.parts.filter(function (p) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.kind !== 'steam' && p.kind !== 'smoke') p.vy += 300 * dt; else p.vx += Math.sin(p.t * 3) * 6 * dt; return p.t < p.life; });
+    this.parts = this.parts.filter(function (p) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.kind !== 'steam' && p.kind !== 'smoke') p.vy += (p.kind === 'coin' ? 500 : 300) * dt; else p.vx += Math.sin(p.t * 3) * 6 * dt; return p.t < p.life; });
     this.floats = this.floats.filter(function (f) { f.t += dt; return f.t < 1.1; });
   };
 
@@ -116,6 +131,7 @@ BSX.define('game/cooking', function (require) {
   };
   K.tapStation = function (st) {
     if (st.job) { this.open = st; Au.play('tap'); this.picker = null; return 'open'; }
+    if (this.tray.length >= this.trayMax) { this.float(st.cx, st.y - 20, '托盘满了', '#ffb08a'); Au.play('wrong'); return 'full'; }
     if (st.dishes.length === 1) { this.startJob(st, st.dishes[0]); this.open = st; Au.play('pickup'); return 'start'; }
     this.picker = this.picker === st ? null : st; Au.play('tap'); return 'picker';
   };
@@ -268,7 +284,7 @@ BSX.define('game/cooking', function (require) {
     ctx.translate(st.cx, st.y + st.h); ctx.scale(sc, sc); ctx.translate(-st.cx, -(st.y + st.h));
     if (hint) { ctx.save(); ctx.globalAlpha = 0.45 + Math.sin(this.t * 4) * 0.3; Sc().glow(ctx, st.cx, st.y + 60, 110, 'rgba(255,220,120,.9)'); ctx.restore(); }
     if (glow) { ctx.save(); ctx.globalAlpha = glow; Sc().glow(ctx, st.cx, st.y + 50, 110, s.p > this.windowFor(job, step)[1] ? 'rgba(255,90,40,.9)' : 'rgba(255,200,80,.9)'); ctx.restore(); }
-    var eq = D.stations[st.id].equip, view = D.stations[st.id].view;
+    var eq = D.stations[st.type].equip, view = D.stations[st.type].view;
     if (view === 'pan' || view === 'wok') miniPan(ctx, st.cx, st.y + 80, view === 'wok', job, s);
     else if (view === 'steamer') miniSteamer(ctx, st.cx, st.y + 78);
     else if (view === 'stew') { A.cell(ctx, 'atlas_equipment', 0, st.x + 8, st.y + 8, st.w - 16, st.h - 16, { trim: true, fit: true }); ctx.fillStyle = 'rgba(90,50,20,.55)'; ctx.beginPath(); ctx.ellipse(st.cx, st.y + 52, 46, 12, 0, 0, 7); ctx.fill(); }
@@ -329,7 +345,7 @@ BSX.define('game/cooking', function (require) {
     ctx.strokeStyle = 'rgba(255,220,170,.08)'; ctx.lineWidth = 2; for (var gy = PANEL.y + 120; gy < PANEL.y + PANEL.h - 20; gy += 28) { ctx.beginPath(); ctx.moveTo(PANEL.x + 24, gy); ctx.lineTo(PANEL.x + PANEL.w - 24, gy); ctx.stroke(); }
     var heat = s.g === 'timing' ? 0.55 + Math.min(1, s.p) * 0.45 : 0.45;
     var fl = heat * (0.85 + Math.sin(this.t * 13) * 0.08 + Math.sin(this.t * 5.3) * 0.07);
-    if (D.stations[st.id].view !== 'cup' && s.g !== 'hold') { var gf = ctx.createRadialGradient(VC.x, VC.y + 40, VC.r * 0.6, VC.x, VC.y + 40, VC.r * 1.5); gf.addColorStop(0, 'rgba(255,140,40,' + (0.55 * fl) + ')'); gf.addColorStop(0.5, 'rgba(255,90,20,' + (0.25 * fl) + ')'); gf.addColorStop(1, 'rgba(255,60,0,0)'); ctx.fillStyle = gf; ctx.beginPath(); ctx.ellipse(VC.x, VC.y + 40, VC.r * 1.5, VC.r * 1.0, 0, 0, 7); ctx.fill();
+    if (D.stations[st.type].view !== 'cup' && s.g !== 'hold') { var gf = ctx.createRadialGradient(VC.x, VC.y + 40, VC.r * 0.6, VC.x, VC.y + 40, VC.r * 1.5); gf.addColorStop(0, 'rgba(255,140,40,' + (0.55 * fl) + ')'); gf.addColorStop(0.5, 'rgba(255,90,20,' + (0.25 * fl) + ')'); gf.addColorStop(1, 'rgba(255,60,0,0)'); ctx.fillStyle = gf; ctx.beginPath(); ctx.ellipse(VC.x, VC.y + 40, VC.r * 1.5, VC.r * 1.0, 0, 0, 7); ctx.fill();
       for (var fi = 0; fi < 18; fi++) { var fa = fi / 18 * TAU, fr = VC.r + 22; ctx.fillStyle = 'rgba(' + (fi % 2 ? '255,190,80' : '120,170,255') + ',' + (0.55 * fl) + ')'; ctx.beginPath(); ctx.ellipse(VC.x + Math.cos(fa) * fr, VC.y + 40 + Math.sin(fa) * fr * 0.62, 6, 10 + Math.sin(this.t * 20 + fi) * 3, 0, 0, 7); ctx.fill(); } }
     ctx.restore();
     // 顶部：菜名小牌 + 工序点
@@ -346,6 +362,21 @@ BSX.define('game/cooking', function (require) {
     var cl = U.hit('closeup_close', PANEL.x + PANEL.w - 74, PANEL.y + 12, 60, 60, { label: '放一放', onTap: function () { self.close(); } });
     ctx.save(); ctx.fillStyle = cl.pressed ? '#6e4224' : 'rgba(60,30,10,.55)'; U.rr(ctx, PANEL.x + PANEL.w - 74, PANEL.y + 12, 60, 60, 12); ctx.fill(); ctx.restore();
     U.text(ctx, step.bg && s.g === 'timing' ? '⇣' : '×', PANEL.x + PANEL.w - 44, PANEL.y + 54, { size: 34, align: 'center', color: '#fff8e8', bold: true });
+    var ch = D.stations[st.type].cheat;
+    if (ch) {
+      var jx = PANEL.x + PANEL.w - 150, jy = PANEL.y + PANEL.h - 150, used = !!st.job.cheats;
+      var hj = U.hit('cheat_btn', jx, jy, 130, 130, { label: '捷径：' + ch.label, disabled: used, onTap: function () { self.cheat(st); } });
+      ctx.save(); if (used) ctx.globalAlpha = 0.35;
+      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(jx + 65, jy + 118, 46, 10, 0, 0, 7); ctx.fill();
+      var wob = hj.pressed ? 4 : Math.sin(this.t * 3) * 1.5;
+      ctx.fillStyle = '#3a2a22'; U.rr(ctx, jx + 28, jy + 30 + wob, 74, 86, 14); ctx.fill();
+      ctx.fillStyle = '#5a3a2a'; ctx.fillRect(jx + 40, jy + 18 + wob, 50, 16);
+      ctx.fillStyle = '#b8432f'; U.rr(ctx, jx + 32, jy + 58 + wob, 66, 34, 6); ctx.fill();
+      U.text(ctx, ch.label, jx + 65, jy + 82 + wob, { size: 18, bold: true, align: 'center', color: '#fff3d6' });
+      if (!used) { ctx.globalAlpha = 0.25 + Math.sin(this.t * 4) * 0.15; ctx.fillStyle = '#ff6a3a'; ctx.beginPath(); ctx.arc(jx + 65, jy + 66, 64, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
+      ctx.restore();
+      U.text(ctx, used ? '已经偷过懒了' : '省事 +' + ch.save / 100 + '元', jx + 65, jy + 8, { size: 18, bold: true, align: 'center', color: used ? '#cdb79a' : '#ffd45a', stroke: '#3b2412', strokeW: 3 });
+    }
     if (step.bg && s.g === 'timing') U.text(ctx, '可以先去忙', PANEL.x + PANEL.w - 90, PANEL.y + 98, { size: 18, align: 'right', color: '#fff3d6', stroke: '#4a2a12', strokeW: 3 });
     this.drawParts(ctx, true);
     this.drawFloats(ctx);
@@ -360,12 +391,13 @@ BSX.define('game/cooking', function (require) {
       ctx.save(); ctx.globalAlpha = (1 - k) * (p.kind === 'steam' ? 0.35 : 0.9);
       if (p.kind === 'steam' || p.kind === 'smoke') { ctx.fillStyle = p.kind === 'smoke' ? '#4a423e' : '#ffffff'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (1 + k), 0, 7); ctx.fill(); }
       else if (p.kind === 'spark') { A.cell(ctx, 'atlas_vfx', 15, p.x - 12, p.y - 12, 24, 24, { trim: true, fit: true }); }
+      else if (p.kind === 'coin') { A.cell(ctx, 'atlas_ui', 12, p.x - 14, p.y - 14, 28, 28, { trim: true, fit: true, anchor: 'center' }); }
       else { ctx.fillStyle = p.kind === 'splash' ? '#f4ead2' : p.kind === 'rice' ? '#f7e7b0' : p.kind === 'flour' ? '#fff' : '#d8ecf4'; ctx.fillRect(p.x - 3, p.y - 3, 6, 6); }
       ctx.restore();
     });
   };
   K.drawVessel = function (ctx, st, step, s) {
-    var view = D.stations[st.id].view, job = st.job, x = VC.x, y = VC.y, r = VC.r, t = this.t;
+    var view = D.stations[st.type].view, job = st.job, x = VC.x, y = VC.y, r = VC.r, t = this.t;
     var wob = s.wiggle > 0 ? Math.sin(t * 60) * 6 * s.wiggle : 0; if (s.wiggle > 0) s.wiggle -= 1 / 60;
     ctx.save(); ctx.translate(wob, 0);
     var tp = s.g === 'timing' ? s.p : (job.idx > 0 ? 0.5 : 0);
@@ -495,7 +527,7 @@ BSX.define('game/cooking', function (require) {
   }
   function drawPourScene(ctx, self, st, step, s) {
     // 侧视：杯/碗 + 目标纹样带 + 壶/勺倾倒
-    var cup = st.id === 'soy', bx = BOWL.x - 160, by = 640, bw = cup ? 150 : 230, bh = cup ? 200 : 130;
+    var cup = st.type === 'soy', bx = BOWL.x - 160, by = 640, bw = cup ? 150 : 230, bh = cup ? 200 : 130;
     var b = step.band || [0.75, 0.9], bonus = self.stars(st.job.dish) * 0.02 + (self.assist ? 0.04 : 0);
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(bx, by + 6, bw * 0.6, 14, 0, 0, 7); ctx.fill();

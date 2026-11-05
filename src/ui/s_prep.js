@@ -103,6 +103,7 @@ BSX.define('ui/s_prep', function (require) {
     else { var likely = Run.likelyVisitors(s); U.text(ctx, '可能来：', 840, 616, { size: 18, color: '#7d5a35' }); likely.forEach(function (id, i) { ctx.save(); ctx.beginPath(); ctx.arc(940 + i * 46, 608, 20, 0, 7); ctx.clip(); Act.portrait(ctx, id, 920 + i * 46, 588, 40); ctx.restore(); }); }
     // 开门 / 沿用昨日
     if (s.history.length && s.day >= 7) U.button(ctx, 'prep_yesterday', 820, 650, 170, 58, '沿用昨日', { kind: 'paper', size: 22, onTap: function () { self.app.dispatch({ t: 'yesterday' }); Au.play('knob'); } });
+    if (s.day >= 2 || s.mode === 'week') U.button(ctx, 'prep_shop', 70, 664 - 0, 230, 48, '升级小馆 ' + s.upgrades.length + '/' + C.upgrades.length, { kind: 'wood', size: 20, onTap: function () { self.app.openOverlay(Shop); } });
     U.button(ctx, 'prep_open', 1010, 650, 250, 60, '开门营业', { size: 28, disabled: !s.menu.length || this.tutorial >= 0 && this.tutorial < 3, onTap: function () { Au.play('open'); self.app.dispatch({ t: 'confirmPrep' }); self.app.route(); } });
     if (this.tutorial >= 0 && this.tutorial < 3) U.text(ctx, ['先看看油壶', '再看看食材篮', '最后定价牌'][this.tutorial], 70 + this.tutorial * 250 + 110, 396, { size: 22, bold: true, align: 'center', color: '#ffe28a', stroke: '#4a2a12' });
   };
@@ -124,5 +125,33 @@ BSX.define('ui/s_prep', function (require) {
     var s = this.app.state, q = Run.quote(s);
     return { tiers: { oil: s.oil, material: s.material, price: s.price }, menu: s.menu, menuSize: Run.menuSize(s), available: Run.availableDishes(s).map(function (d) { return d.id; }), quote: { flow: [q.flowLow, q.flowHigh], cap: q.cap, margin: Math.round(q.margin * 10) / 10, risk: q.risk }, tutorial: this.tutorial };
   };
-  return { Prep: Prep, TIERS: TIERS };
+  // 升级商店：钱花在看得见的地方
+  function Shop(app) { this.name = 'shop'; this.app = app; }
+  Shop.prototype.draw = function (ctx) {
+    var app = this.app, s = app.state, self = this;
+    ctx.fillStyle = 'rgba(20,14,8,.72)'; ctx.fillRect(0, 0, 1280, 720);
+    U.panel(ctx, 110, 50, 1060, 620, 'paper');
+    U.text(ctx, '升级小馆', 640, 108, { size: 34, bold: true, align: 'center' });
+    U.text(ctx, '钱匣 ' + Math.round(s.cash / 100) + ' 元', 1130, 108, { size: 22, bold: true, align: 'right', color: '#2f6f66' });
+    C.upgrades.forEach(function (u, i) {
+      var x = 150 + (i % 4) * 250, y = 140 + Math.floor(i / 4) * 230, own = s.upgrades.indexOf(u.id) >= 0, can = !own && s.cash >= u.cost;
+      ctx.save(); ctx.fillStyle = own ? '#e6f4ea' : '#fff8e8'; U.rr(ctx, x, y, 230, 210, 12); ctx.fill(); ctx.strokeStyle = own ? '#2f6f66' : '#c8a878'; ctx.lineWidth = own ? 4 : 2; ctx.stroke(); ctx.restore();
+      upIcon(ctx, u.id, x + 115, y + 58);
+      U.text(ctx, u.name, x + 115, y + 118, { size: 24, bold: true, align: 'center' });
+      U.para(ctx, u.desc, x + 16, y + 146, 198, { size: 16, color: '#7d5a35', lh: 21 });
+      if (own) U.text(ctx, '已添置', x + 115, y + 198, { size: 20, bold: true, align: 'center', color: '#2f6f66' });
+      else U.button(ctx, 'buy_' + u.id, x + 40, y + 168, 150, 38, u.cost / 100 + ' 元', { kind: can ? 'primary' : 'paper', size: 20, disabled: !can, minSize: 44, onTap: function () { if (app.dispatch({ t: 'buy', id: u.id })) { Au.play('coin'); Au.play('perfect'); app.notice('添置了 ' + u.name); } } });
+    });
+    U.button(ctx, 'shop_close', 540, 610, 200, 52, '好了', { onTap: function () { app.closeOverlay(); } });
+  };
+  Shop.prototype.describe = function () { return { owned: this.app.state.upgrades, cash: this.app.state.cash }; };
+  function upIcon(ctx, id, x, y) {
+    ctx.save(); ctx.translate(x, y);
+    var I = { fire: [2, 'equipment'], tray: [7, 'equipment'], pot2: [1, 'equipment'], counter: [5, 'equipment'], sign: [10, 'ui'], board: [11, 'ui'], tables: [0, 'ui'], helper: [null] }[id];
+    if (I && I[0] != null) A.cell(ctx, I[1] === 'ui' ? 'atlas_ui' : 'atlas_equipment', I[0], -50, -46, 100, 92, { trim: true, fit: true, anchor: 'center' });
+    else Act.draw(ctx, 'helper', 0, 46, 100, { noShadow: true });
+    if (id === 'fire') { ctx.fillStyle = 'rgba(255,120,30,.8)'; ctx.beginPath(); ctx.ellipse(0, 40, 30, 8, 0, 0, 7); ctx.fill(); }
+    ctx.restore();
+  }
+  return { Prep: Prep, TIERS: TIERS, Shop: Shop };
 });

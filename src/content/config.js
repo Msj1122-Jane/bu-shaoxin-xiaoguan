@@ -11,7 +11,7 @@ BSX.define('content/config', function () {
     helper: { capacity: 24, wage: 4000 },
     starCapacity: { per: 6, add: 2, max: 10 },  // 每累计 6 星 +2 份，上限 +10
     // 三项晨备决策：0/1/2 档
-    price: { mult: [0.85, 1.0, 1.25], flow: [1.30, 1.0, 0.7], rep: [0.2, 0, -0.4] },
+    price: { mult: [0.85, 1.0, 1.25], flow: [1.30, 1.0, 0.65], rep: [0.2, 0, -0.6] },
     material: { cost: [0.8, 1.0, 1.26], rep: [-0.05, 0, 0.15] },
     oil: { daily: [800, 3000, 5000], rep: [0, 0, 0.1] }, // 当日用油成本（含油炸菜时全额，否则三成）
     burnOil: { streak2: 3, streak3: 5, step: 1, cap: 10, newOilRelief: 3 },
@@ -35,7 +35,23 @@ BSX.define('content/config', function () {
     profThresholds: [3, 8, 15, 24, 35],
     starWindowBonus: 0.035,     // 每星判定窗口扩大
     patience: { normal: [24, 34], regular: 42, leaveGrace: 4, tutorialBonus: 20 },
-    service: { maxWaiting: 3, ordersByDay: function (day) { return day <= 1 ? 3 : day <= 3 ? 4 : day <= 10 ? 5 : 6; } },
+    service: { maxWaiting: 3, ordersByDay: function (day) { return day <= 1 ? 4 : day <= 2 ? 6 : day <= 5 ? 8 : day <= 14 ? 10 : 12; } },
+    // 诚信与黑心（D031）：捷径即时收益在 dishes.stations.cheat.save
+    honesty: { cheatBurn: 0.7, cheatRep: 0.03, sickBurn: 1, sickRep: 0.5, sickBase: 0.06, sickPer: 0.03, sickBurnDiv: 350, streakFlow: 0.03, streakFlowMax: 0.15, raidFine: 30000 },
+    combo: { tipPer: 50, max: 10 },
+    // 对手黑心店“快好早点”：第 4 日开张抢客，第 15 日被曝光查封，客人回流三天（D033）
+    rival: { open: 4, closed: 15, steal: 0.85, back: 1.3 },
+    // 小馆升级（D032）：买了立刻生效、店面可见
+    upgrades: [
+      { id: 'fire', name: '快火灶', cost: 30000, desc: '后台加热快三成，产能 +8' },
+      { id: 'tray', name: '大托盘', cost: 20000, desc: '托盘能放 6 份' },
+      { id: 'tables', name: '新桌椅', cost: 35000, desc: '顾客多等 25%' },
+      { id: 'sign', name: '招牌匾', cost: 50000, desc: '路过的人多一成' },
+      { id: 'board', name: '良心公示板', cost: 30000, desc: '良心灯笼亮时口碑每天 +0.3' },
+      { id: 'pot2', name: '第二口锅', cost: 40000, desc: '最忙的器具多一口，产能 +12' },
+      { id: 'helper', name: '请帮工', cost: 10000, desc: '帮你把托盘上的菜端给客人；日薪 40，产能 +24' },
+      { id: 'counter', name: '加宽操作台', cost: 40000, desc: '菜单多一个位置' }
+    ],
     eventChance: 0.6,
     menuSize: 4, menuSizeUpgraded: 5,
     weatherOdds: { sun: 0.5, cloud: 0.3, rain: 0.2 },

@@ -17,6 +17,35 @@ BSX.define('content/story', function () {
     { say: 'zhou', text: '马上好！', face: 1 },
     { exit: 'zhao' }
   ] };
+  // ── 对手黑心店（B 级主线插曲，D033）：第4日开张抢客
+  S.S04 = { id: 'S04', tier: 'B', day: 4, phase: 'pre', title: '街对面开了新店', stage: { time: 'morning', weather: 'auto', view: 'ext' }, beats: [
+    { cam: [640, 360, 1.0], t: 0 }, { prop: 'flyer', x: 760, y: 600 },
+    { narr: '一早，街对面挂起了大红招牌：快好早点。' },
+    { enter: 'peer', x: 980 },
+    { say: 'peer', text: '豆浆一块，油条买一送一！' },
+    { say: 'peer', text: '老周，生意各凭本事啊。' },
+    { crowd: 4 },
+    { say: 'zhou', text: '一块钱的豆浆……得兑多少水。', face: 3 },
+    { narr: '门口排队的人，有几个拐去了对面。' },
+    { choice: [
+      { id: 'compete', label: '我也降价，把人抢回来', effect: { flow: 1.1, rep: -1, burn: 3, flag: { priceWar: true } }, result: '价牌改小了，豆浆也跟着淡了。' },
+      { id: 'quality', label: '做好自己的就行', effect: { rep: 1 }, result: '老周把今天的米多泡了半小时。' }
+    ] },
+    { crowd: 0 }, { exit: 'peer' }, { hide: 'flyer' }
+  ] };
+  // ── 对手被曝光查封：第15日，客人回流；黑心的你也会被顺路查到
+  S.S15 = { id: 'S15', tier: 'B', day: 15, phase: 'pre', title: '对面被查封了', stage: { time: 'morning', weather: 'auto', view: 'ext' }, beats: [
+    { cam: [640, 360, 1.0], t: 0 }, { prop: 'phoneglow', x: 640, y: 330 },
+    { narr: '早间新闻推送：快好早点后厨使用回收油、兑水豆浆，已被查封。' },
+    { crowd: 5 }, { enter: 'inspector', x: 1000 },
+    { say: 'inspector', text: '对面封了。你这儿也顺便看看。' },
+    { if: { burnMin: 50 },
+      then: [{ say: 'inspector', text: '这桶油……跟对面一个样！' }, { say: 'zhou', text: '我、我就用了几回……', face: 3 }, { narr: '围观的街坊小声议论着，有人掏出了手机。' }],
+      else: [{ say: 'inspector', text: '干净。开店就该是这个样子。' }, { say: 'neighbor', text: '以后就在你这儿吃了！' }, { say: 'zhou', text: '欢迎，欢迎！', face: 1 }] },
+    { choice: [{ id: 'cooperate', label: '配合检查', effect: { audit: true }, result: '检查员合上本子，走向了下一家。' }] },
+    { narr: '对面的熟客，一个接一个推开了小馆的门。' },
+    { crowd: 0 }, { exit: 'inspector' }, { hide: 'phoneglow' }
+  ] };
   // ── 第一幕 第7日 续租通知（post）
   S.S07 = { id: 'S07', tier: 'S', day: 7, phase: 'post', title: '续租通知', stage: { time: 'dusk', weather: 'auto', view: 'room' }, beats: [
     { light: 'dusk' }, { cam: [640, 380, 1.0], t: 0 },

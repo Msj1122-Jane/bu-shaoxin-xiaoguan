@@ -8,14 +8,15 @@ const E = BSX.require('content/events');
 
 // skill：代表性订单的品质分布 [招牌, 家常, 匆忙]
 const POLICIES = {
-  canteen: { tiers: { oil: 1, material: 1, price: 0 }, skill: [0.6, 0.35, 0.05], prefer: { E07: 'ask', E12: 'help', E29: 'take', E20: 'free', E03: 'more', E05: 'refuse', E14: 'refuse', S12: 'paper', S18: 'cook', S26: 'renew', E22: 'hire' }, menu: ['congee', 'youtiao', 'soy', 'scallion'] },
-  private: { tiers: { oil: 2, material: 2, price: 2 }, skill: [0.75, 0.25, 0], prefer: { E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'open', S26: 'renew', E03: 'hold', E22: 'hire' }, menu: ['pidan', 'shengjian', 'noodle', 'soy'] },
-  honest: { tiers: { oil: 2, material: 2, price: 1 }, skill: [0.8, 0.2, 0], prefer: { E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'post', S26: 'renew', E08: 'public', E16: 'normal', E04: 'show', E01: 'normal', E22: 'hire', E11: 'some' }, menu: ['pidan', 'shengjian', 'congee', 'soy'] },
-  pills: { tiers: { oil: 0, material: 0, price: 1 }, skill: [0.4, 0.5, 0.1], prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S12: 'cheap', S18: 'cook', S26: 'renew', CRISIS: 'hold', E23: 'deny', E18: 'go', E10: 'risk', E04: 'delay', E08: 'silent' }, menu: ['youtiao', 'scallion', 'congee', 'soy'] },
-  reopen: { tiers: { oil: 0, material: 0, price: 1 }, skill: [0.6, 0.35, 0.05], prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S12: 'cheap', S18: 'cook', S26: 'renew', CRISIS: 'rectify', E23: 'deny', E18: 'go', E04: 'delay' }, after: { CRISIS: { oil: 2, material: 1, price: 1 } }, menu: ['youtiao', 'scallion', 'congee', 'soy'] },
-  average: { tiers: { oil: 1, material: 1, price: 1 }, skill: [0.5, 0.45, 0.05], prefer: { S26: 'renew' }, menu: ['congee', 'youtiao', 'soy', 'scallion'] },
+  canteen: { tiers: { oil: 1, material: 1, price: 0 }, skill: [0.6, 0.35, 0.05], buy: ['helper', 'pot2'], prefer: { E07: 'ask', E12: 'help', E29: 'take', E20: 'free', E03: 'more', E05: 'refuse', E14: 'refuse', S12: 'paper', S18: 'cook', S26: 'renew', E22: 'hire' }, menu: ['congee', 'youtiao', 'soy', 'scallion'] },
+  private: { tiers: { oil: 2, material: 2, price: 2 }, skill: [0.75, 0.25, 0], buy: ['tables', 'counter'], prefer: { E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'open', S26: 'renew', E03: 'hold', E22: 'hire' }, menu: ['pidan', 'shengjian', 'noodle', 'soy'] },
+  honest: { tiers: { oil: 2, material: 2, price: 1 }, skill: [0.8, 0.2, 0], buy: ['board', 'tables', 'sign'], prefer: { E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'post', S26: 'renew', E08: 'public', E16: 'normal', E04: 'show', E01: 'normal', E22: 'hire', E11: 'some' }, menu: ['pidan', 'shengjian', 'congee', 'soy'] },
+  pills: { tiers: { oil: 0, material: 0, price: 1 }, skill: [0.4, 0.5, 0.1], cheat: 0.7, buy: ['fire', 'tray'], prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S12: 'cheap', S18: 'cook', S26: 'renew', CRISIS: 'hold', E23: 'deny', E18: 'go', E10: 'risk', E04: 'delay', E08: 'silent' }, menu: ['youtiao', 'scallion', 'congee', 'soy'] },
+  reopen: { tiers: { oil: 0, material: 0, price: 1 }, skill: [0.6, 0.35, 0.05], cheat: 0.5, buy: ['fire'], prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S12: 'cheap', S18: 'cook', S26: 'renew', CRISIS: 'rectify', E23: 'deny', E18: 'go', E04: 'delay' }, after: { CRISIS: { oil: 2, material: 1, price: 1 } }, menu: ['youtiao', 'scallion', 'congee', 'soy'] },
+  average: { tiers: { oil: 1, material: 1, price: 1 }, skill: [0.5, 0.45, 0.05], buy: ['fire'], prefer: { S26: 'renew' }, menu: ['congee', 'youtiao', 'soy', 'scallion'] },
   farewell: { tiers: { oil: 1, material: 1, price: 1 }, skill: [0.6, 0.4, 0], prefer: { S26: 'leave', E22: 'no' }, menu: ['congee', 'youtiao', 'soy', 'scallion'] },
   transfer: { tiers: { oil: 1, material: 2, price: 2 }, skill: [0.2, 0.5, 0.3], prefer: { S26: 'leave', E15: 'take', E01: 'refuse', E08: 'silent', E03: 'hold' }, menu: ['chicken', 'pidan', 'noodle', 'scallion'] },
+  sneaky: { tiers: { oil: 1, material: 1, price: 1 }, skill: [0.5, 0.45, 0.05], cheat: 0.5, prefer: { S26: 'renew', CRISIS: 'hold', E05: 'hide' }, menu: ['congee', 'youtiao', 'soy', 'scallion'] },
   bankrupt: { tiers: { oil: 2, material: 2, price: 0 }, skill: [0.1, 0.4, 0.5], prefer: { RESCUE: 'refuse', E12: 'help', E03: 'follow', E22: 'hire' }, menu: ['chicken', 'mutton', 'noodle', 'pidan'] }
 };
 
@@ -33,14 +34,23 @@ function choose(state, item, pol) {
   }
 }
 
+const D = BSX.require('content/dishes'), C = BSX.require('content/config');
 function serviceResult(state, pol, holder) {
   const orders = Run.planOrders(state);
-  return { orders: orders.map(o => {
+  let combo = 0, comboTips = 0, maxCombo = 0;
+  const res = orders.map(o => {
     const x = (holder.v = (holder.v * 1103515245 + 12345) % 2147483648) / 2147483648;
     const [a, b] = pol.skill;
     const grade = x < a ? 'sig' : x < a + b ? 'home' : 'rush';
-    return { id: o.id, regular: o.regular, items: o.items, grade, quality: grade === 'sig' ? 0.93 : grade === 'home' ? 0.75 : 0.5 };
-  }) };
+    const reformed = pol.after && ['rectify', 'refund'].includes(state.crisis.state);
+    const cheats = pol.cheat && !reformed ? o.items.filter((_, i) => ((holder.v >> (i + 3)) & 7) / 8 < pol.cheat).length : 0;
+    const cheatGain = cheats ? o.items.slice(0, cheats).reduce((n, id) => n + D.stations[D.byId[id].station].cheat.save, 0) : 0;
+    const sick = Run.sickRoll(state, o.id, cheats);
+    const refund = sick ? o.items.reduce((n, id) => n + Math.round(D.byId[id].price * C.price.mult[state.price]) * 100, 0) : 0;
+    if (grade !== 'rush' && !sick) { combo++; maxCombo = Math.max(maxCombo, combo); if (combo >= 2) comboTips += Math.min(combo, C.combo.max) * C.combo.tipPer; } else combo = 0;
+    return { id: o.id, regular: o.regular, items: o.items, grade, quality: grade === 'sig' ? 0.93 : grade === 'home' ? 0.75 : 0.5, cheats, cheatGain, sick, refund };
+  });
+  return { orders: res, comboTips, maxCombo };
 }
 
 function play(name, seed, opts) {
@@ -58,6 +68,7 @@ function play(name, seed, opts) {
       if (item.kind === 'crisis' && pol.after && pol.after.CRISIS) tiers = Object.assign({}, pol.after.CRISIS);
       s = n;
     } else if (s.phase === 'prep') {
+      for (const u of (pol.buy || [])) s = Run.reduce(s, { t: 'buy', id: u });
       for (const k of ['oil', 'material', 'price']) s = Run.reduce(s, { t: 'tier', key: k, v: tiers[k] });
       const want = pol.menu.concat(['congee', 'youtiao', 'soy', 'scallion', 'egg', 'noodle']);
       for (const id of s.menu.slice()) if (!want.slice(0, 4).includes(id)) s = Run.reduce(s, { t: 'dish', id });

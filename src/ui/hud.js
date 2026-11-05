@@ -25,9 +25,27 @@ BSX.define('ui/hud', function (require) {
     U.panel(ctx, 408, 16, 128, 62, 'cream');
     A.cell(ctx, 'atlas_ui', 13, 414, 22, 50, 50, { trim: true, fit: true, anchor: 'center' });
     U.text(ctx, String(Math.round(s.rep)), 470, 60, { size: 30, bold: true, color: '#2f6f66' });
+    // 良心灯笼（看得见的黑心值，D034）
+    lantern(ctx, 548, 16, Math.min(100, o.liveBurn != null ? o.liveBurn : s.burn), o.lanternFlash || 0, app.t);
     // 暂停（避开微信胶囊）
     var px = 1280 - 84 - (app.rightInset || 0);
     U.iconButton(ctx, 'hud_pause', px, 18, 62, 4, { aria: '暂停', onTap: function () { app.pause(); } });
   }
-  return { draw: draw, weatherIcon: weatherIcon };
+  function lantern(ctx, x, y, burn, flash, t) {
+    var cs = 1 - burn / 100, lvl = Math.round(cs * 5);
+    U.panel(ctx, x, y, 176, 62, flash > 0 ? 'dark' : 'cream');
+    var cx = x + 34, cy = y + 32, col = cs >= 0.7 ? '#e8b54a' : cs >= 0.4 ? '#e07a3a' : '#c0392b';
+    ctx.save();
+    var g = ctx.createRadialGradient(cx, cy, 2, cx, cy, 30); g.addColorStop(0, cs >= 0.7 ? 'rgba(255,220,120,.9)' : cs >= 0.4 ? 'rgba(255,150,80,.6)' : 'rgba(200,50,30,.45)'); g.addColorStop(1, 'rgba(255,200,100,0)');
+    ctx.fillStyle = g; ctx.fillRect(cx - 30, cy - 30, 60, 60);
+    ctx.fillStyle = '#3a2a1a'; ctx.fillRect(cx - 2, y + 4, 4, 6); ctx.fillRect(cx - 9, cy - 16, 18, 4); ctx.fillRect(cx - 9, cy + 13, 18, 4);
+    ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(cx, cy, 15, 15, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(80,30,10,.45)'; ctx.lineWidth = 1.5; for (var i = -1; i <= 1; i++) { ctx.beginPath(); ctx.ellipse(cx, cy, Math.abs(i) * 8 + 2, 15, 0, 0, 7); ctx.stroke(); }
+    ctx.fillStyle = '#c8952a'; ctx.fillRect(cx - 2, cy + 17, 4, 8);
+    if (cs < 0.4) { for (var k = 0; k < 2; k++) { var p = (t * 0.6 + k * 0.5) % 1; ctx.fillStyle = 'rgba(60,50,45,' + (0.5 * (1 - p)) + ')'; ctx.beginPath(); ctx.arc(cx + Math.sin(t * 2 + k) * 4, cy - 18 - p * 16, 4 + p * 6, 0, 7); ctx.fill(); } }
+    ctx.restore();
+    U.text(ctx, '良心', x + 62, y + 28, { size: 18, bold: true, color: flash > 0 ? '#ffb08a' : '#7d5a35' });
+    for (var j = 0; j < 5; j++) { ctx.fillStyle = j < lvl ? col : 'rgba(122,90,53,.25)'; U.rr(ctx, x + 62 + j * 21, y + 38, 17, 12, 3); ctx.fill(); }
+  }
+  return { draw: draw, weatherIcon: weatherIcon, lantern: lantern };
 });
