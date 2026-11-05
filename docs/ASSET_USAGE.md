@@ -10,7 +10,7 @@
 | bg_ext_morning | assets/runtime/bg/bg_ext_morning.jpg | 1280×720 | — | boot | 原始视觉方案 c01 | 标题/序章/店外晨景 | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 否 |
 | bg_ext_rain | assets/runtime/bg/bg_ext_rain.jpg | 1280×720 | — | late | 原始视觉方案 c08 | 店外雨景 | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 否 |
 | bg_ext_dusk | assets/runtime/bg/bg_ext_dusk.jpg | 1280×720 | — | late | 原始视觉方案 c09 | 店外黄昏/终幕 | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 否 |
-| bg_kitchen_closeup | assets/runtime/bg/bg_kitchen_closeup.jpg | 768×768 | — | late | 原始视觉方案 c07 | 加载页/做菜近景底纹 | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 否 |
+| bg_kitchen_closeup | assets/runtime/bg/bg_kitchen_closeup.jpg | 768×768 | — | unused | 原始视觉方案 c07 | 未使用（保留，不打包） | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 未使用 |
 | bg_ending_poster | assets/runtime/bg/bg_ending_poster.jpg | 544×960 | — | late | 原始视觉方案 c05 | 竖屏分享卡底图 | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 否 |
 | atlas_zhou | assets/runtime/atlas/atlas_zhou.png | 1024×1024 | 4×4 | boot | Lovart zhou_actions 4x4 | 老周 4x4 动作 | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 否 |
 | atlas_regulars | assets/runtime/atlas/atlas_regulars.png | 1024×768 | 4×2 | boot | Lovart regulars_portraits 4x2 | 常客半身 4x2（对话头像/图鉴） | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 否 |
@@ -26,10 +26,10 @@
 | spr_xiaozheng | assets/runtime/sprites/spr_xiaozheng.png | 512×512 | — | chars | 原始视觉方案 角色/orig_c18_xiaozheng_student_sprite.png | 常客全身立绘 | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 否 |
 | spr_laoqin | assets/runtime/sprites/spr_laoqin.png | 512×512 | — | chars | 原始视觉方案 角色/orig_c19_laoqin_vendor_sprite.png | 常客全身立绘 | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 否 |
 | spr_grandpa | assets/runtime/sprites/spr_grandpa.png | 512×512 | — | chars | 原始视觉方案 角色/orig_grandpa_grandson.png | 常客全身立绘 | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 否 |
-| spr_zhou_legacy | assets/runtime/sprites/spr_zhou_legacy.png | 512×512 | 5×4 | late | 原始视觉方案 角色/orig_zhou_sprite_sheet.png | 未使用（保留） | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 未使用 |
-| icons_resource | assets/runtime/sprites/icons_resource.png | 512×512 | 3×3 | late | 原始视觉方案 UI/orig_resource_icons_3x3.png | 资源图标（晨备预计） | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 否 |
+| spr_zhou_legacy | assets/runtime/sprites/spr_zhou_legacy.png | 512×512 | 5×4 | unused | 原始视觉方案 角色/orig_zhou_sprite_sheet.png | 未使用（保留，不打包） | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 未使用 |
+| icons_resource | assets/runtime/sprites/icons_resource.png | 512×512 | 3×3 | unused | 原始视觉方案 UI/orig_resource_icons_3x3.png | 未使用（保留，不打包） | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 未使用 |
 | zhou_portraits | assets/runtime/sprites/zhou_portraits.png | 1280×256 | 5×1 | boot | 原始视觉方案 c12 五表情 | 老周五态头像 | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 否 |
-| food_icons_6 | assets/runtime/sprites/food_icons_6.png | 1086×362 | 6×1 | late | 原始视觉方案 c22 | 未使用（保留） | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 未使用 |
+| food_icons_6 | assets/runtime/sprites/food_icons_6.png | 1086×362 | 6×1 | unused | 原始视觉方案 c22 | 未使用（保留，不打包） | 待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用 | 未使用 |
 
 合计 26 个文件，7.18 MB；首屏组 boot 4.80 MB。
 
