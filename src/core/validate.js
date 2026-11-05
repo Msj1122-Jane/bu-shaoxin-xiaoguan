@@ -6,6 +6,7 @@ BSX.define('core/validate', function (require) {
   var E = require('content/events');
   var ST = require('content/story');
   var EN = require('content/endings');
+  var Q = require('content/encounters');
   var Cond = require('core/cond');
   var GESTURES = ['circle', 'drag', 'hold', 'swipe', 'timing'];
   var EFFECT_KEYS = ['cash', 'rep', 'burn', 'flow', 'cap', 'aff', 'flag', 'hireHelper', 'helperLeave', 'renewalDelta', 'audit', 'delayed', 'chain', 'unlockDish', 'renew', 'borrowNeighbors', 'leave', 'recall', 'note', 'after'];
@@ -76,6 +77,8 @@ BSX.define('core/validate', function (require) {
         });
       })(sc.beats, k);
     });
+    Q.list.forEach(function (q) { if (q.choices.length < 2) errs.push(q.id + ' 奇遇至少两个选项'); q.choices.forEach(function (c) { checkEffect(c.effect, q.id + '/' + c.id); }); });
+    (C.festivals || []).forEach(function (f) { f.dishes.forEach(function (d) { if (!D.byId[d]) errs.push('节令菜不存在 ' + d); }); });
     if (sCount !== 7) errs.push('S 级主线演出应为 7 段，实际 ' + sCount);
     if (aCount !== 16) errs.push('A 级常客演出应为 16 段，实际 ' + aCount);
     var days = Object.keys(ST.storyDays).map(Number);

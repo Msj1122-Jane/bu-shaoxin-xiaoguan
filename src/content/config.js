@@ -37,10 +37,25 @@ BSX.define('content/config', function () {
     patience: { normal: [24, 34], regular: 42, leaveGrace: 4, tutorialBonus: 20 },
     service: { maxWaiting: 3, ordersByDay: function (day) { return day <= 1 ? 4 : day <= 2 ? 6 : day <= 5 ? 8 : day <= 14 ? 10 : 12; } },
     // 诚信与黑心（D031）：捷径即时收益在 dishes.stations.cheat.save
-    honesty: { cheatBurn: 0.7, cheatRep: 0.03, sickBurn: 1, sickRep: 0.5, sickBase: 0.06, sickPer: 0.03, sickBurnDiv: 350, streakFlow: 0.03, streakFlowMax: 0.15, raidFine: 30000 },
+    honesty: { cheatBurn: 0.7, cheatRep: 0.03, sickBurn: 1, sickRep: 0.5, sickBase: 0.06, sickPer: 0.03, sickBurnDiv: 350, streakFlow: 0.03, streakFlowMax: 0.15, raidFine: 20000 },
     combo: { tipPer: 50, max: 10 },
     // 对手黑心店“快好早点”：第 4 日开张抢客，第 15 日被曝光查封，客人回流三天（D033）
     rival: { open: 4, closed: 15, steal: 0.85, back: 1.3 },
+    // 良心灯笼分级（参考燕云“恶名”，D034）：档位越低，检查员越勤；到底即封条停业
+    lanternTiers: [
+      { min: 80, name: '明亮', raid: 0 },
+      { min: 60, name: '微暗', raid: 0 },
+      { min: 40, name: '发红', raid: 0.2 },
+      { min: 20, name: '冒烟', raid: 0.35 },
+      { min: 0, name: '封条', raid: 0.5 }
+    ],
+    // 节令日（D036）：当天客流、偏好菜和店内装饰不同
+    festivals: [
+      { day: 10, id: 'laba', name: '腊八', flow: 1.15, dishes: ['congee', 'pidan', 'pumpkin'], boost: 1.6, deco: 'redpaper', line: '腊八到，一碗热粥暖一冬' },
+      { day: 17, id: 'xiaonian', name: '小年', flow: 1.25, dishes: ['tangyuan', 'scallion', 'shengjian'], boost: 1.4, deco: 'lanterns', line: '小年了，街坊都出来吃早饭' },
+      { day: 22, id: 'jiaozi', name: '饺子日', flow: 1.1, dishes: ['dumpling', 'tangyuan'], boost: 1.6, deco: 'lanterns', line: '街坊饺子日' }
+    ],
+    encounterChance: 0.55,
     // 小馆升级（D032）：买了立刻生效、店面可见
     upgrades: [
       { id: 'fire', name: '快火灶', cost: 30000, desc: '后台加热快三成，产能 +8' },

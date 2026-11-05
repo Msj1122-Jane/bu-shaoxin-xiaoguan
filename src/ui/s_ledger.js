@@ -72,8 +72,12 @@ BSX.define('ui/s_ledger', function (require) {
     A.cell(ctx, 'atlas_ui', 13, 820, 530, 50, 50, { trim: true, fit: true, anchor: 'center' });
     U.text(ctx, Math.round(L.rep1) + (dr ? (dr > 0 ? ' ↑' : ' ↓') : ''), 878, 566, { size: 28, bold: true, color: dr >= 0 ? '#2f6f66' : '#b8432f' });
     BSX.require('ui/hud').lantern(ctx, 950, 528, s.burn, 0, this.t);
-    if (s.day === 1 && s.mode === 'story') U.para(ctx, '明天开门前，可以挑油、挑料、定价牌。便宜省成本，好料留客人。', 640, 640 - 40, 460, { size: 18, color: '#7d5a35', align: 'left', lh: 24 });
+    if (s.day === 1 && s.mode === 'story') U.text(ctx, '明天开门前，可以挑油、挑料、定价牌。便宜省成本，好料留客人。', 214, 506, { size: 18, color: '#7d5a35', maxW: 900 });
     U.button(ctx, 'ledger_detail', 214, 616, 200, 52, this.open ? '收起明细' : '展开明细', { kind: 'paper', size: 22, onTap: function () { self.open = !self.open; Au.play('page'); } });
+    // 打烊小玩法：和今天来过的常客猜拳（参考燕云的闲时玩法，D038）
+    var mate = (L.visitors || [])[0];
+    if (mate && !s.today.leisure && !this.open) U.button(ctx, 'ledger_leisure', 430, 616, 250, 52, '和' + R.byId[mate].name + '猜拳', { kind: 'wood', size: 22, onTap: function () { self.app.openOverlay(Leisure, { who: mate }); } });
+    else if (s.today.leisure && !this.open) U.text(ctx, R.byId[s.today.leisure.who].name + (s.today.leisure.win ? '：“再来一盘！”' : '：“承让承让”'), 440, 650, { size: 20, color: '#7d5a35' });
     var last = s.early || s.day >= s.days;
     U.button(ctx, 'ledger_next', 900, 610, 220, 60, last ? '月底' : '明天', { size: 28, onTap: function () { self.next(); } });
     if (this.open) this.drawDetail(ctx, s, L);
@@ -95,5 +99,36 @@ BSX.define('ui/s_ledger', function (require) {
     U.text(ctx, Prep.TIERS.oil.short[L.oil] + ' · ' + Prep.TIERS.material.short[L.material] + ' · ' + Prep.TIERS.price.short[L.price], 702, 550, { size: 18, color: '#7d5a35' });
   };
   P.describe = function () { var L = this.app.state.ledger; return L ? { day: L.day, net: L.cashClose - L.cashOpen, revenue: L.revenue, ingredient: L.ingredient, oil: L.oilCost, fixed: L.fixed, wage: L.wage, tips: L.tips, eventCash: L.eventCash, served: L.served, lost: L.lost, flow: L.flow, cap: L.cap, grades: L.grades, quote: L.quote, rep: [L.rep0, L.rep1], expanded: this.open, clue: burnClue(this.app.state) } : null; };
-  return { Ledger: Ledger, burnClue: burnClue };
+  var HANDS = [['rock', '石头'], ['scissors', '剪刀'], ['paper', '布']];
+  function Leisure(app, p) { this.name = 'leisure'; this.app = app; this.who = p.who; this.me = 0; this.them = 0; this.round = 0; this.last = null; this.t = 0; this.done = false; }
+  Leisure.prototype.update = function (dt) { this.t += dt; if (this.done) { this.dt = (this.dt || 0) + dt; } };
+  Leisure.prototype.play = function (h) {
+    var s = this.app.state, seed = (s.seed * 7 + s.day * 131 + this.round * 17) >>> 0, them = HANDS[(seed % 3 + 3) % 3][0];
+    var win = (h === 'rock' && them === 'scissors') || (h === 'scissors' && them === 'paper') || (h === 'paper' && them === 'rock');
+    var draw = h === them;
+    if (win) this.me++; else if (!draw) this.them++;
+    this.round++; this.last = { me: h, them: them, res: win ? '赢' : draw ? '平' : '输' };
+    Au.play(win ? 'perfect' : draw ? 'tap' : 'rushed');
+    if (this.me >= 2 || this.them >= 2 || this.round >= 5) { this.done = true; this.app.dispatch({ t: 'leisure', who: this.who, win: this.me > this.them }); }
+  };
+  function drawHand(ctx, h, x, y, s) {
+    ctx.save(); ctx.translate(x, y); ctx.fillStyle = '#f0c8a0'; ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = 3;
+    if (h === 'rock') { ctx.beginPath(); ctx.arc(0, 0, s * 0.42, 0, 7); ctx.fill(); ctx.stroke(); for (var i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(i * s * 0.18, -s * 0.38); ctx.lineTo(i * s * 0.18, -s * 0.15); ctx.stroke(); } }
+    else if (h === 'paper') { ctx.beginPath(); ctx.ellipse(0, s * 0.12, s * 0.34, s * 0.3, 0, 0, 7); ctx.fill(); ctx.stroke(); for (var j = 0; j < 4; j++) { ctx.beginPath(); ctx.ellipse(-s * 0.27 + j * s * 0.18, -s * 0.28, s * 0.07, s * 0.2, 0, 0, 7); ctx.fill(); ctx.stroke(); } }
+    else { ctx.beginPath(); ctx.arc(0, s * 0.15, s * 0.3, 0, 7); ctx.fill(); ctx.stroke(); [[-0.12, -0.25], [0.12, -0.25]].forEach(function (p, k) { ctx.save(); ctx.rotate(k ? 0.25 : -0.25); ctx.beginPath(); ctx.ellipse(p[0] * s, p[1] * s, s * 0.07, s * 0.24, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.restore(); }); }
+    ctx.restore();
+  }
+  Leisure.prototype.draw = function (ctx) {
+    var self = this, app = this.app, r = R.byId[this.who];
+    ctx.fillStyle = 'rgba(20,14,8,.7)'; ctx.fillRect(0, 0, 1280, 720);
+    U.panel(ctx, 240, 90, 800, 540, 'cream');
+    U.text(ctx, '打烊后，和' + r.name + '猜拳', 640, 146, { size: 30, bold: true, align: 'center' });
+    U.text(ctx, '三局两胜 · 你 ' + this.me + ' : ' + this.them + ' ' + r.name, 640, 186, { size: 22, align: 'center', color: '#7d5a35' });
+    ctx.save(); ctx.fillStyle = '#efe0bf'; U.rr(ctx, 860, 210, 140, 140, 12); ctx.fill(); ctx.beginPath(); U.rr(ctx, 860, 210, 140, 140, 12); ctx.clip(); Act.portrait(ctx, this.who, 860, 210, 140); ctx.restore();
+    if (this.last) { drawHand(ctx, this.last.me, 470, 300, 110); U.text(ctx, 'VS', 640, 312, { size: 30, bold: true, align: 'center', color: '#b8432f' }); drawHand(ctx, this.last.them, 780, 300, 110); U.text(ctx, this.last.res, 640, 370, { size: 34, bold: true, align: 'center', color: this.last.res === '赢' ? '#2f6f66' : this.last.res === '输' ? '#b8432f' : '#7d5a35' }); }
+    if (!this.done) HANDS.forEach(function (h, i) { var bx = 330 + i * 220; var st = U.hit('rps_' + h[0], bx, 420, 180, 150, { label: h[1], onTap: function () { self.play(h[0]); } }); ctx.save(); ctx.fillStyle = st.pressed ? '#e8b54a' : '#fff8e8'; U.rr(ctx, bx, 420, 180, 150, 14); ctx.fill(); ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = 3; ctx.stroke(); ctx.restore(); drawHand(ctx, h[0], bx + 90, 480, 90); U.text(ctx, h[1], bx + 90, 556, { size: 22, bold: true, align: 'center' }); });
+    else { var win = this.me > this.them; U.text(ctx, win ? r.name + '：“手气真好，下回再来！”' : r.name + '：“哈哈，明天接着来！”', 640, 470, { size: 26, align: 'center', color: '#2f6f66' }); U.text(ctx, win ? '好感 +0.4' : '好感 +0.15', 640, 510, { size: 20, align: 'center', color: '#7d5a35' }); U.button(ctx, 'rps_close', 540, 550, 200, 56, '好', { onTap: function () { app.closeOverlay(); } }); }
+  };
+  Leisure.prototype.describe = function () { return { who: this.who, me: this.me, them: this.them, done: this.done }; };
+  return { Ledger: Ledger, burnClue: burnClue, Leisure: Leisure };
 });

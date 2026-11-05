@@ -6,6 +6,7 @@ require('./src/content/regulars.js');
 require('./src/content/events.js');
 require('./src/content/story.js');
 require('./src/content/endings.js');
+require('./src/content/encounters.js');
 require('./src/core/rng.js');
 require('./src/core/cond.js');
 require('./src/core/run.js');

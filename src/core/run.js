@@ -9,6 +9,7 @@ BSX.define('core/run', function (require) {
   var EN = require('content/endings');
   var RNG = require('core/rng');
   var Cond = require('core/cond');
+  var Q = require('content/encounters');
   var SCHEMA = 3;
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -235,8 +236,20 @@ BSX.define('core/run', function (require) {
     var m = 1 + Math.min(C.honesty.streakFlowMax, (s.stats.honestStreak || 0) * C.honesty.streakFlow);
     if (s.burn >= 50) m *= 1 - (s.burn - 50) / 320;
     if (s.upgrades.indexOf('sign') >= 0) m *= 1.1;
+    var fe = festival(s); if (fe) m *= fe.flow;
     if (s.mode === 'story') { var r = rivalPhase(s); if (r === 'open') m *= C.rival.steal; if (r === 'back') m *= C.rival.back; }
     return m;
+  }
+  function festival(s) { if (s.mode !== 'story') return null; return C.festivals.filter(function (f) { return f.day === s.day; })[0] || null; }
+  function lanternTier(burn) { var lv = 100 - burn; for (var i = 0; i < C.lanternTiers.length; i++) if (lv >= C.lanternTiers[i].min) return Object.assign({ idx: i }, C.lanternTiers[i]); return Object.assign({ idx: 4 }, C.lanternTiers[4]); }
+  // 常客记得你（D037）：进门第一句话由过去的经历决定
+  function greeting(s, id) {
+    var st = s.regulars[id], r = R.byId[id];
+    if (st.sick > 0 && st.lastSickDay >= s.day - 6) return { text: '上次吃完肚子疼…', mood: 'wary' };
+    if (st.bad >= 2 && s.burn >= 30) return { text: '今天别糊弄我啊', mood: 'wary' };
+    if (st.good >= 4 && s.burn < 30) return { text: '我把同事也带来了', mood: 'friend' };
+    if (st.good >= 2) return { text: r.lines.order, mood: 'warm' };
+    return { text: r.lines.order, mood: 'plain' };
   }
   function rivalPhase(s) { if (s.mode !== 'story') return null; if (s.day >= C.rival.open && s.day < C.rival.closed) return 'open'; if (s.day >= C.rival.closed && s.day < C.rival.closed + 3) return 'back'; return s.day >= C.rival.closed ? 'gone' : null; }
   // 吃坏肚子：确定性，浏览器/微信/模拟一致
@@ -274,6 +287,9 @@ BSX.define('core/run', function (require) {
       var gain = o.grade === 'sig' ? 0.85 : o.grade === 'home' ? 0.6 : o.grade === 'rush' ? 0.3 : -0.5;
       if (o.regular === 'song' && s.oil === 0 && s.oilStreak >= 2) gain -= 0.4;
       if (o.regular === 'zheng' && s.burn >= 40) gain -= 0.3;
+      if (o.cheats) { st.bad = (st.bad || 0) + 1; gain -= 0.2; }
+      if (o.sick) { st.sick = (st.sick || 0) + 1; st.lastSickDay = s.day; gain -= 1; }
+      if (!o.cheats && !o.sick && (o.grade === 'sig' || o.grade === 'home')) st.good = (st.good || 0) + 1;
       st.aff = clamp(round1(st.aff + gain), 0, 7);
       if (o.grade !== 'lost') visitorsServed.push(o.regular);
     });
@@ -281,7 +297,7 @@ BSX.define('core/run', function (require) {
     var rnd = RNG.range(s, C.flowRandom[0], C.flowRandom[1]);
     var regularMod = 1 + Math.min(C.regularFlowCap, visitorsServed.length * 0.04 + Cond.affSum(s) * 0.004);
     var ds = s.menu.map(function (id) { return D.byId[id]; });
-    var fit = ds.reduce(function (n, d) { var b = d.fit[s.material] * d.pop; if (th && th.mods.dishBoost && th.mods.dishBoost.indexOf(d.id) >= 0) b *= 1.25; return n + b; }, 0) / Math.max(1, ds.length);
+    var fit = ds.reduce(function (n, d) { var b = d.fit[s.material] * d.pop; if (th && th.mods.dishBoost && th.mods.dishBoost.indexOf(d.id) >= 0) b *= 1.25; var fz = festival(s); if (fz && fz.dishes.indexOf(d.id) >= 0) b *= fz.boost; return n + b; }, 0) / Math.max(1, ds.length);
     var flow = C.baseFlow * C.price.flow[s.price] * (C.repFlow.base + s.rep / C.repFlow.div) * regularMod * C.weatherFlow[s.today.weather] * s.today.flow * fit * rnd;
     if (th && th.mods.flow) flow *= th.mods.flow;
     if (s.burn >= 80) flow *= 0.92;
@@ -344,6 +360,13 @@ BSX.define('core/run', function (require) {
     s.stats.cheats = (s.stats.cheats || 0) + cheats; s.stats.sick = (s.stats.sick || 0) + sick; s.stats.maxCombo = Math.max(s.stats.maxCombo || 0, maxCombo);
     if (s.stats.honestStreak === 5) s.today.notes.push('连着五天放心经营，街坊开始带朋友来了');
     if (sick) s.today.notes.push(sick + ' 位客人吃坏了肚子，退了钱，还发了差评');
+    // 街头奇遇（只认今天安排的那一个）
+    ((result && result.encounters) || []).forEach(function (en) {
+      var q = Q.byId[en.id]; if (!q || s.today.encounter !== en.id || s.today.encounterDone) return;
+      var ch = q.choices.filter(function (c) { return c.id === en.choice; })[0]; if (!ch) return;
+      s.today.encounterDone = true; s.stats.encounters = (s.stats.encounters || []).concat([en.id + ':' + ch.id]);
+      applyEffect(s, ch.effect, en.id); s.today.notes.push(q.name + '：' + ch.result);
+    });
     // 检查员突击（开门时已决定）
     if (s.today.raid === 'bad') { s.cash -= C.honesty.raidFine; s.rep = clamp(s.rep - 3, 0, 100); s.burn = clamp(s.burn - 10, 0, 100); s.today.notes.push('检查员突击：罚款 ' + C.honesty.raidFine / 100 + ' 元，责令整改'); }
     if (s.today.raid === 'good') { s.rep = clamp(s.rep + 2, 0, 100); s.today.notes.push('检查员突击：门口贴上了“放心早餐”'); s.flags.praised = (s.flags.praised || 0) + 1; }
@@ -556,7 +579,8 @@ BSX.define('core/run', function (require) {
       case 'confirmPrep':
         if (s.phase !== 'prep' || !s.menu.length) return state;
         pickVisitors(s);
-        if (s.day >= 5 && !s.today.closed) { var rr = RNG.rand(s); s.today.raid = s.burn >= 50 && !(s.flags.lastRaid > s.day - 5) ? (rr < 0.5 ? 'bad' : null) : s.burn < 20 && rr < 0.12 ? 'good' : null; if (s.today.raid) s.flags.lastRaid = s.day; }
+        if (s.day >= 5 && !s.today.closed) { var rr = RNG.rand(s), tier = lanternTier(s.burn); s.today.raid = tier.raid && !(s.flags.lastRaid > s.day - 4) ? (rr < tier.raid ? 'bad' : null) : s.burn < 20 && rr < 0.12 ? 'good' : null; if (s.today.raid) s.flags.lastRaid = s.day; }
+        if (s.day >= 2 && !s.today.closed && RNG.rand(s) < C.encounterChance) { var seenQ = s.stats.encounters || [], poolQ = Q.list.filter(function (q) { return !seenQ.some(function (x) { return x.indexOf(q.id + ':') === 0; }); }); if (!poolQ.length) poolQ = Q.list; s.today.encounter = RNG.pick(s, poolQ).id; }
         var pre = rollEvent(s, 'pre');
         s.pending = [];
         if (pre) { s.today.preEvent = pre; s.pending.push({ kind: 'event', id: pre }); }
@@ -569,6 +593,12 @@ BSX.define('core/run', function (require) {
         buildDusk(s);
         s.phase = 'dusk';
         advanceAfterPending(s);
+        break;
+      case 'leisure':
+        if (s.phase !== 'ledger' || s.today.leisure || !s.regulars[a.who] || (s.ledger.visitors || []).indexOf(a.who) < 0) return state;
+        s.today.leisure = { who: a.who, win: !!a.win };
+        s.regulars[a.who].aff = clamp(round1(s.regulars[a.who].aff + (a.win ? 0.4 : 0.15)), 0, 7);
+        s.ledger.leisure = s.today.leisure;
         break;
       case 'nextDay':
         if (s.phase !== 'ledger') return state;
@@ -606,12 +636,18 @@ BSX.define('core/run', function (require) {
       out.push({ id: 'o' + (i + 1), regular: reg, items: items.slice(0, 3), arrive: Math.round(t * 10) / 10, rush: rushNow });
     }
     while (visitors.length && out.length) { out[out.length - 1].regular = visitors.shift(); }
+    // 常客带朋友来：多一单
+    var extra = [];
+    out.forEach(function (o, i) { if (o.regular && greeting(s, o.regular).mood === 'friend') extra.push({ at: i + 1, o: { id: o.id + 'f', regular: null, friendOf: o.regular, items: o.items.slice(0, 2), arrive: o.arrive + 1.5, rush: o.rush } }); });
+    extra.reverse().forEach(function (e) { out.splice(e.at, 0, e.o); });
+    var fz = festival(s);
+    if (fz) out.forEach(function (o, i) { if (i % 2 === 0) { var fd = fz.dishes.filter(function (id) { return menu.indexOf(id) >= 0; })[0]; if (fd && o.items.indexOf(fd) < 0) o.items[o.items.length - 1] = fd; } });
     return out;
   }
 
   function likelyVisitors(s) { return R.list.map(function (r) { return { id: r.id, w: regularWeight(s, r) }; }).sort(function (a, b) { return b.w - a.w; }).slice(0, 3).map(function (x) { return x.id; }); }
   return {
-    likelyVisitors: likelyVisitors, sickRoll: sickRoll, flowMods: flowMods, rivalPhase: rivalPhase, upgradeById: upgradeById,
+    likelyVisitors: likelyVisitors, sickRoll: sickRoll, festival: festival, lanternTier: lanternTier, greeting: greeting, flowMods: flowMods, rivalPhase: rivalPhase, upgradeById: upgradeById,
     SCHEMA: SCHEMA, create: create, reduce: reduce, quote: quote, capacity: capacity, availableDishes: availableDishes, dishAvailable: dishAvailable,
     dishLockedToday: dishLockedToday, menuSize: menuSize, planOrders: planOrders, determineEnding: determineEnding, prospectiveEnding: prospectiveEnding,
     findStoryChoice: findStoryChoice, theme: theme, totalStars: totalStars

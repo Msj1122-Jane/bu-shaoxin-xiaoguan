@@ -6,9 +6,9 @@
   "project.config.json 仍为游客 AppID：真机预览与上传需替换为自己的小游戏 AppID（H02）"
  ],
  "info": {
-  "files": 59,
-  "totalKB": 2598,
-  "codeKB": 335,
+  "files": 60,
+  "totalKB": 2651,
+  "codeKB": 387,
   "assetsKB": 2263
  }
 }

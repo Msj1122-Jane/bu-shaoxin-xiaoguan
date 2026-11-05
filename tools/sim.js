@@ -15,7 +15,7 @@ const POLICIES = {
   reopen: { tiers: { oil: 0, material: 0, price: 1 }, skill: [0.6, 0.35, 0.05], cheat: 0.5, buy: ['fire'], prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S12: 'cheap', S18: 'cook', S26: 'renew', CRISIS: 'rectify', E23: 'deny', E18: 'go', E04: 'delay' }, after: { CRISIS: { oil: 2, material: 1, price: 1 } }, menu: ['youtiao', 'scallion', 'congee', 'soy'] },
   average: { tiers: { oil: 1, material: 1, price: 1 }, skill: [0.5, 0.45, 0.05], buy: ['fire'], prefer: { S26: 'renew' }, menu: ['congee', 'youtiao', 'soy', 'scallion'] },
   farewell: { tiers: { oil: 1, material: 1, price: 1 }, skill: [0.6, 0.4, 0], prefer: { S26: 'leave', E22: 'no' }, menu: ['congee', 'youtiao', 'soy', 'scallion'] },
-  transfer: { tiers: { oil: 1, material: 2, price: 2 }, skill: [0.2, 0.5, 0.3], prefer: { S26: 'leave', E15: 'take', E01: 'refuse', E08: 'silent', E03: 'hold' }, menu: ['chicken', 'pidan', 'noodle', 'scallion'] },
+  transfer: { greedy: true, tiers: { oil: 1, material: 2, price: 2 }, skill: [0.2, 0.5, 0.3], prefer: { S26: 'leave', E15: 'take', E01: 'refuse', E08: 'silent', E03: 'hold' }, menu: ['chicken', 'pidan', 'noodle', 'scallion'] },
   sneaky: { tiers: { oil: 1, material: 1, price: 1 }, skill: [0.5, 0.45, 0.05], cheat: 0.5, prefer: { S26: 'renew', CRISIS: 'hold', E05: 'hide' }, menu: ['congee', 'youtiao', 'soy', 'scallion'] },
   bankrupt: { tiers: { oil: 2, material: 2, price: 0 }, skill: [0.1, 0.4, 0.5], prefer: { RESCUE: 'refuse', E12: 'help', E03: 'follow', E22: 'hire' }, menu: ['chicken', 'mutton', 'noodle', 'pidan'] }
 };
@@ -50,7 +50,9 @@ function serviceResult(state, pol, holder) {
     if (grade !== 'rush' && !sick) { combo++; maxCombo = Math.max(maxCombo, combo); if (combo >= 2) comboTips += Math.min(combo, C.combo.max) * C.combo.tipPer; } else combo = 0;
     return { id: o.id, regular: o.regular, items: o.items, grade, quality: grade === 'sig' ? 0.93 : grade === 'home' ? 0.75 : 0.5, cheats, cheatGain, sick, refund };
   });
-  return { orders: res, comboTips, maxCombo };
+  const encounters = [];
+  if (state.today.encounter) { const q = BSX.require('content/encounters').byId[state.today.encounter]; const greedy = (pol.cheat || pol.greedy) && !(pol.after && ['rectify', 'refund'].includes(state.crisis.state)); const pick = greedy ? q.choices.slice().sort((x, y) => (y.effect.cash || 0) - (x.effect.cash || 0))[0] : q.choices.slice().sort((x, y) => (x.effect.burn || 0) - (y.effect.burn || 0) || (y.effect.rep || 0) - (x.effect.rep || 0))[0]; encounters.push({ id: q.id, choice: pick.id }); }
+  return { orders: res, comboTips, maxCombo, encounters };
 }
 
 function play(name, seed, opts) {

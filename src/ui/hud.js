@@ -44,7 +44,8 @@ BSX.define('ui/hud', function (require) {
     ctx.fillStyle = '#c8952a'; ctx.fillRect(cx - 2, cy + 17, 4, 8);
     if (cs < 0.4) { for (var k = 0; k < 2; k++) { var p = (t * 0.6 + k * 0.5) % 1; ctx.fillStyle = 'rgba(60,50,45,' + (0.5 * (1 - p)) + ')'; ctx.beginPath(); ctx.arc(cx + Math.sin(t * 2 + k) * 4, cy - 18 - p * 16, 4 + p * 6, 0, 7); ctx.fill(); } }
     ctx.restore();
-    U.text(ctx, '良心', x + 62, y + 28, { size: 18, bold: true, color: flash > 0 ? '#ffb08a' : '#7d5a35' });
+    var tiers = BSX.require('content/config').lanternTiers, tn = tiers.filter(function (z) { return (100 - burn) >= z.min; })[0] || tiers[4];
+    U.text(ctx, '良心·' + tn.name, x + 62, y + 28, { size: 17, bold: true, color: flash > 0 ? '#ffb08a' : cs < 0.4 ? '#c0392b' : '#7d5a35' });
     for (var j = 0; j < 5; j++) { ctx.fillStyle = j < lvl ? col : 'rgba(122,90,53,.25)'; U.rr(ctx, x + 62 + j * 21, y + 38, 17, 12, 3); ctx.fill(); }
   }
   return { draw: draw, weatherIcon: weatherIcon, lantern: lantern };

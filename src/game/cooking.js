@@ -56,8 +56,11 @@ BSX.define('game/cooking', function (require) {
     score = Math.max(0.3, Math.min(1, score));
     job.scores.push({ key: step.key, score: score, w: step.w });
     var tag = score >= 0.9 ? 'great' : score >= 0.65 ? 'ok' : 'meh';
-    this.float(this.open === st ? VC.x : st.cx, this.open === st ? VC.y - VC.r - 20 : st.y - 10, tag === 'great' ? '好！' : tag === 'ok' ? '行' : '差点', tag === 'great' ? '#ffe28a' : tag === 'ok' ? '#fff' : '#d9c3a0');
-    if (tag === 'great') { Au.play('perfect'); this.burst(this.open === st ? VC.x : st.cx, this.open === st ? VC.y : st.y + 40, 'spark', 8); }
+    this.float(this.open === st ? VC.x : st.cx, this.open === st ? VC.y - VC.r - 20 : st.y - 10, tag === 'great' ? (score >= 0.95 ? '完美！' : '好！') : tag === 'ok' ? '行' : '差点', tag === 'great' ? '#ffe28a' : tag === 'ok' ? '#fff' : '#d9c3a0');
+    if (tag === 'great') {
+      Au.play('perfect'); this.burst(this.open === st ? VC.x : st.cx, this.open === st ? VC.y : st.y + 40, 'spark', 12);
+      if (score >= 0.95 && (step.g === 'timing' || step.g === 'hold')) { this.hitStop = this.reduceMotion ? 0 : 0.11; this.perfectFx = { x: this.open === st ? VC.x : st.cx, y: this.open === st ? VC.y : st.y + 40, t: 0 }; Au.play('sizzle'); this.vibrate('heavy'); }
+    }
     else Au.play(tag === 'ok' ? 'ok' : 'rushed');
     job.idx++;
     if (job.idx >= D.byId[job.dish].steps.length) this.completeDish(st);
@@ -99,6 +102,8 @@ BSX.define('game/cooking', function (require) {
   // ───────────────────────── 更新
   K.update = function (dt) {
     var self = this; this.t += dt;
+    if (this.perfectFx) { this.perfectFx.t += dt; if (this.perfectFx.t > 0.7) this.perfectFx = null; }
+    if (this.hitStop > 0) { this.hitStop -= dt; return; }
     this.stations.forEach(function (st) {
       st.pulse += dt;
       var job = st.job; if (!job) { if (Math.random() < dt * 0.4 && st.type !== 'soy') self.steam(st.cx, st.y + 10, 1); return; }
@@ -379,7 +384,19 @@ BSX.define('game/cooking', function (require) {
     }
     if (step.bg && s.g === 'timing') U.text(ctx, '可以先去忙', PANEL.x + PANEL.w - 90, PANEL.y + 98, { size: 18, align: 'right', color: '#fff3d6', stroke: '#4a2a12', strokeW: 3 });
     this.drawParts(ctx, true);
+    this.drawPerfect(ctx);
     this.drawFloats(ctx);
+  };
+  K.drawPerfect = function (ctx) {
+    var f = this.perfectFx; if (!f) return;
+    var k = f.t / 0.7;
+    ctx.save();
+    if (f.t < 0.12 && !this.reduceMotion) { ctx.globalAlpha = 0.55 * (1 - f.t / 0.12); ctx.fillStyle = '#fffbe8'; ctx.fillRect(0, 0, 1280, 720); }
+    ctx.globalAlpha = 1 - k; ctx.strokeStyle = '#ffd45a'; ctx.lineWidth = 14 * (1 - k) + 2;
+    ctx.beginPath(); ctx.arc(f.x, f.y, 60 + k * 260, 0, 7); ctx.stroke();
+    ctx.strokeStyle = '#fff3d6'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(f.x, f.y, 30 + k * 180, 0, 7); ctx.stroke();
+    for (var i = 0; i < 10; i++) { var a = i / 10 * Math.PI * 2, r1 = 80 + k * 200, r2 = r1 + 40 * (1 - k); ctx.beginPath(); ctx.moveTo(f.x + Math.cos(a) * r1, f.y + Math.sin(a) * r1); ctx.lineTo(f.x + Math.cos(a) * r2, f.y + Math.sin(a) * r2); ctx.stroke(); }
+    ctx.restore();
   };
   K.drawFloats = function (ctx) {
     this.floats.forEach(function (f) { var k = f.t / 1.1; U.text(ctx, f.text, f.x, f.y - k * 50, { size: f.size * (1 + Math.max(0, 0.25 - f.t) * 1.2), align: 'center', color: f.col, stroke: '#3b2412', bold: true, alpha: 1 - k * k }); });

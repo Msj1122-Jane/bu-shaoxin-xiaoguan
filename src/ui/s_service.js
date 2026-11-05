@@ -33,7 +33,9 @@ BSX.define('ui/s_service', function (require) {
     this.combo = 0; this.maxCombo = 0; this.comboTips = 0; this.comboFx = null; this.banner = null; this.rushShown = false; this.lanternFlash = 0;
     this.raid = s.today.raid ? { kind: s.today.raid, state: 'wait', x: -120 } : null;
     this.helperT = 0; this.hasHelper = s.helper;
-    this.rival = Run.rivalPhase(s);
+    this.rival = Run.rivalPhase(s); this.fest = Run.festival(s);
+    this.enc = s.today.encounter && !s.today.closed ? { id: s.today.encounter, state: 'wait', at: Math.max(1, Math.floor(this.plan.length * 0.35)), x: -80, t: 0 } : null; this.encounters = [];
+    if (this.fest) this.banner = { text: this.fest.name, sub: this.fest.line, t: 0 };
     var self = this;
     this.kitchen.onCheat = function () { self.lanternFlash = 1; };
   }
@@ -46,7 +48,9 @@ BSX.define('ui/s_service', function (require) {
     var base = reg ? reg.patience : C.patience.normal[0] + ((o.id.charCodeAt(1) * 7) % (C.patience.normal[1] - C.patience.normal[0]));
     if (s.day <= 2 || this.tutorial) base += C.patience.tutorialBonus;
     base *= this.patienceMul;
-    this.customers.push({ o: o, slot: slot, x: 60, tx: SLOTS[slot], state: 'enter', pat: base, patMax: base, delivered: [], grades: [], talk: reg ? { text: reg.lines.order, t: 2.0 } : null, seed: (o.id.charCodeAt(1) * 13) % 97, react: 0, bob: 0 });
+    var gr = reg ? Run.greeting(s, o.regular) : null; if (gr && gr.mood === 'wary') base *= 0.8;
+    var talk0 = gr ? { text: gr.text, t: 2.0, mood: gr.mood } : o.friendOf ? { text: '听说这家实在', t: 1.8 } : null;
+    this.customers.push({ o: o, slot: slot, x: 60, tx: SLOTS[slot], state: 'enter', pat: base, patMax: base, delivered: [], grades: [], talk: talk0, seed: (o.id.charCodeAt(1) * 13) % 97, react: 0, bob: 0 });
     Au.play('bell');
     return true;
   };
@@ -68,6 +72,8 @@ BSX.define('ui/s_service', function (require) {
     // 帮工：自动把托盘上做好的菜端给需要的客人
     if (this.hasHelper) { this.helperT -= dt; if (this.helperT <= 0) { this.helperT = 2.2; var k0 = this.kitchen, tgt = this.customers.filter(function (c) { if (c.resolved || c.state === 'enter') return false; var rem = c.o.items.slice(); c.delivered.forEach(function (d) { var i = rem.indexOf(d); if (i >= 0) rem.splice(i, 1); }); return k0.tray.some(function (t) { return t.fly >= 1 && rem.indexOf(t.dish) >= 0; }); })[0]; if (tgt) { this.deliverTo(tgt); this.helperFx = { x: tgt.x, t: 0 }; } } }
     if (this.helperFx) { this.helperFx.t += dt; if (this.helperFx.t > 0.8) this.helperFx = null; }
+    // 街头奇遇：门口有人停下，点他开始小插曲；20 秒没理会就走了
+    if (this.enc) { var E0 = this.enc; if (E0.state === 'wait' && this.results.length >= E0.at) { E0.state = 'come'; Au.play('bell'); } if (E0.state === 'come') { E0.x = Math.min(150, E0.x + 200 * dt); if (E0.x >= 150) { E0.state = 'stand'; E0.t = 0; } } else if (E0.state === 'stand') { E0.t += dt; if (E0.t > 20) E0.state = 'leave'; } else if (E0.state === 'leave') { E0.x -= 200 * dt; if (E0.x < -100) E0.state = 'done'; } }
     // 检查员突击：营业过半时进门
     if (this.raid) { var R0 = this.raid; if (R0.state === 'wait' && this.results.length >= Math.floor(this.plan.length / 2)) { R0.state = 'in'; Au.play('risk'); } if (R0.state === 'in') { R0.x = Math.min(640, R0.x + 300 * dt); if (R0.x >= 640) { R0.state = 'talk'; R0.t = 0; Au.play(R0.kind === 'bad' ? 'wrong' : 'perfect'); if (R0.kind === 'bad') Sc.shake = 0.4; } } else if (R0.state === 'talk') { R0.t += dt; if (R0.t > 3.2) R0.state = 'out'; } else if (R0.state === 'out') { R0.x -= 360 * dt; if (R0.x < -150) R0.state = 'done'; } }
     this.customers.forEach(function (c) {
@@ -160,6 +166,7 @@ BSX.define('ui/s_service', function (require) {
     var self = this, app = this.app, s = app.state, k = this.kitchen;
     Sc.drawBack(ctx);
     this.drawShopExtras(ctx, s);
+    if (this.fest) this.drawFestival(ctx, this.fest);
     // 顾客
     this.customers.slice().sort(function (a, b) { return a.x - b.x; }).forEach(function (c) { self.drawCustomer(ctx, c); });
     // 老周（操作台左侧）
@@ -176,6 +183,7 @@ BSX.define('ui/s_service', function (require) {
     this.customers.forEach(function (c) { if (!c.resolved && c.state !== 'enter') U.hit('cust_' + c.o.id, c.x - 90, 160, 180, 340, { label: '顾客' + (c.o.regular ? R.byId[c.o.regular].name : ''), kind: 'customer', onTap: function () { if (k.tray.length) self.deliverTo(c); } }); });
     k.drawPicker(ctx);
     this.drawRaid(ctx);
+    this.drawEncounter(ctx);
     var sickN = this.results.filter(function (r) { return r.sick; }).length;
     Hud.draw(ctx, app, { cashDelta: this.cashFx, lanternFlash: this.lanternFlash, liveBurn: s.burn + k.cheatsUsed * C.honesty.cheatBurn + sickN * C.honesty.sickBurn });
     this.drawCombo(ctx);
@@ -184,7 +192,7 @@ BSX.define('ui/s_service', function (require) {
     if (tut && tut.ghost && this.idle > 3) { k.hand(ctx, tut.ghost.x, tut.ghost.y + Math.abs(Math.sin(this.t * 4)) * 12); if (this.idle > 6) U.text(ctx, tut.text, tut.ghost.x, tut.ghost.y - 30, { size: 22, align: 'center', bold: true, color: '#ffe28a', stroke: '#4a2a12' }); }
     k.drawCloseup(ctx);
     if (!k.open) k.drawFloats(ctx);
-    if (this.closed) { ctx.fillStyle = 'rgba(20,14,8,.6)'; ctx.fillRect(0, 0, 1280, 720); U.panel(ctx, 390, 240, 500, 220, 'paper'); U.text(ctx, '今天停业整改', 640, 310, { size: 34, bold: true, align: 'center' }); U.text(ctx, '擦灶台、换油、重新贴台账', 640, 356, { size: 22, align: 'center', color: '#7d5a35' }); U.button(ctx, 'svc_closed_done', 540, 384, 200, 60, '收工', { onTap: function () { self.submit(); } }); }
+    if (this.closed) { ctx.fillStyle = 'rgba(20,14,8,.6)'; ctx.fillRect(0, 0, 1280, 720); ctx.save(); ctx.strokeStyle = '#f6efe0'; ctx.lineWidth = 46; ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.moveTo(140, 80); ctx.lineTo(1140, 640); ctx.moveTo(1140, 80); ctx.lineTo(140, 640); ctx.stroke(); ctx.restore(); U.text(ctx, '封', 640, 160, { size: 64, bold: true, align: 'center', color: '#c0392b', stroke: '#fff', strokeW: 6 }); U.panel(ctx, 390, 240, 500, 220, 'paper'); U.text(ctx, '今天停业整顿', 640, 310, { size: 34, bold: true, align: 'center' }); U.text(ctx, '擦灶台、换油、重新贴台账', 640, 356, { size: 22, align: 'center', color: '#7d5a35' }); U.button(ctx, 'svc_closed_done', 540, 384, 200, 60, '收工', { onTap: function () { self.submit(); } }); }
     if (this.done) {
       var a = Math.min(1, this.endT * 2);
       ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = 'rgba(20,14,8,.5)'; ctx.fillRect(0, 0, 1280, 720); ctx.restore();
@@ -201,7 +209,7 @@ BSX.define('ui/s_service', function (require) {
     var app = this.app;
     if (!app.settings.seenTutorial) { app.settings.seenTutorial = true; app.applySettings(); }
     Au.play('page');
-    app.dispatch({ t: 'serviceDone', result: { orders: this.results, comboTips: this.comboTips, maxCombo: this.maxCombo } });
+    app.dispatch({ t: 'serviceDone', result: { orders: this.results, comboTips: this.comboTips, maxCombo: this.maxCombo, encounters: this.encounters } });
     app.route();
   };
   P.tutorialHint = function () {
@@ -216,6 +224,14 @@ BSX.define('ui/s_service', function (require) {
     return { station: st.id, ghost: { x: st.cx, y: st.y + 30 }, text: '点' + st.name };
   };
   // 店面随升级与对手变化；窗外能看到街对面的“快好早点”
+  P.drawFestival = function (ctx, f) {
+    var t = this.t, W = Sc.WINDOW;
+    ctx.save(); ctx.strokeStyle = '#6a2a14'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(W.x - 20, 70); ctx.quadraticCurveTo(640, 120, W.x + W.w + 20, 70); ctx.stroke();
+    for (var i = 0; i < 9; i++) { var px = W.x + i * W.w / 8, py = 70 + Math.sin(i / 8 * Math.PI) * 40 + Math.sin(t * 2 + i) * 2;
+      if (f.deco === 'lanterns') { Sc.glow(ctx, px, py + 12, 26, 'rgba(255,120,60,.35)'); ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.ellipse(px, py + 12, 10, 12, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#e8b54a'; ctx.fillRect(px - 1, py + 24, 2, 8); }
+      else { ctx.fillStyle = '#c0392b'; ctx.save(); ctx.translate(px, py + 10); ctx.rotate(Math.PI / 4); ctx.fillRect(-10, -10, 20, 20); ctx.restore(); U.text(ctx, '福', px, py + 17, { size: 14, bold: true, align: 'center', color: '#ffd45a' }); } }
+    ctx.restore();
+  };
   P.drawShopExtras = function (ctx, s) {
     var t = this.t;
     if (this.rival === 'open' || this.rival === 'back' || this.rival === 'gone') {
@@ -228,10 +244,26 @@ BSX.define('ui/s_service', function (require) {
       else { ctx.strokeStyle = '#f6efe0'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx + 120, ry + 34); ctx.moveTo(rx + 120, ry); ctx.lineTo(rx, ry + 34); ctx.stroke(); U.text(ctx, '查封', rx + 60, ry + 58, { size: 16, bold: true, align: 'center', color: '#fff', stroke: '#6a1a10', strokeW: 3 }); }
       ctx.restore();
     }
-    if (s.upgrades.indexOf('sign') >= 0) { ctx.fillStyle = '#5a3418'; U.rr(ctx, 520, 6, 300, 52, 6); ctx.fill(); ctx.strokeStyle = '#e8b54a'; ctx.lineWidth = 3; ctx.stroke(); U.text(ctx, '不烧心小馆', 670, 42, { size: 30, bold: true, align: 'center', color: '#ffd45a' }); }
+    if (s.upgrades.indexOf('sign') >= 0) { ctx.fillStyle = '#5a3418'; U.rr(ctx, 1000, 100, 230, 46, 6); ctx.fill(); ctx.strokeStyle = '#e8b54a'; ctx.lineWidth = 3; ctx.stroke(); U.text(ctx, '不烧心小馆', 1115, 133, { size: 30, bold: true, align: 'center', color: '#ffd45a' }); }
     if (s.upgrades.indexOf('board') >= 0) { ctx.save(); ctx.translate(250, 270); ctx.rotate(-0.03); ctx.fillStyle = '#f6efe0'; ctx.fillRect(0, 0, 80, 100); ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = 3; ctx.strokeRect(0, 0, 80, 100); U.text(ctx, '进货公示', 40, 22, { size: 14, bold: true, align: 'center', color: '#2f6f66' }); ctx.fillStyle = '#9a8a70'; for (var j = 0; j < 5; j++) ctx.fillRect(10, 34 + j * 12, 60 - (j % 2) * 16, 3); if (s.burn < 30) { ctx.strokeStyle = '#c0392b'; ctx.beginPath(); ctx.arc(62, 82, 12, 0, 7); ctx.stroke(); } ctx.restore(); }
-    if ((s.flags.praised || 0) > 0) { ctx.save(); ctx.translate(Sc.WINDOW.x + 20, Sc.WINDOW.y + 140); ctx.rotate(-0.05); ctx.fillStyle = '#2f6f66'; U.rr(ctx, 0, 0, 92, 42, 6); ctx.fill(); U.text(ctx, '放心早餐', 46, 28, { size: 18, bold: true, align: 'center', color: '#fff3d6' }); ctx.restore(); }
+    if ((s.flags.praised || 0) > 0 && s.burn < 60) { ctx.save(); ctx.translate(Sc.WINDOW.x + 20, Sc.WINDOW.y + 140); ctx.rotate(-0.05); ctx.fillStyle = '#2f6f66'; U.rr(ctx, 0, 0, 92, 42, 6); ctx.fill(); U.text(ctx, '放心早餐', 46, 28, { size: 18, bold: true, align: 'center', color: '#fff3d6' }); ctx.restore(); }
     if (this.hasHelper) { Act.draw(ctx, 'helper', 1236, 560, 150, { t: t, noShadow: true }); }
+  };
+  P.drawEncounter = function (ctx) {
+    var e = this.enc, self = this; if (!e || e.state === 'wait' || e.state === 'done') return;
+    var q = BSX.require('content/encounters').byId[e.id];
+    Act.draw(ctx, q.who, e.x, FOOT, H * 0.95, { t: this.t, walk: e.state !== 'stand', seed: 5, flip: e.state === 'leave' });
+    if (e.state === 'stand') {
+      var b = 1 + Math.sin(this.t * 6) * 0.08;
+      ctx.save(); ctx.translate(e.x, 150); ctx.scale(b, b); ctx.fillStyle = '#e8b54a'; ctx.beginPath(); ctx.arc(0, 0, 26, 0, 7); ctx.fill(); ctx.strokeStyle = '#6e4224'; ctx.lineWidth = 3; ctx.stroke(); U.text(ctx, '!', 0, 11, { size: 32, bold: true, align: 'center', color: '#4a2a12' }); ctx.restore();
+      U.text(ctx, q.name, e.x, 196, { size: 18, bold: true, align: 'center', color: '#fff3d6', stroke: '#3b2412', strokeW: 3 });
+      U.hit('encounter', e.x - 70, 120, 140, 400, { label: '奇遇：' + q.name, onTap: function () { self.openEncounter(); } });
+    }
+  };
+  P.openEncounter = function () {
+    var self = this, e = this.enc, q = BSX.require('content/encounters').byId[e.id];
+    e.state = 'talk'; this.app.paused = true;
+    this.app.openOverlay(EncounterCard, { q: q, onPick: function (c) { self.encounters.push({ id: q.id, choice: c.id }); e.state = 'leave'; e.result = c; Au.play(c.effect.burn > 0 ? 'risk' : 'perfect'); if (c.effect.cash > 0) self.cashFx = { v: c.effect.cash / 100, t: 0 }; if (c.effect.burn > 0) self.lanternFlash = 1; } });
   };
   P.drawRaid = function (ctx) {
     var r = this.raid; if (!r || r.state === 'wait' || r.state === 'done') return;
@@ -241,7 +273,7 @@ BSX.define('ui/s_service', function (require) {
       U.bubble(ctx, r.x - tw / 2, 120, tw, 50, r.x, { fill: bad ? '#ffe0d6' : '#e6f4ea', line: bad ? '#b8432f' : '#2f6f66' });
       U.text(ctx, txt, r.x, 154, { size: 22, bold: true, align: 'center', color: bad ? '#b8432f' : '#2f6f66' });
       var k = Math.min(1, r.t * 3);
-      ctx.save(); ctx.translate(r.x + 140, 260); ctx.rotate(-0.2); ctx.scale(2 - k, 2 - k); ctx.globalAlpha = k; ctx.strokeStyle = bad ? '#c0392b' : '#2f6f66'; ctx.lineWidth = 5; ctx.strokeRect(-70, -30, 140, 60); U.text(ctx, bad ? '罚 300' : '放心早餐', 0, 12, { size: 28, bold: true, align: 'center', color: bad ? '#c0392b' : '#2f6f66' }); ctx.restore();
+      ctx.save(); ctx.translate(r.x + 140, 260); ctx.rotate(-0.2); ctx.scale(2 - k, 2 - k); ctx.globalAlpha = k; ctx.strokeStyle = bad ? '#c0392b' : '#2f6f66'; ctx.lineWidth = 5; ctx.strokeRect(-70, -30, 140, 60); U.text(ctx, bad ? '罚 ' + Math.round(BSX.require('content/config').honesty.raidFine / 100) : '放心早餐', 0, 12, { size: 28, bold: true, align: 'center', color: bad ? '#c0392b' : '#2f6f66' }); ctx.restore();
     }
   };
   P.drawCombo = function (ctx) {
@@ -293,7 +325,7 @@ BSX.define('ui/s_service', function (require) {
       if (icon != null) A.cell(ctx, 'atlas_vfx', icon, c.x - 40, 150 - k2 * 40, 80, 80, { trim: true, fit: true, anchor: 'center' });
       A.cell(ctx, 'atlas_vfx', 8, c.x + 30, 220 - k2 * 120, 46, 46, { trim: true, fit: true, anchor: 'center' });
     }
-    if (c.talk) { var tw = 40 + c.talk.text.length * 26; U.bubble(ctx, c.x - tw / 2 + 60, 60, tw, 46, c.x + 30, { fill: '#2f6f66', line: '#1f4d47' }); U.text(ctx, c.talk.text, c.x + 60, 92, { size: 24, align: 'center', color: '#fff8e8', bold: true }); }
+    if (c.talk) { var tw = 40 + c.talk.text.length * 26, wary = c.talk.mood === 'wary', fr = c.talk.mood === 'friend'; U.bubble(ctx, c.x - tw / 2 + 60, 60, tw, 46, c.x + 30, { fill: wary ? '#8a5a3a' : fr ? '#c88a30' : '#2f6f66', line: '#1f4d47' }); U.text(ctx, c.talk.text, c.x + 60, 92, { size: 24, align: 'center', color: '#fff8e8', bold: true }); }
   };
   P.describe = function () {
     var k = this.kitchen;
@@ -303,5 +335,18 @@ BSX.define('ui/s_service', function (require) {
       kitchen: k.describe(), geometry: k.geometry(), tutorial: !!this.tutorial
     };
   };
-  return { Service: Service };
+  function EncounterCard(app, p) { this.name = 'encounter'; this.app = app; this.p = p; this.t = 0; this.picked = null; this.closeable = false; }
+  EncounterCard.prototype.update = function (dt) { this.t += dt; if (this.picked) { this.pt += dt; if (this.pt > 1.8) this.app.closeOverlay(); } };
+  EncounterCard.prototype.draw = function (ctx) {
+    var q = this.p.q, self = this, app = this.app;
+    ctx.fillStyle = 'rgba(20,14,8,.55)'; ctx.fillRect(0, 0, 1280, 720);
+    U.panel(ctx, 260, 150, 760, 420, 'cream');
+    ctx.save(); ctx.fillStyle = '#efe0bf'; U.rr(ctx, 290, 180, 140, 140, 12); ctx.fill(); ctx.beginPath(); U.rr(ctx, 290, 180, 140, 140, 12); ctx.clip(); Act.portrait(ctx, q.who, 290, 180, 140); ctx.restore();
+    U.text(ctx, '奇遇 · ' + q.name, 460, 220, { size: 28, bold: true, color: '#2f6f66' });
+    U.para(ctx, q.text, 460, 262, 520, { size: 22, lh: 32 });
+    if (!this.picked) q.choices.forEach(function (c, i) { U.button(ctx, 'enc_' + c.id, 300 + i * 350, 400, 330, 70, c.label, { kind: 'paper', size: 21, onTap: function () { self.picked = c; self.pt = 0; self.p.onPick(c); } }); });
+    else { U.para(ctx, self.picked.result, 300, 430, 680, { size: 24, color: '#7d5a35', lh: 34 }); U.hit('enc_close', 0, 0, 1280, 720, { minSize: 0, onTap: function () { app.closeOverlay(); } }); }
+  };
+  EncounterCard.prototype.describe = function () { return { id: this.p.q.id, choices: this.p.q.choices.map(function (c) { return c.id; }), picked: this.picked && this.picked.id }; };
+  return { Service: Service, EncounterCard: EncounterCard };
 });
