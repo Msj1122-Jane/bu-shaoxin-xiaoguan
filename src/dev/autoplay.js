@@ -9,8 +9,9 @@ BSX.define('dev/autoplay', function (require) {
   var POL = {
     average: { tiers: { oil: 1, material: 1, price: 1 }, prefer: { S26: 'renew' }, skill: 'good' },
     canteen: { tiers: { oil: 1, material: 1, price: 0 }, prefer: { E07: 'ask', E12: 'help', E29: 'take', E20: 'free', E03: 'more', E05: 'refuse', E14: 'refuse', S12: 'paper', S18: 'cook', S26: 'renew', E22: 'hire' }, skill: 'good' },
-    honest: { tiers: { oil: 2, material: 2, price: 1 }, prefer: { E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'post', S26: 'renew', E08: 'public', E04: 'show', E22: 'hire', E11: 'some' }, skill: 'great', menu: ['pidan', 'shengjian', 'congee', 'soy'] },
+    honest: { buy: ['board', 'tables', 'sign', 'helper'], tiers: { oil: 2, material: 2, price: 1 }, prefer: { E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'post', S26: 'renew', E08: 'public', E04: 'show', E22: 'hire', E11: 'some' }, skill: 'great', menu: ['pidan', 'shengjian', 'congee', 'soy'] },
     pills: { tiers: { oil: 0, material: 0, price: 1 }, prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S12: 'cheap', S26: 'renew', CRISIS: 'hold', E23: 'deny', E18: 'go', E10: 'risk', E04: 'delay', E08: 'silent' }, skill: 'sloppy' },
+    black: { tiers: { oil: 0, material: 0, price: 1 }, prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S12: 'cheap', S04: 'compete', S26: 'renew', CRISIS: 'hold', E23: 'deny', E18: 'go', E04: 'delay', E08: 'silent' }, skill: 'good', cheat: 0.85, greedy: true, buy: ['fire', 'tray'] },
     neglect: { tiers: { oil: 1, material: 1, price: 1 }, prefer: { S26: 'renew' }, skill: 'sloppy', idle: 0.12 },
     chef: { tiers: { oil: 2, material: 2, price: 1 }, prefer: { S12: 'paper', S26: 'renew' }, skill: 'great', menu: ['chicken', 'mutton', 'pidan', 'shengjian'] },
     farewell: { tiers: { oil: 1, material: 1, price: 1 }, prefer: { S26: 'leave', E22: 'no' }, skill: 'good' }
@@ -67,12 +68,15 @@ BSX.define('dev/autoplay', function (require) {
     var name = scr.name, s = app.state;
     if (name === 'loading') { this.wait = 0.2; return; }
     if (name === 'pause' && !this.o.keepPause) { this.tapHit('pause_resume'); return; }
+    if (name === 'encounter') { var d0 = scr.describe(); if (d0.picked) { this.tapHit('enc_close'); this.wait = 0.3; return; } var qq = BSX.require('content/encounters').byId[d0.id], greedy = this.pol.greedy; var pk = qq.choices.slice().sort(function (x, y) { return greedy ? (y.effect.cash || 0) - (x.effect.cash || 0) : (x.effect.burn || 0) - (y.effect.burn || 0) || (y.effect.rep || 0) - (x.effect.rep || 0); })[0]; this.stats.choices.push(qq.id + ':' + pk.id); this.tapHit('enc_' + pk.id, 0.4); this.wait = 0.6; return; }
+    if (name === 'leisure') { var d1 = scr.describe(); if (d1.done) this.tapHit('rps_close'); else this.tapHit('rps_' + ['rock', 'scissors', 'paper'][Math.floor(Math.random() * 3)], 0.3); this.g('leisure'); this.wait = 0.4; return; }
+    if (name === 'shop') { var want = (this.pol.buy || []).filter(function (id) { return s.upgrades.indexOf(id) < 0; }); var aff = want.filter(function (id) { return s.cash >= BSX.require('core/run').upgradeById(id).cost + 40000; })[0]; if (aff) { this.tapHit('buy_' + aff); this.stats.choices.push('buy:' + aff); } else { this.tapHit('shop_close'); this.shopDay = s.day; } this.wait = 0.3; return; }
     if (name === 'title') { if (!this.tapHit('title_continue')) this.tapHit('title_start'); this.wait = 0.5; return; }
     if (name === 'newMonth') { this.tapHit('nm_go'); this.wait = 0.5; return; }
     if (name === 'prep') return this.prep(scr, s);
     if (name === 'service') return this.service(scr, s);
     if (name === 'story') return this.story(scr, s);
-    if (name === 'ledger') { this.wait = 0.4; this.tapHit('ledger_next'); return; }
+    if (name === 'ledger') { this.wait = 0.4; if (!s.today.leisure && this.tapHit('ledger_leisure')) return; this.tapHit('ledger_next'); return; }
     if (name === 'ending' || name === 'weekResult') { this.done = true; return; }
     this.wait = 0.3;
   };
@@ -82,6 +86,7 @@ BSX.define('dev/autoplay', function (require) {
     for (var k2 in pol.tiers) if (s[k2] !== pol.tiers[k2]) { this.tapHit('tier_' + k2 + '_' + pol.tiers[k2]); this.wait = 0.3; return; }
     if (pol.menu) { var want = pol.menu.filter(function (id) { return Run.availableDishes(s).some(function (d) { return d.id === id; }); }); var add = want.filter(function (id) { return s.menu.indexOf(id) < 0; })[0]; if (add && s.menu.length < Run.menuSize(s)) { this.tapHit('dish_' + add); this.wait = 0.2; return; } var extra = s.menu.filter(function (id) { return want.indexOf(id) < 0; })[0]; if (extra && add) { this.tapHit('menu_' + extra); this.wait = 0.2; return; } }
     if (this.o.tryNewDishes) { var nd = Run.availableDishes(s).filter(function (d) { return !s.prof[d.id].n && s.menu.indexOf(d.id) < 0; })[0]; if (nd && s.menu.length >= Run.menuSize(s)) { var old = s.menu.filter(function (id) { return s.prof[id].n >= 1; })[0]; if (old) { this.tapHit('menu_' + old); this.wait = 0.2; return; } } if (nd && s.menu.length < Run.menuSize(s)) { this.tapHit('dish_' + nd.id); this.wait = 0.2; return; } }
+    if (this.shopDay !== s.day && (this.pol.buy || []).some(function (id) { return s.upgrades.indexOf(id) < 0 && s.cash >= BSX.require('core/run').upgradeById(id).cost + 40000; }) && this.tapHit('prep_shop')) { this.wait = 0.3; return; }
     this.tapHit('prep_open'); this.wait = 0.6;
   };
   B.story = function (scr, s) {
@@ -107,8 +112,10 @@ BSX.define('dev/autoplay', function (require) {
     if (scr.closed) { this.tapHit('svc_closed_done'); this.wait = 0.5; return; }
     if (scr.done) { if (scr.endT > 0.7) this.tapHit('svc_done'); this.wait = 0.3; return; }
     // 近景中：执行当前手势
+    if (scr.enc && scr.enc.state === 'stand' && this.tapHit('encounter')) { this.wait = 0.3; return; }
     if (k.open && k.open.job) {
       var st = k.open, step = k.stepOf(st), js = st.job.s, V = G.vessel;
+      if (this.pol.cheat && !st.job.cheats && Math.random() < this.pol.cheat && this.tapHit('cheat_btn', 0.1)) { this.g('cheat'); this.wait = 0.2; return; }
       this.g(js.g);
       if (js.g === 'drag') {
         var src = step.key === 'scoop' ? { x: V.x, y: V.y } : G.source, tg = step.key === 'scoop' ? G.bowl : V;

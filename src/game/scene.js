@@ -92,8 +92,14 @@ BSX.define('game/scene', function (require) {
       // 灯笼光晕
       var flick = 0.75 + Math.sin(Sc.t * 7.3) * 0.05 + Math.sin(Sc.t * 2.1) * 0.06;
       var lamp = Sc.time === 'night' || Sc.time === 'dusk' || Sc.time === 'dawn' || Sc.weather === 'rain' ? 1 : 0.35;
-      glow(ctx, 1048, 30, 120, 'rgba(255,190,90,' + (0.35 * flick * lamp) + ')');
-      glow(ctx, 112, 92, 60, 'rgba(255,120,70,' + (0.3 * flick * lamp) + ')');
+      // 良心灯笼：诚信时金黄明亮，黑心时发红、发暗、冒黑烟
+      var cs = Sc.conscience == null ? 1 : Sc.conscience;
+      var lc = cs >= 0.7 ? '255,200,90' : cs >= 0.4 ? '255,150,70' : '220,60,40', la = cs >= 0.7 ? 0.35 + (cs - 0.7) * 0.8 : cs >= 0.4 ? 0.3 : 0.22 + Math.sin(Sc.t * 9) * 0.08;
+      glow(ctx, 1048, 30, 120 + cs * 50, 'rgba(' + lc + ',' + (la * flick * Math.max(lamp, 0.7)) + ')');
+      glow(ctx, 112, 92, 60 + cs * 30, 'rgba(' + lc + ',' + (la * flick * Math.max(lamp, 0.7)) + ')');
+      if (cs < 0.4 && !Sc.reduceMotion) { for (var sm = 0; sm < 3; sm++) { var sp = (Sc.t * 0.35 + sm * 0.33) % 1; ctx.fillStyle = 'rgba(50,40,36,' + (0.4 * (1 - sp)) + ')'; ctx.beginPath(); ctx.arc(112 + Math.sin(Sc.t + sm) * 8, 70 - sp * 70, 8 + sp * 16, 0, 7); ctx.fill(); } }
+      // 门口排队
+      if (Sc.queue) { ctx.save(); ctx.beginPath(); ctx.rect(Sc.DOOR.x, Sc.DOOR.y, Sc.DOOR.w, Sc.DOOR.h); ctx.clip(); for (var qi = 0; qi < Sc.queue; qi++) person(ctx, 140 - qi * 22, 470 - qi * 6, 120 - qi * 8, ['#5b6e8c', '#8c5b4a', '#4a7a5a', '#a07a3a', '#6a5a7a', '#7a3a3a'][qi % 6], Sc.t * 1.5 + qi, Sc.weather === 'rain'); ctx.restore(); }
       // 雨天地面积水反光
       if (Sc.weather === 'rain') { ctx.save(); ctx.globalAlpha = 0.18; ctx.strokeStyle = '#cfe2f0'; ctx.lineWidth = 2; for (var j = 0; j < 7; j++) { var yy = 520 + j * 26, xx = 60 + ((Sc.t * 30 + j * 97) % 260); ctx.beginPath(); ctx.moveTo(xx, yy); ctx.lineTo(xx + 50 + j * 6, yy); ctx.stroke(); } ctx.restore(); }
     } else {

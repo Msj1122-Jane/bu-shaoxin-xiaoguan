@@ -161,6 +161,8 @@ BSX.define('app', function (require) {
     if (this.toast) { this.toast.t += dt; if (this.toast.t > 2.4) this.toast = null; }
     if (this.overlay && this.overlay.update) this.overlay.update(dt);
     if (this.paused) return;
+    if (this.state) Sc.conscience = 1 - this.state.burn / 100;
+    if (!this.screen || this.screen.name !== 'service') Sc.queue = 0;
     Sc.update(dt); Au.update(dt);
     if (this.screen && this.screen.update) this.screen.update(dt);
   };
