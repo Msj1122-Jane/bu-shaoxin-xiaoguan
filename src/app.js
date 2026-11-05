@@ -202,7 +202,7 @@ BSX.define('app', function (require) {
     if (this.P.portrait && this.P.portrait()) { ctx.fillStyle = 'rgba(20,14,8,.92)'; ctx.fillRect(0, 0, v.W, v.H); ctx.fillStyle = '#fff3d6'; ctx.font = 'bold ' + Math.round(v.W / 16) + 'px ' + U.FONT; ctx.textAlign = 'center'; ctx.fillText('请横过手机', v.W / 2, v.H / 2); ctx.font = Math.round(v.W / 26) + 'px ' + U.FONT; ctx.fillText('小馆需要横屏营业', v.W / 2, v.H / 2 + v.W / 12); }
   };
   Ap.drawChrome = function (ctx) {
-    if (this.stamp > 0 && this.lastSave && this.lastSave.ok) { ctx.save(); ctx.globalAlpha = Math.min(1, this.stamp * 2); ctx.translate(46, 676); ctx.rotate(-0.15); ctx.strokeStyle = '#b8432f'; ctx.lineWidth = 3; ctx.strokeRect(-26, -16, 52, 32); U.text(ctx, '已存', 0, 8, { size: 18, color: '#b8432f', align: 'center', bold: true }); ctx.restore(); }
+    if (this.stamp > 0 && this.lastSave && this.lastSave.ok) { ctx.save(); ctx.globalAlpha = Math.min(1, this.stamp * 2); ctx.translate(1226, 104); ctx.rotate(-0.15); ctx.strokeStyle = '#b8432f'; ctx.lineWidth = 3; ctx.strokeRect(-26, -16, 52, 32); U.text(ctx, '已存', 0, 8, { size: 18, color: '#b8432f', align: 'center', bold: true }); ctx.restore(); }
     if (this.toast) { var k = Math.min(1, this.toast.t * 4) * Math.min(1, (2.4 - this.toast.t) * 3); ctx.save(); ctx.globalAlpha = k; U.panel(ctx, 380, 300, 520, 70, 'dark'); U.text(ctx, this.toast.text, 640, 344, { size: 24, align: 'center', color: '#fff3d6' }); ctx.restore(); }
     if (this.dev) { U.text(ctx, this.fps + 'fps ' + (this.state ? 'd' + this.state.day + ' ' + this.state.phase + ' 烧' + Math.round(this.state.burn) : ''), 8, 712, { size: 14, color: '#0f0', stroke: '#000' }); }
     if (this.capsule && this.dev) { ctx.save(); ctx.strokeStyle = 'rgba(255,0,0,.6)'; ctx.strokeRect(this.capsule.x, this.capsule.y, this.capsule.w, this.capsule.h); ctx.restore(); }
@@ -231,6 +231,7 @@ BSX.define('app', function (require) {
       },
       trigger: function (eventId) { var s = JSON.parse(JSON.stringify(app.state)); s.pending.unshift({ kind: 'event', id: eventId }); if (['dawn', 'open', 'dusk'].indexOf(s.phase) < 0) s.phase = 'dusk'; app.state = s; app.route(); },
       set: function (k, v) { var s = JSON.parse(JSON.stringify(app.state)); s[k] = v; app.state = s; },
+      overlay: function (mod, exp, p) { app.openOverlay(BSX.require(mod)[exp], p || {}); },
       toEnding: function (policy) { BSX.require('dev/autoplay').toEnding(app, policy || 'average'); },
       errors: function () { return app.errors.concat(A.errors.map(function (e) { return '资源 ' + e.id + ' ' + e.msg; })); }
     };

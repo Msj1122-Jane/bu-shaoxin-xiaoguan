@@ -34,11 +34,12 @@ BSX.define('ui/s_codex', function (require) {
       U.text(ctx, aff >= 5 ? '近锅位' : aff >= 3 ? '普通桌' : '门口位', x + 250, y + 36, { size: 18, align: 'right', color: '#2f6f66', bold: true });
       r.nodes.forEach(function (n, j) {
         var done = (st && st.nodes.indexOf(j) >= 0) || L.nodes.indexOf(n.cs) >= 0;
-        ctx.save(); ctx.translate(x + 200, y + 76 + j * 46); ctx.strokeStyle = done ? '#d0503a' : 'rgba(122,90,53,.3)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 18, 0, 7); ctx.stroke();
-        U.text(ctx, done ? '印' : n.aff, 0, 7, { size: 18, bold: true, align: 'center', color: done ? '#d0503a' : '#b8a888' }); ctx.restore();
-        if (done) U.text(ctx, n.title, x + 226, y + 84 + j * 46, { size: 14, color: '#7d5a35', maxW: 40 });
+        ctx.save(); ctx.translate(x + 222, y + 76 + j * 46); ctx.rotate(done ? -0.12 : 0);
+        if (done) { ctx.fillStyle = '#c0392b'; ctx.fillRect(-18, -18, 36, 36); ctx.strokeStyle = '#fbe9d8'; ctx.lineWidth = 2; ctx.strokeRect(-14, -14, 28, 28); U.text(ctx, String(j + 1), 0, 8, { size: 22, bold: true, align: 'center', color: '#fbe9d8' }); }
+        else { ctx.strokeStyle = 'rgba(122,90,53,.35)'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.strokeRect(-18, -18, 36, 36); ctx.setLineDash([]); U.text(ctx, '♥' + n.aff, 0, 7, { size: 16, bold: true, align: 'center', color: '#b8a888' }); }
+        ctx.restore();
       });
-      if (L.photos.indexOf(r.id) >= 0 || (s && s.photos.indexOf(r.id) >= 0)) { ctx.save(); ctx.translate(x + 40, y + 160); ctx.rotate(-0.1); ctx.fillStyle = '#fff'; ctx.fillRect(-24, -20, 48, 40); ctx.fillStyle = '#c8a878'; ctx.fillRect(-20, -16, 40, 26); ctx.restore(); }
+      if (L.photos.indexOf(r.id) >= 0 || (s && s.photos.indexOf(r.id) >= 0)) { ctx.save(); ctx.translate(x + 40, y + 160); ctx.rotate(-0.1); ctx.fillStyle = '#fff'; ctx.fillRect(-26, -24, 52, 50); ctx.fillStyle = '#e8d8b8'; ctx.fillRect(-22, -20, 44, 36); ctx.beginPath(); ctx.rect(-22, -20, 44, 36); ctx.clip(); Act.portrait(ctx, r.id, -22, -22, 44); ctx.restore(); }
     });
   };
   P.draw_dishes = function (ctx, s, L) {

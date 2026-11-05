@@ -9,7 +9,7 @@ BSX.define('core/validate', function (require) {
   var Q = require('content/encounters');
   var Cond = require('core/cond');
   var GESTURES = ['circle', 'drag', 'hold', 'swipe', 'timing'];
-  var EFFECT_KEYS = ['cash', 'rep', 'burn', 'flow', 'cap', 'aff', 'flag', 'hireHelper', 'helperLeave', 'renewalDelta', 'audit', 'delayed', 'chain', 'unlockDish', 'renew', 'borrowNeighbors', 'leave', 'recall', 'note', 'after'];
+  var EFFECT_KEYS = ['cash', 'rep', 'burn', 'flow', 'cap', 'aff', 'flag', 'hireHelper', 'helperLeave', 'renewalDelta', 'audit', 'delayed', 'chain', 'unlockDish', 'renew', 'borrowNeighbors', 'leave', 'recall', 'note', 'after', 'buyout'];
   var BEATS = ['cam', 't', 'enter', 'x', 'exit', 'say', 'text', 'face', 'prop', 'y', 'hide', 'light', 'weather', 'act', 'choice', 'wait', 'shutter', 'sfx', 'if', 'then', 'else', 'crowd', 'visitors', 'view', 'photo', 'unlockDish', 'eventChoice', 'narr'];
   var NPCS = ['zhou', 'landlord', 'supplier', 'inspector', 'influencer', 'peer', 'recycler', 'helper', 'camera', 'students', 'neighbor', 'best'];
   function run(manifest) {

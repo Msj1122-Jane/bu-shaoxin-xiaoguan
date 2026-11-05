@@ -97,9 +97,40 @@ BSX.define('ui/s_basic', function (require) {
       U.text(ctx, has ? h.name : '？？？', x + 24, y + 48, { size: 26, bold: true, alpha: has ? 1 : 0.5 });
       U.text(ctx, has ? h.desc : '与一位常客更熟后获得', x + 24, y + 90, { size: 20, color: '#7d5a35', alpha: has ? 1 : 0.6 });
     });
-    U.button(ctx, 'nm_go', 440, 540, 260, 70, self.pick ? '带上它开门' : '空手开门', { size: 28, onTap: function () { app.newRun({ seed: (Date.now() % 1e9) >>> 0, heirloom: self.pick, generation: L.runs + 1, preferUnseen: Legacy.unseenEvents(L) }); } });
+    U.button(ctx, 'nm_go', 440, 540, 260, 70, self.pick ? '带上它，下一步' : '空手，下一步', { size: 28, onTap: function () { app.openOverlay(X.Origin, { base: { seed: (Date.now() % 1e9) >>> 0, heirloom: self.pick, generation: L.runs + 1, preferUnseen: Legacy.unseenEvents(L) } }); } });
     U.button(ctx, 'nm_back', 720, 540, 160, 70, '返回', { kind: 'paper', onTap: function () { app.closeOverlay(); } });
   };
+  // ───────── 开局身份＋一正一负特性（参考深空当铺开局剧本与 Starting Perks，D039）
+  X.Origin = function (app, p) { this.name = 'origin'; this.app = app; this.base = p.base || {}; this.origin = 'heir'; this.plus = null; this.minus = null; };
+  X.Origin.prototype.draw = function (ctx) {
+    var app = this.app, self = this, CF = BSX.require('content/config');
+    ctx.fillStyle = 'rgba(20,14,8,.75)'; ctx.fillRect(0, 0, 1280, 720);
+    U.panel(ctx, 100, 30, 1080, 660, 'paper');
+    U.text(ctx, '这一月，老周从哪里起步？', 640, 84, { size: 32, bold: true, align: 'center' });
+    CF.origins.forEach(function (o, i) {
+      var x = 140 + i * 340, y = 108, on = self.origin === o.id;
+      var st = U.hit('origin_' + o.id, x, y, 320, 170, { label: o.name, onTap: function () { self.origin = o.id; } });
+      ctx.save(); ctx.fillStyle = on ? '#e8b54a' : st.pressed ? '#e6d2a8' : '#fff8e8'; U.rr(ctx, x, y, 320, 170, 12); ctx.fill(); ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = on ? 5 : 2; ctx.stroke(); ctx.restore();
+      U.text(ctx, o.name, x + 20, y + 44, { size: 26, bold: true });
+      if (o.id === 'debt') U.text(ctx, '难', x + 296, y + 44, { size: 22, bold: true, align: 'right', color: '#b8432f' });
+      U.para(ctx, o.desc, x + 20, y + 82, 280, { size: 18, color: '#7d5a35', lh: 25, maxLines: 3 });
+    });
+    U.text(ctx, '特性：先选一个代价，才能换一个好处（也可以都不选）', 640, 318, { size: 22, bold: true, align: 'center', color: '#3b2a1a' });
+    [['minus', '代价', '#b8432f'], ['plus', '好处', '#2f6f66']].forEach(function (row, r) {
+      var list = CF.perks[row[0]], y = 344 + r * 132;
+      U.text(ctx, row[1], 150, y + 66, { size: 24, bold: true, color: row[2] });
+      list.forEach(function (pk, i) {
+        var x = 230 + i * 310, on = self[row[0]] === pk.id, lock = row[0] === 'plus' && !self.minus;
+        var st = U.hit('perk_' + pk.id, x, y, 290, 116, { label: pk.name, disabled: lock, onTap: function () { self[row[0]] = on ? null : pk.id; if (row[0] === 'minus' && !self.minus) self.plus = null; } });
+        ctx.save(); if (lock) ctx.globalAlpha = 0.4; ctx.fillStyle = on ? (r ? '#d6eee4' : '#f6d6cc') : st.pressed ? '#e6d2a8' : '#fff8e8'; U.rr(ctx, x, y, 290, 116, 12); ctx.fill(); ctx.strokeStyle = on ? row[2] : '#c8a878'; ctx.lineWidth = on ? 5 : 2; ctx.stroke(); ctx.restore();
+        U.text(ctx, pk.name, x + 18, y + 42, { size: 24, bold: true, color: row[2], alpha: lock ? 0.5 : 1 });
+        U.text(ctx, pk.desc, x + 18, y + 84, { size: 18, color: '#7d5a35', maxW: 260, alpha: lock ? 0.5 : 1 });
+      });
+    });
+    U.button(ctx, 'origin_go', 700, 618, 260, 60, '开门营业', { size: 28, onTap: function () { app.newRun(Object.assign({}, self.base, { origin: self.origin, perkPlus: self.plus, perkMinus: self.minus })); } });
+    U.button(ctx, 'origin_back', 980, 618, 160, 60, '返回', { kind: 'paper', onTap: function () { app.openOverlay(X.NewMonth); } });
+  };
+  X.Origin.prototype.describe = function () { return { origin: this.origin, plus: this.plus, minus: this.minus }; };
   X.NewMonth.prototype.describe = function () { return { pick: this.pick, available: this.app.legacy.heirlooms }; };
 
   // ───────── 常营业主题
@@ -156,7 +187,7 @@ BSX.define('ui/s_basic', function (require) {
     rows.forEach(function (r, i) {
       var x = 270 + (i % 2) * 400, y = 130 + Math.floor(i / 2) * 84;
       U.text(ctx, r[0], x, y + 40, { size: 24, bold: true });
-      if (r[2] === 'vol') { [0, 0.25, 0.5, 0.75, 1].forEach(function (v, j) { var on = s[r[1]] >= v - 0.01 && v > 0; U.button(ctx, 'set_' + r[1] + '_' + j, x + 130 + j * 44, y + 8, 38, 44, '', { kind: on ? 'primary' : 'paper', minSize: 44, onTap: function () { s[r[1]] = v; app.applySettings(); Au.play('tap'); } }); }); }
+      if (r[2] === 'vol') { [0, 0.25, 0.5, 0.75, 1].forEach(function (v, j) { var on = j === 0 ? s[r[1]] < 0.01 : s[r[1]] >= v - 0.01; U.button(ctx, 'set_' + r[1] + '_' + j, x + 130 + j * 44, y + 8, 38, 44, j === 0 ? '关' : '', { kind: on ? 'primary' : 'paper', minSize: 44, onTap: function () { s[r[1]] = v; app.applySettings(); Au.play('tap'); } }); }); }
       else if (r[2] === 'scale') U.button(ctx, 'set_' + r[1], x + 170, y + 6, 150, 50, s.textScale > 1 ? '开' : '关', { kind: s.textScale > 1 ? 'primary' : 'paper', onTap: function () { s.textScale = s.textScale > 1 ? 1 : 1.15; app.applySettings(); } });
       else U.button(ctx, 'set_' + r[1], x + 170, y + 6, 150, 50, s[r[1]] ? '开' : '关', { kind: s[r[1]] ? 'primary' : 'paper', onTap: function () { s[r[1]] = !s[r[1]]; app.applySettings(); if (app.screen && app.screen.onSettings) app.screen.onSettings(); } });
     });

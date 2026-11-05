@@ -74,6 +74,8 @@ BSX.define('game/cooking', function (require) {
     this.tray.push({ dish: job.dish, cheats: job.cheats || 0, cheatGain: job.cheatGain || 0, q: Math.round(q * 100) / 100, grade: grade, fly: 0, from: { x: this.open === st ? VC.x : st.cx, y: this.open === st ? VC.y : st.y } });
     this.float(this.open === st ? VC.x : st.cx, (this.open === st ? VC.y : st.y) - 40, grade === 'sig' ? '招牌' : grade === 'home' ? '家常' : '匆忙', grade === 'sig' ? '#ffd45a' : grade === 'home' ? '#fff3d6' : '#cdb79a', grade === 'sig' ? 40 : 30);
     Au.play(grade === 'sig' ? 'perfect' : 'bowl'); if (grade === 'sig') this.vibrate('light');
+    // 差在哪一步：不是招牌时点名最弱的一步（评审 #20）
+    if (grade !== 'sig' && job.scores.length) { var worst = job.scores.slice().sort(function (x, y) { return x.score - y.score; })[0]; var stp = D.byId[job.dish].steps.filter(function (z) { return z.key === worst.key; })[0]; var why = stp && stp.g === 'timing' ? (worst.early ? '早了点' : '火候没卡准') : stp && stp.g === 'hold' ? '没停在刚好' : stp && stp.g === 'circle' ? '圈没画匀' : '慢了点'; this.float(this.open === st ? VC.x : st.cx, (this.open === st ? VC.y : st.y) + 6, (LABEL[worst.key] || '这一步') + why, '#ffd9b0', 22); }
     this.log.push('done ' + job.dish + ' ' + grade + ' ' + q.toFixed(2));
     st.job = null;
     if (this.open === st) this.open = null;
@@ -321,11 +323,27 @@ BSX.define('game/cooking', function (require) {
   function Sc() { return BSX.require('game/scene'); }
   function miniPan(ctx, cx, cy, wok, job, s) {
     ctx.save();
-    ctx.fillStyle = '#2a2a2e'; ctx.beginPath(); ctx.ellipse(cx, cy, 58, 30, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = '#3c3c42'; ctx.beginPath(); ctx.ellipse(cx, cy - 3, 50, 24, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = '#5a3a20'; ctx.fillRect(cx + 52, cy - 6, 52, 10);
-    if (wok) { ctx.strokeStyle = '#18181b'; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(cx, cy - 3, 54, 28, 0, Math.PI, 0); ctx.stroke(); }
-    if (job && s && s.g === 'timing') { ctx.fillStyle = doneCol(s.p, '#f3dfa8'); ctx.beginPath(); ctx.ellipse(cx, cy - 4, 28, 14, 0, 0, 7); ctx.fill(); }
+    // 像素化：先画到 1/4 精度再放大的观感——用块状描边与高光
+    function px(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); }
+    if (wok) {
+      // 炒锅：深圆底、钢灰、双耳 + 木柄，锅底有火
+      px(cx - 40, cy + 18, 80, 10, 'rgba(255,120,40,.55)');
+      ctx.fillStyle = '#2e2b2a'; ctx.beginPath(); ctx.moveTo(cx - 64, cy - 14); ctx.quadraticCurveTo(cx, cy + 46, cx + 64, cy - 14); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#6a6e74'; ctx.beginPath(); ctx.ellipse(cx, cy - 14, 64, 16, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#3a3c40'; ctx.beginPath(); ctx.ellipse(cx, cy - 12, 56, 12, 0, 0, 7); ctx.fill();
+      px(cx - 40, cy - 20, 22, 4, 'rgba(255,255,255,.35)');
+      px(cx - 80, cy - 20, 18, 8, '#2e2b2a'); px(cx - 84, cy - 22, 8, 12, '#2e2b2a');
+      px(cx + 62, cy - 22, 50, 10, '#7a4a22'); px(cx + 62, cy - 22, 50, 3, '#a87040'); px(cx + 108, cy - 24, 8, 14, '#5a3418');
+      if (job && s && s.g === 'timing') { ctx.fillStyle = doneCol(s.p, '#f3dfa8'); ctx.beginPath(); ctx.ellipse(cx, cy - 10, 30, 8, 0, 0, 7); ctx.fill(); }
+    } else {
+      // 平底锅：扁平黑、长直柄、侧面厚边
+      px(cx - 58, cy - 2, 116, 14, '#1c1c20');
+      ctx.fillStyle = '#26262a'; ctx.beginPath(); ctx.ellipse(cx, cy - 2, 58, 22, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#44444c'; ctx.beginPath(); ctx.ellipse(cx, cy - 4, 50, 17, 0, 0, 7); ctx.fill();
+      px(cx - 30, cy - 14, 18, 3, 'rgba(255,255,255,.3)');
+      px(cx + 56, cy - 6, 70, 9, '#1c1c20'); px(cx + 96, cy - 7, 32, 11, '#8a2a2a'); px(cx + 96, cy - 7, 32, 3, '#b84a3a');
+      if (job && s && s.g === 'timing') { ctx.fillStyle = doneCol(s.p, '#f3dfa8'); ctx.beginPath(); ctx.ellipse(cx, cy - 5, 28, 11, 0, 0, 7); ctx.fill(); }
+    }
     ctx.restore();
   }
   function miniSteamer(ctx, cx, cy) {
@@ -447,7 +465,7 @@ BSX.define('game/cooking', function (require) {
       if (s.g === 'timing' || job.idx > 0) { var nb = Math.floor(4 + (s.p || 0.3) * 18); for (var b = 0; b < nb; b++) { var ph = (t * (1.5 + b % 3) + b * 0.37) % 1; ctx.strokeStyle = 'rgba(255,255,255,' + (0.6 * (1 - ph)) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x + Math.cos(b * 2.1) * (r - 40) * 0.8 * ((b % 7) / 7), y + Math.sin(b * 1.3) * (r - 40) * 0.45, 3 + ph * 7, 0, 7); ctx.stroke(); } }
     } else if (view === 'fryer') {
       for (var ob = 0; ob < 14; ob++) { var ph2 = (t * 2 + ob * 0.21) % 1; ctx.fillStyle = 'rgba(255,240,180,' + (0.5 * (1 - ph2)) + ')'; ctx.beginPath(); ctx.arc(x - r + (ob * 23) % (r * 2), y - 40 + (ob * 37) % 90, 2 + ph2 * 4, 0, 7); ctx.fill(); }
-      if (job.idx >= 2 || (s.g === 'drag' && s.placed)) {
+      if (job.idx >= 1 || (s.g === 'drag' && s.placed)) {
         var col = s.g === 'timing' ? doneCol(s.p + (key === 'lift' ? 0.55 : 0)) : '#f3dfa8';
         if (dish === 'tangyou') for (var tb = 0; tb < 5; tb++) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x - 80 + tb * 40, y + (tb % 2) * 20 - 10, 16, 0, 7); ctx.fill(); }
         else { var flip = key === 'lift' ? -1 : 1; youtiao(ctx, x, y - 6, 1, col, flip, t); }
@@ -458,7 +476,14 @@ BSX.define('game/cooking', function (require) {
         var jump = s.pop > 0 ? Math.sin((0.3 - s.pop) / 0.3 * Math.PI) * 60 : 0; if (s.pop > 0) s.pop -= 1 / 60;
         if (dish === 'egg') A.drawEgg(ctx, x, y - jump, 55);
         else if (dish === 'shengjian') for (var sb = 0; sb < Math.max(s.placed || 0, job.idx > 0 ? 3 : 0); sb++) { ctx.fillStyle = '#f6efe0'; ctx.beginPath(); ctx.arc(x - 60 + sb * 60, y, 30, 0, 7); ctx.fill(); ctx.fillStyle = pc; ctx.beginPath(); ctx.ellipse(x - 60 + sb * 60, y + 22, 26, 8, 0, 0, 7); ctx.fill(); }
-        else if (view === 'wok') { for (var ri = 0; ri < 60; ri++) { ctx.fillStyle = ri % 7 === 0 ? '#f5b423' : '#f7e7b0'; ctx.fillRect(x - 70 + (ri * 37) % 140, y - 30 + (ri * 53) % 60 - jump * ((ri % 3) / 3), 5, 4); } }
+        else if (view === 'wok') {
+          // 蛋炒饭：一堆米饭（带阴影的小米粒）+ 金黄蛋块 + 葱花，颠锅时整体跃起
+          ctx.fillStyle = lerpCol('#f4ead0', '#e8c070', Math.min(1, (s.p || 0) * 0.8)); ctx.beginPath(); ctx.ellipse(x, y - jump, 105, 50, 0, 0, 7); ctx.fill();
+          ctx.fillStyle = 'rgba(160,110,40,.25)'; ctx.beginPath(); ctx.ellipse(x + 10, y + 18 - jump, 90, 22, 0, 0, 7); ctx.fill();
+          for (var ri = 0; ri < 90; ri++) { var gx2 = x - 92 + (ri * 37) % 184, gy2 = y - 36 + (ri * 53) % 70 - jump * (0.7 + (ri % 3) * 0.15); if (Math.pow((gx2 - x) / 100, 2) + Math.pow((gy2 - y + jump) / 46, 2) > 1) continue; ctx.fillStyle = '#fffaf0'; ctx.fillRect(gx2, gy2, 6, 4); ctx.fillStyle = 'rgba(150,110,60,.5)'; ctx.fillRect(gx2, gy2 + 3, 6, 1); }
+          for (var ek = 0; ek < 9; ek++) { ctx.fillStyle = '#f5b423'; ctx.fillRect(x - 70 + (ek * 41) % 140, y - 24 + (ek * 29) % 44 - jump, 12, 9); ctx.fillStyle = '#fbd860'; ctx.fillRect(x - 70 + (ek * 41) % 140, y - 24 + (ek * 29) % 44 - jump, 12, 3); }
+          for (var gk = 0; gk < 10; gk++) { ctx.fillStyle = '#4f9a3a'; ctx.fillRect(x - 80 + (gk * 47) % 160, y - 20 + (gk * 31) % 40 - jump, 6, 6); }
+        }
         else { ctx.fillStyle = pc; ctx.beginPath(); ctx.ellipse(x, y - jump, 110 * (0.6 + 0.4 * Math.min(1, (job.idx || 0.3))), 62, 0, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(80,120,40,.8)'; ctx.lineWidth = 3; for (var sp = 0; sp < 6; sp++) { ctx.beginPath(); ctx.arc(x - 50 + sp * 20, y - 10 + (sp % 2) * 18 - jump, 3, 0, 7); ctx.stroke(); } }
         if (key === 'lid') { ctx.save(); ctx.globalAlpha = 0.75; ctx.fillStyle = '#c0c8cc'; ctx.beginPath(); ctx.ellipse(x, y - 30, r - 10, (r - 10) * 0.55, 0, Math.PI, 0); ctx.fill(); ctx.restore(); }
       }

@@ -10,6 +10,15 @@ BSX.define('ui/s_ending', function (require) {
   var ST = require('content/story');
   var Legacy = require('core/legacy');
   var Run = require('core/run');
+  // 篆刻风朱印：方形红底白字，两字竖排（替代原来圆圈里的“印”字）
+  var SEAL = { E_HONEST: '放心', E_PRIVATE: '私房', E_CANTEEN: '食堂', E_REOPEN: '重开', E_PILLS: '胃药', E_FAREWELL: '送行', E_TRANSFER: '转让', E_SOMEONE: '记得' };
+  function seal(ctx, txt, r) {
+    ctx.fillStyle = '#c0392b'; ctx.fillRect(-r, -r, r * 2, r * 2);
+    ctx.strokeStyle = '#fbe9d8'; ctx.lineWidth = Math.max(2, r * 0.08); ctx.strokeRect(-r * 0.82, -r * 0.82, r * 1.64, r * 1.64);
+    ctx.fillStyle = '#fbe9d8'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold ' + Math.round(r * 0.72) + 'px ' + U.FONT;
+    ctx.fillText(txt[0], 0, -r * 0.38); ctx.fillText(txt[1] || '', 0, r * 0.4); ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = 'rgba(255,255,255,.18)'; for (var i = 0; i < 6; i++) ctx.fillRect(-r + ((i * 37) % (r * 2)), -r + ((i * 53) % (r * 2)), 4, 3);
+  }
   function keyChoices(s) { return s.keyChoices.slice().sort(function (a, b) { return b.weight - a.weight || a.day - b.day; }).slice(0, 3).sort(function (a, b) { return a.day - b.day; }); }
   function chart(ctx, xs, x, y, w, h, col, label) {
     var mn = Math.min.apply(null, xs), mx = Math.max.apply(null, xs); if (mx === mn) mx = mn + 1;
@@ -36,6 +45,7 @@ BSX.define('ui/s_ending', function (require) {
     U.text(ctx, e.name, 80, 156, { size: 50, bold: true, color: '#fff3d6', stroke: '#3b2412', strokeW: 8, alpha: k, maxW: 760 });
     var mood = e.id === 'E_SOMEONE' ? e.tiers[s.ending.tier || 0] : e.mood;
     U.text(ctx, mood, 82, 202, { size: 24, color: '#fff3d6', alpha: k });
+    if (s.flags && s.flags.owner) { ctx.save(); ctx.globalAlpha = k; ctx.fillStyle = '#b8432f'; U.rr(ctx, 640, 36, 320, 40, 8); ctx.fill(); ctx.restore(); U.text(ctx, '★ 铺面盘下来了，这间店姓周', 800, 63, { align: 'center', size: 20, bold: true, color: '#fff3d6', alpha: k }); }
     // 三次关键选择
     U.panel(ctx, 70, 236, 560, 300, 'paper', { alpha: k });
     U.text(ctx, '这个月的三个决定', 96, 278, { size: 24, bold: true });
@@ -52,13 +62,13 @@ BSX.define('ui/s_ending', function (require) {
     chart(ctx, [s.stats.startRep].concat(s.history.map(function (h) { return h.rep1; })), 994, 420, 210, 90, '#b8432f', '口碑');
     U.text(ctx, '错过的故事 ' + this.missed + ' 段', 994, 530, { size: 16, color: '#7d5a35' });
     // 结局印章
-    if (this.t > 1.2) { if (!this.stamped) { this.stamped = true; Au.play('stamp'); } ctx.save(); ctx.translate(1120, 130); ctx.rotate(-0.18); ctx.strokeStyle = '#d0503a'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, 58, 0, 7); ctx.stroke(); U.text(ctx, '印', 0, 16, { size: 46, bold: true, align: 'center', color: '#d0503a' }); ctx.restore(); }
+    if (this.t > 1.2) { if (!this.stamped) { this.stamped = true; Au.play('stamp'); } ctx.save(); ctx.translate(1120, 130); ctx.rotate(-0.18); var sk = Math.max(1, 1.6 - (this.t - 1.2) * 3); ctx.scale(sk, sk); seal(ctx, SEAL[s.ending.id] || '月底', 56); ctx.restore(); }
     var y = 570;
     U.button(ctx, 'end_share', 70, y, 220, 64, '分享卡', { kind: 'wood', onTap: function () { app.openOverlay(Share, {}); } });
     U.button(ctx, 'end_newmonth', 310, y, 240, 64, '继承店史重开', { onTap: function () { app.openOverlay(BSX.require('ui/s_basic').NewMonth); } });
     U.button(ctx, 'end_week', 570, y, 220, 64, '七日常营业', { kind: 'paper', onTap: function () { app.openOverlay(BSX.require('ui/s_basic').WeekPick); } });
     U.button(ctx, 'end_history', 810, y, 180, 64, '店史', { kind: 'paper', onTap: function () { app.go(BSX.require('ui/s_codex').Codex, { from: 'ending' }); } });
-    U.button(ctx, 'end_title', 1010, y, 200, 64, '回标题', { kind: 'ghost', onTap: function () { app.go(BSX.require('ui/s_basic').Title); } });
+    U.button(ctx, 'end_title', 1010, y, 200, 64, '回标题', { kind: 'paper', onTap: function () { app.go(BSX.require('ui/s_basic').Title); } });
     var letter = app.legacy.letters[app.legacy.letters.length - 1];
     if (letter) U.text(ctx, '来信：' + letter.text, 640, 680, { size: 20, align: 'center', color: '#ffd9a0', maxW: 1100 });
   };
@@ -79,7 +89,7 @@ BSX.define('ui/s_ending', function (require) {
     ch.forEach(function (c2, i) { t('第' + c2.day + '日 ' + c2.label, 52, 714 + i * 40, 24, '#ffe9c4'); });
     if (best) { t('最常来：' + R.byId[best].name, 52, 850, 26, '#fff3d6', true); }
     t('现金 ' + Math.round(s.cash / 100) + ' 元 · 口碑 ' + Math.round(s.rep), 52, 892, 22, '#ffd9a0');
-    x.save(); x.translate(450, 860); x.rotate(-0.2); x.strokeStyle = '#d0503a'; x.lineWidth = 5; x.beginPath(); x.arc(0, 0, 46, 0, 7); x.stroke(); x.font = 'bold 40px ' + U.FONT; x.fillStyle = '#d0503a'; x.textAlign = 'center'; x.fillText('印', 0, 14); x.restore();
+    x.save(); x.translate(450, 860); x.rotate(-0.2); seal(x, SEAL[s.ending.id] || '月底', 46); x.restore();
     return c;
   }
   function Share(app) { this.name = 'share'; this.app = app; this.card = buildCard(app); this.status = null; }

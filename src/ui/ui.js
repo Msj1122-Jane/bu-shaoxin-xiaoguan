@@ -30,10 +30,12 @@ BSX.define('ui/ui', function (require) {
   };
   U.wrap = function (ctx, str, maxW, size, weight) {
     ctx.save(); ctx.font = U.font(size, weight); var lines = [], line = '';
-    for (var i = 0; i < str.length; i++) { var ch = str[i]; if (ch === '\n') { lines.push(line); line = ''; continue; } var t = line + ch; if (ctx.measureText(t).width > maxW && line) { if ('，。！？、”：；）'.indexOf(ch) >= 0) { line = t; continue; } lines.push(line); line = ch; } else line = t; }
+    // 词元：连续的数字/字母/符号（如 +0.3、25%、+12）不拆行；中文逐字
+    var toks = str.match(/\n|[0-9A-Za-z+\-.%×/]+|[\s\S]/g) || [];
+    for (var i = 0; i < toks.length; i++) { var ch = toks[i]; if (ch === '\n') { lines.push(line); line = ''; continue; } var t = line + ch; if (ctx.measureText(t).width > maxW && line) { if ('，。！？、”：；）'.indexOf(ch) >= 0) { line = t; continue; } lines.push(line); line = ch; } else line = t; }
     if (line) lines.push(line); ctx.restore(); return lines;
   };
-  U.para = function (ctx, str, x, y, maxW, o) { o = o || {}; var size = o.size || 22, lh = o.lh || size * 1.5; var lines = U.wrap(ctx, str, maxW, size, o.weight); lines.forEach(function (l, i) { U.text(ctx, l, x, y + i * lh * U.textScale, o); }); return lines.length * lh * U.textScale; };
+  U.para = function (ctx, str, x, y, maxW, o) { o = o || {}; var size = o.size || 22, lh = o.lh || size * 1.5; var lines = U.wrap(ctx, str, maxW, size, o.weight); if (o.maxLines && lines.length > o.maxLines) { lines = lines.slice(0, o.maxLines); lines[o.maxLines - 1] = lines[o.maxLines - 1].slice(0, -1) + '…'; } lines.forEach(function (l, i) { U.text(ctx, l, x, y + i * lh * U.textScale, o); }); return lines.length * lh * U.textScale; };
   function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath(); }
   U.rr = rr;
   U.panel = function (ctx, x, y, w, h, style, o) {

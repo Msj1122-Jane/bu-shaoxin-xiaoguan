@@ -8,7 +8,7 @@ BSX.define('content/config', function () {
     baseCapacity: 70,           // 份/日（D030 上调）
     baseFlow: 54,               // 基础客流（D030 上调）
     fixedCost: 10000,           // 房租 60 + 水电杂费 40
-    helper: { capacity: 24, wage: 4000 },
+    helper: { capacity: 24, wage: 3000 },
     starCapacity: { per: 6, add: 2, max: 10 },  // 每累计 6 星 +2 份，上限 +10
     // 三项晨备决策：0/1/2 档
     price: { mult: [0.85, 1.0, 1.25], flow: [1.30, 1.0, 0.65], rep: [0.2, 0, -0.6] },
@@ -64,9 +64,41 @@ BSX.define('content/config', function () {
       { id: 'sign', name: '招牌匾', cost: 50000, desc: '路过的人多一成' },
       { id: 'board', name: '良心公示板', cost: 30000, desc: '良心灯笼亮时口碑每天 +0.3' },
       { id: 'pot2', name: '第二口锅', cost: 40000, desc: '最忙的器具多一口，产能 +12' },
-      { id: 'helper', name: '请帮工', cost: 10000, desc: '帮你把托盘上的菜端给客人；日薪 40，产能 +24' },
-      { id: 'counter', name: '加宽操作台', cost: 40000, desc: '菜单多一个位置' }
+      { id: 'helper', name: '请帮工', cost: 10000, desc: '帮你把托盘上的菜端给客人；日薪 30，产能 +24' },
+      { id: 'counter', name: '加宽操作台', cost: 40000, desc: '菜单多一个位置' },
+      { id: 'soymaker', name: '自助豆浆机', cost: 30000, desc: '夜里也有人来打豆浆：每晚进账约 15 元（灯笼暗了没人敢买）', passive: true },
+      { id: 'preorder', name: '预订小黑板', cost: 20000, desc: '熟客（好感 ≥3）睡前下单：每位每晚 +3 元', passive: true }
     ],
+    // 深空当铺参考（D039–D044）
+    origins: [
+      { id: 'heir', name: '接手老店', desc: '老周接下父亲的早餐铺。一切按部就班。', cash: 0, rep: 0, prof: 0 },
+      { id: 'stall', name: '夜市转行', desc: '摆了十年夜市，手艺熟，钱不多。基础菜一开始就有一星。', cash: -100000, rep: 0, prof: 4 },
+      { id: 'debt', name: '欠债开张', desc: '借钱盘下铺面，月底要还 1000 元。口碑从零做起。', cash: 0, rep: -10, prof: 0, debt: 100000 }
+    ],
+    perks: {
+      plus: [
+        { id: 'savings', name: '存款', desc: '启动资金 +600 元' },
+        { id: 'neighbors', name: '老街坊', desc: '开局口碑 +8，常客好感 +0.5' },
+        { id: 'quickhands', name: '手快', desc: '开局就有快火灶' }
+      ],
+      minus: [
+        { id: 'rent', name: '高房租', desc: '每天房租多 20 元' },
+        { id: 'oldstove', name: '老灶台', desc: '产能 −10' },
+        { id: 'picky', name: '挑剔街区', desc: '没等到的客人掉口碑翻倍' }
+      ]
+    },
+    chores: [
+      { id: 'hood', name: '洗油烟机', cost: 800, desc: '两天不洗：油烟呛人，口碑 −1，良心 −2' },
+      { id: 'waste', name: '泔水交正规回收', cost: 600, desc: '两天不交：泔水被人收走炼油，良心 −4' },
+      { id: 'sanitize', name: '消毒碗筷', cost: 500, desc: '两天不做：第二天客人更容易吃坏' }
+    ],
+    delivery: { chance: 0.4, fakeChance: 0.45, items: [
+      { id: 'oil', name: '散装菜籽油', save: 1500, burn: 6 },
+      { id: 'egg', name: '一箱“土鸡蛋”', save: 1000, burn: 4 },
+      { id: 'flour', name: '一袋面粉', save: 800, burn: 4 }
+    ] },
+    buyout: { price: 400000, day: 26 },
+    goals: { reward: 500, rewardRep: 0, allBonus: 1000 },
     eventChance: 0.6,
     menuSize: 4, menuSizeUpgraded: 5,
     weatherOdds: { sun: 0.5, cloud: 0.3, rain: 0.2 },
