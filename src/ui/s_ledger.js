@@ -87,7 +87,8 @@ BSX.define('ui/s_ledger', function (require) {
     if (mate && !s.today.leisure && !this.open) U.button(ctx, 'ledger_leisure', 430, 616, 250, 52, '和' + R.byId[mate].name + '猜拳', { kind: 'wood', size: 22, onTap: function () { self.app.openOverlay(Leisure, { who: mate }); } });
     else if (s.today.leisure && !this.open) U.text(ctx, R.byId[s.today.leisure.who].name + (s.today.leisure.win ? '：“再来一盘！”' : '：“承让承让”'), 440, 650, { size: 20, color: '#7d5a35' });
     var last = s.early || s.day >= s.days;
-    U.button(ctx, 'ledger_next', 900, 610, 220, 60, last ? '月底' : '收工', { size: 28, onTap: function () { if (last || !s.chores) self.next(); else self.app.openOverlay(Chores, { ledger: self }); } });
+    if (!last && s.chores && !this.open) { var miss = ['hood', 'waste', 'sanitize'].filter(function (c) { return !s.chores.plan[c]; }).length; U.button(ctx, 'ledger_chores', 694, 616, 190, 52, miss ? '收尾 省了' + miss + '项' : '收尾 ' + Run.choreCost(s) / 100 + '元', { kind: miss ? 'red' : 'paper', size: 19, onTap: function () { self.app.openOverlay(Chores, { ledger: self }); } }); }
+    U.button(ctx, 'ledger_next', 900, 610, 220, 60, last ? '月底' : '收工', { size: 28, onTap: function () { self.next(); } });
     if (this.open) this.drawDetail(ctx, s, L);
   };
   P.next = function () {
@@ -129,9 +130,8 @@ BSX.define('ui/s_ledger', function (require) {
     });
     var cost = Run.choreCost(s);
     U.text(ctx, '今晚收尾 ' + cost / 100 + ' 元', 240, 588, { size: 24, bold: true, color: '#7d5a35' });
-    U.button(ctx, 'chores_done', 860, 556, 220, 60, '收工，明天见', { size: 24, onTap: function () { app.closeOverlay(); self.ledger.next(); } });
-    U.button(ctx, 'chores_back', 620, 556, 200, 60, '再看看账', { kind: 'paper', size: 22, onTap: function () { app.closeOverlay(); } });
-  };
+    U.button(ctx, 'chores_done', 860, 556, 220, 60, '就这样', { size: 24, onTap: function () { app.closeOverlay(); } });
+      };
   function choreIcon(ctx, id, on, t) {
     ctx.lineWidth = 4; ctx.strokeStyle = '#5a3418';
     if (id === 'hood') { ctx.fillStyle = on ? '#c8ccd0' : '#7a6a50'; ctx.beginPath(); ctx.moveTo(-70, 30); ctx.lineTo(70, 30); ctx.lineTo(40, -30); ctx.lineTo(-40, -30); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillRect(-16, -60, 32, 30); if (!on) { ctx.fillStyle = 'rgba(80,60,30,.6)'; for (var i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(-40 + i * 26, 22 + (i % 2) * 4, 5, 0, 7); ctx.fill(); } } else { ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(-30, -14, 8, 30); } }

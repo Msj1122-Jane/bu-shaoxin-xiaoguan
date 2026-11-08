@@ -76,6 +76,7 @@ BSX.define('ui/s_service', function (require) {
     if (this.enc) { var E0 = this.enc; if (E0.state === 'wait' && this.results.length >= E0.at) { E0.state = 'come'; Au.play('bell'); } if (E0.state === 'come') { E0.x = Math.min(150, E0.x + 200 * dt); if (E0.x >= 150) { E0.state = 'stand'; E0.t = 0; } } else if (E0.state === 'stand') { E0.t += dt; if (E0.t > 20) E0.state = 'leave'; } else if (E0.state === 'leave') { E0.x -= 200 * dt; if (E0.x < -100) E0.state = 'done'; } }
     // 检查员突击：营业过半时进门
     if (this.raid) { var R0 = this.raid; if (R0.state === 'wait' && this.results.length >= Math.floor(this.plan.length / 2)) { R0.state = 'in'; Au.play('risk'); } if (R0.state === 'in') { R0.x = Math.min(640, R0.x + 300 * dt); if (R0.x >= 640) { R0.state = 'talk'; R0.t = 0; Au.play(R0.kind === 'bad' ? 'wrong' : 'perfect'); if (R0.kind === 'bad') Sc.shake = 0.4; } } else if (R0.state === 'talk') { R0.t += dt; if (R0.t > 3.2) R0.state = 'out'; } else if (R0.state === 'out') { R0.x -= 360 * dt; if (R0.x < -150) R0.state = 'done'; } }
+    this.kitchen.urgent = this.customers.some(function (c) { return (c.state === 'wait' && c.pat / c.patMax < 0.4) || c.state === 'leaving'; });
     this.customers.forEach(function (c) {
       var d = c.tx - c.x;
       if (Math.abs(d) > 2) c.x += Math.sign(d) * Math.min(Math.abs(d), 360 * dt);
@@ -111,6 +112,10 @@ BSX.define('ui/s_service', function (require) {
       var price = c.o.items.reduce(function (n, id) { return n + Math.round(D.byId[id].price * C.price.mult[this.app.state.price]); }.bind(this), 0) + (grade === 'sig' ? 1 : 0);
       this.cashFx = { v: price, t: 0 }; Au.play('coin'); this.kitchen.burst(c.x, 300, 'spark', grade === 'sig' ? 10 : 4); this.lastHappy = grade === 'sig' ? 1.4 : 0;
       c.sick = Run.sickRoll(this.app.state, c.o.id, c.cheats || 0); c.sickPending = c.sick;
+      if (!c.sick && grade === 'sig' && this.combo >= 2 && (this.walkins || 0) < 3 && this.queue.length < 6 && !c.cheats) {
+        this.walkins = (this.walkins || 0) + 1; var menu0 = this.app.state.menu, wo = { id: 'w' + this.walkins, regular: null, items: [menu0[(this.walkins * 7 + this.results.length) % menu0.length]], arrive: this.t + 1.2, walkin: true };
+        this.plan.push(wo); this.queue.splice(0, 0, wo); this.kitchen.float(c.x, 170, '闻香而来 +1 位', '#ffe28a', 28);
+      }
       if (!c.sick && grade !== 'rush') { this.combo++; this.maxCombo = Math.max(this.maxCombo, this.combo); if (this.combo >= 2) { var tip = Math.min(this.combo, C.combo.max) * C.combo.tipPer; this.comboTips += tip; this.comboFx = { n: this.combo, tip: tip, t: 0 }; for (var ci = 0; ci < Math.min(18, 4 + this.combo * 2); ci++) this.kitchen.parts.push({ x: 1125, y: 120, vx: (Math.random() - 0.5) * 300, vy: -200 - Math.random() * 200, t: 0, life: 1.1, kind: 'coin' }); Au.play('perfect'); } }
       else if (this.combo >= 2) { this.comboFx = { n: 0, t: 0 }; this.combo = 0; } else this.combo = 0;
       if (c.o.regular) { var r = R.byId[c.o.regular]; c.talk = { text: this.app.state.burn >= 60 ? '……味道好像变了' : grade === 'rush' ? r.lines.meh : r.lines.happy, t: 1.6, mood: this.app.state.burn >= 60 ? 'wary' : null }; }
@@ -124,6 +129,9 @@ BSX.define('ui/s_service', function (require) {
     c.talk = { text: c.o.regular ? '肚子疼…' : '肚子疼！退钱！', t: 2 };
     this.cashFx = { v: -c.o.items.reduce(function (n, id) { return n + Math.round(D.byId[id].price * C.price.mult[this.app.state.price]); }.bind(this), 0), t: 0 };
     this.kitchen.float(c.x, 200, '差评 −口碑', '#ff8a6a', 30);
+    // 当场的连锁反应：排队的人看见了，掉头就走（D049）
+    var other = this.customers.filter(function (o) { return o !== c && !o.resolved && o.state === 'wait' && !o.o.regular; })[0];
+    if (other) { other.state = 'leaving'; other.grace = 0.7; other.talk = { text: '算了，不吃了', t: 1.4, mood: 'wary' }; this.kitchen.float(other.x, 170, '吓走一位', '#ff8a6a', 26); }
   };
   P.deliverTo = function (c) {
     if (!c || c.resolved || c.state === 'enter') return false;
@@ -181,6 +189,7 @@ BSX.define('ui/s_service', function (require) {
     if (k.tray.length) U.hit('tray', k.trayRect.x, k.trayRect.y - 10, k.trayRect.w, k.trayRect.h + 20, { label: '托盘', onDown: function (x, y) { return self.startTrayDrag(x, y); }, onTap: function () {} });
     // 顾客热区（点击也能交付：辅助）
     this.customers.forEach(function (c) { if (!c.resolved && c.state !== 'enter') U.hit('cust_' + c.o.id, c.x - 90, 160, 180, 340, { label: '顾客' + (c.o.regular ? R.byId[c.o.regular].name : ''), kind: 'customer', onTap: function () { if (k.tray.length) self.deliverTo(c); } }); });
+    k.drawUrgent(ctx);
     k.drawPicker(ctx);
     this.drawRaid(ctx);
     this.drawEncounter(ctx);
