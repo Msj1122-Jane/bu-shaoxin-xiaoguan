@@ -87,10 +87,12 @@ BSX.define('game/cooking', function (require) {
     var c = D.stations[st.type].cheat;
     job.cheats = 1; job.cheatGain = c.save; this.cheatsUsed++;
     Au.play('coin'); Au.play('risk'); this.vibrate('light');
-    this.float(VC.x + 210, VC.y + 80, '+' + (c.save / 100) + '元', '#ffd45a', 34);
-    for (var i = 0; i < 6; i++) this.parts.push({ x: VC.x + 210, y: VC.y + 120, vx: (Math.random() - 0.5) * 160, vy: -120 - Math.random() * 120, t: 0, life: 0.9, kind: 'coin' });
+    var fx = this.open === st ? VC.x + 210 : st.cx, fy = this.open === st ? VC.y + 80 : st.y - 40;
+    this.float(fx, fy, '偷懒 +' + (c.save / 100) + '元', '#ffd45a', 34);
+    for (var i = 0; i < 6; i++) this.parts.push({ x: fx, y: fy + 40, vx: (Math.random() - 0.5) * 160, vy: -120 - Math.random() * 120, t: 0, life: 0.9, kind: 'coin' });
     if (this.onCheat) this.onCheat(st, c);
-    this.finishStep(st, 0.8);
+    // 一下做完：剩下的工序全部糊弄过去（省时间，但这一碗是在赌）
+    var guard = 0; while (st.job === job && guard++ < 8) this.finishStep(st, 0.78);
     return true;
   };
   K.float = function (x, y, text, col, size) { this.floats.push({ x: x, y: y, text: text, col: col, size: size || 30, t: 0 }); };
@@ -304,6 +306,21 @@ BSX.define('game/cooking', function (require) {
       if (s.g === 'timing' && step.bg) { var w2 = this.windowFor(job, step); U.ring(ctx, st.cx + 53, st.y + 5, 26, Math.min(1, s.p), s.p > w2[1] ? '#e0603a' : s.p >= w2[0] ? '#ffd45a' : '#f2e6c8', 6); }
       else { ctx.save(); ctx.fillStyle = 'rgba(30,20,10,.6)'; U.rr(ctx, st.cx - 60, st.y - 10, 82, 26, 8); ctx.fill(); ctx.restore(); U.text(ctx, (job.idx + 1) + '/' + D.byId[job.dish].steps.length, st.cx - 19, st.y + 8, { size: 18, align: 'center', color: '#fff3d6', bold: true }); }
     }
+  };
+  // 客人快等不及时，锅上冒出“偷懒·一下做完”：诱惑就在手边（D049）
+  K.drawUrgent = function (ctx) {
+    if (!this.urgent) return;
+    var self = this;
+    this.stations.forEach(function (st) {
+      var job = st.job; if (!job || job.cheats || self.open === st) return;
+      var x = st.cx - 70, y = st.y - 74, pulse = 1 + Math.sin(self.t * 8) * 0.05;
+      var h = U.hit('cheat_st_' + st.id, x, y, 140, 44, { label: '偷懒·一下做完', minSize: 44, onTap: function () { self.cheat(st); } });
+      ctx.save(); ctx.translate(st.cx, y + 22); ctx.scale(pulse * (h.pressed ? 0.94 : 1), pulse * (h.pressed ? 0.94 : 1));
+      ctx.fillStyle = '#7a1e14'; U.rr(ctx, -72, -20, 144, 44, 12); ctx.fill();
+      ctx.fillStyle = '#c0392b'; U.rr(ctx, -70, -22, 140, 40, 12); ctx.fill();
+      ctx.restore();
+      U.text(ctx, '偷懒·一下做完', st.cx, y + 29, { size: 18, bold: true, align: 'center', color: '#fff3d6' });
+    });
   };
   // 多菜共用器具的选菜气泡：最后绘制、最后注册热区，位于最上层
   K.drawPicker = function (ctx) {

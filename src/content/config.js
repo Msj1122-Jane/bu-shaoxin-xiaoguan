@@ -92,7 +92,7 @@ BSX.define('content/config', function () {
       { id: 'waste', name: '泔水交正规回收', cost: 600, desc: '两天不交：泔水被人收走炼油，良心 −4' },
       { id: 'sanitize', name: '消毒碗筷', cost: 500, desc: '两天不做：第二天客人更容易吃坏' }
     ],
-    delivery: { chance: 0.4, fakeChance: 0.45, items: [
+    delivery: { chance: 0.25, fakeChance: 0.45, items: [
       { id: 'oil', name: '散装菜籽油', save: 1500, burn: 6 },
       { id: 'egg', name: '一箱“土鸡蛋”', save: 1000, burn: 4 },
       { id: 'flour', name: '一袋面粉', save: 800, burn: 4 }

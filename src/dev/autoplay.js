@@ -89,7 +89,7 @@ BSX.define('dev/autoplay', function (require) {
     if (name === 'prep') return this.prep(scr, s);
     if (name === 'service') return this.service(scr, s);
     if (name === 'story') return this.story(scr, s);
-    if (name === 'ledger') { this.wait = 0.4; if (!s.today.leisure && this.tapHit('ledger_leisure')) return; this.tapHit('ledger_next'); return; }
+    if (name === 'ledger') { this.wait = 0.4; if (!s.today.leisure && this.tapHit('ledger_leisure')) return; if (this.pol.cheat && s.chores && s.chores.plan.hood && this.tapHit('ledger_chores')) return; this.tapHit('ledger_next'); return; }
     if (name === 'ending' || name === 'weekResult') { this.done = true; return; }
     this.wait = 0.3;
   };
