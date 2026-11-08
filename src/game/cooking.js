@@ -39,7 +39,7 @@ BSX.define('game/cooking', function (require) {
     return [Math.max(0.05, w[0] - bonus), Math.min(0.99, w[1] + bonus)];
   };
   K.startJob = function (st, dish) {
-    st.job = { dish: dish, idx: 0, scores: [], s: null, done: false, attempts: 0 };
+    st.job = { dish: dish, idx: 0, scores: [], s: null, done: false, attempts: 0, mat: null };
     this.beginStep(st);
     this.log.push('start ' + dish);
   };
@@ -149,6 +149,8 @@ BSX.define('game/cooking', function (require) {
   K.closeupPointer = function (type, x, y) {
     var st = this.open, job = st.job;
     if (!job) { this.open = null; return false; }
+    if (!job.mat) return false; // 先选料：交给选料按钮处理
+
     var step = this.stepOf(st), s = job.s;
     var inPanel = x >= PANEL.x && x <= PANEL.x + PANEL.w && y >= PANEL.y && y <= PANEL.y + PANEL.h;
     if (type === 'down' && !inPanel) { this.close(); return true; }
@@ -307,6 +309,40 @@ BSX.define('game/cooking', function (require) {
       else { ctx.save(); ctx.fillStyle = 'rgba(30,20,10,.6)'; U.rr(ctx, st.cx - 60, st.y - 10, 82, 26, 8); ctx.fill(); ctx.restore(); U.text(ctx, (job.idx + 1) + '/' + D.byId[job.dish].steps.length, st.cx - 19, st.y + 8, { size: 18, align: 'center', color: '#fff3d6', bold: true }); }
     }
   };
+  // 好料 / 便宜料并排放：拿哪个下锅就是良心选择（D051，替代“偷懒”按钮）
+  var MAT = { pot: ['新米', '陈米'], fryer: ['新油', '回锅油'], soy: ['现磨黄豆', '兑水豆浆'], pan: ['新油', '回锅油'], wok: ['现蒸米饭', '隔夜饭'], noodle: ['鲜面·新汤', '隔夜汤'], stew: ['新卤汁', '隔夜卤'], steamer: ['鲜肉馅', '过期馅'] };
+  K.MAT = MAT;
+  K.chooseMat = function (st, cheap) {
+    var job = st.job; if (!job || job.mat) return;
+    job.mat = cheap ? 'cheap' : 'good';
+    if (cheap) {
+      var c = D.stations[st.type].cheat; job.cheats = 1; job.cheatGain = c.save; this.cheatsUsed++;
+      Au.play('coin'); Au.play('risk'); this.vibrate('light');
+      this.float(VC.x + 160, VC.y - 60, '+' + c.save / 100 + '元', '#ffd45a', 34);
+      for (var i = 0; i < 6; i++) this.parts.push({ x: VC.x + 160, y: VC.y, vx: (Math.random() - 0.5) * 160, vy: -120 - Math.random() * 120, t: 0, life: 0.9, kind: 'coin' });
+      if (this.onCheat) this.onCheat(st, c);
+    } else { Au.play('pickup'); this.burst(VC.x - 160, VC.y, 'spark', 6); }
+  };
+  K.drawMaterialChoice = function (ctx, st) {
+    var self = this, names = MAT[st.type] || ['好料', '便宜料'], save = (D.stations[st.type].cheat || { save: 250 }).save / 100;
+    ctx.save(); ctx.fillStyle = 'rgba(20,12,6,.62)'; U.rr(ctx, PANEL.x + 20, PANEL.y + 80, PANEL.w - 40, PANEL.h - 100, 18); ctx.fill(); ctx.restore();
+    U.text(ctx, '用哪份料？', PANEL.x + PANEL.w / 2, PANEL.y + 136, { size: 32, bold: true, align: 'center', color: '#fff3d6', stroke: '#3b2412' });
+    [[0, names[0], '#2f6f66', '放心', 'mat_good'], [1, names[1], '#a8432f', '省 ' + save + ' 元', 'mat_cheap']].forEach(function (o) {
+      var w = 230, h = 250, x = PANEL.x + PANEL.w / 2 - w - 20 + o[0] * (w + 40), y = PANEL.y + 170;
+      var hit = U.hit(o[4], x, y, w, h, { label: o[1], onTap: function () { self.chooseMat(st, o[0] === 1); } });
+      var lift = hit.pressed ? 4 : Math.sin(self.t * 3 + o[0]) * 2;
+      ctx.save(); ctx.fillStyle = '#fff8e8'; U.rr(ctx, x, y + lift, w, h, 16); ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = o[2]; ctx.stroke(); ctx.restore();
+      // 料：好料是干净的白袋/金黄油瓶，便宜料是灰暗、带污渍的
+      var cx = x + w / 2, cy = y + 104 + lift;
+      ctx.fillStyle = o[0] ? '#8a7a62' : '#efe6d2'; U.rr(ctx, cx - 50, cy - 56, 100, 112, 20); ctx.fill();
+      ctx.fillStyle = o[0] ? '#6a5a42' : '#d8ccb0'; ctx.fillRect(cx - 30, cy - 66, 60, 16);
+      if (o[0]) { ctx.fillStyle = 'rgba(60,40,20,.5)'; ctx.beginPath(); ctx.arc(cx + 22, cy + 22, 14, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(cx - 18, cy - 10, 8, 0, 7); ctx.fill(); }
+      else { ctx.fillStyle = '#ffd45a'; ctx.beginPath(); ctx.arc(cx + 30, cy - 34, 14, 0, 7); ctx.fill(); U.text(ctx, '鲜', cx + 30, cy - 27, { size: 16, bold: true, align: 'center', color: '#5a3418' }); }
+      U.text(ctx, o[1], cx, y + 196 + lift, { size: 24, bold: true, align: 'center', color: '#3b2a1a', maxW: w - 20 });
+      ctx.save(); ctx.fillStyle = o[2]; U.rr(ctx, cx - 60, y + 210 + lift, 120, 30, 8); ctx.fill(); ctx.restore();
+      U.text(ctx, o[3], cx, y + 232 + lift, { size: 18, bold: true, align: 'center', color: '#fff' });
+    });
+  };
   // 客人快等不及时，锅上冒出“偷懒·一下做完”：诱惑就在手边（D049）
   K.drawUrgent = function (ctx) {
     if (!this.urgent) return;
@@ -402,21 +438,7 @@ BSX.define('game/cooking', function (require) {
     var cl = U.hit('closeup_close', PANEL.x + PANEL.w - 74, PANEL.y + 12, 60, 60, { label: '放一放', onTap: function () { self.close(); } });
     ctx.save(); ctx.fillStyle = cl.pressed ? '#6e4224' : 'rgba(60,30,10,.55)'; U.rr(ctx, PANEL.x + PANEL.w - 74, PANEL.y + 12, 60, 60, 12); ctx.fill(); ctx.restore();
     U.text(ctx, step.bg && s.g === 'timing' ? '⇣' : '×', PANEL.x + PANEL.w - 44, PANEL.y + 54, { size: 34, align: 'center', color: '#fff8e8', bold: true });
-    var ch = D.stations[st.type].cheat;
-    if (ch) {
-      var jx = PANEL.x + PANEL.w - 150, jy = PANEL.y + PANEL.h - 150, used = !!st.job.cheats;
-      var hj = U.hit('cheat_btn', jx, jy, 130, 130, { label: '捷径：' + ch.label, disabled: used, onTap: function () { self.cheat(st); } });
-      ctx.save(); if (used) ctx.globalAlpha = 0.35;
-      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(jx + 65, jy + 118, 46, 10, 0, 0, 7); ctx.fill();
-      var wob = hj.pressed ? 4 : Math.sin(this.t * 3) * 1.5;
-      ctx.fillStyle = '#3a2a22'; U.rr(ctx, jx + 28, jy + 30 + wob, 74, 86, 14); ctx.fill();
-      ctx.fillStyle = '#5a3a2a'; ctx.fillRect(jx + 40, jy + 18 + wob, 50, 16);
-      ctx.fillStyle = '#b8432f'; U.rr(ctx, jx + 32, jy + 58 + wob, 66, 34, 6); ctx.fill();
-      U.text(ctx, ch.label, jx + 65, jy + 82 + wob, { size: 18, bold: true, align: 'center', color: '#fff3d6' });
-      if (!used) { ctx.globalAlpha = 0.25 + Math.sin(this.t * 4) * 0.15; ctx.fillStyle = '#ff6a3a'; ctx.beginPath(); ctx.arc(jx + 65, jy + 66, 64, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
-      ctx.restore();
-      U.text(ctx, used ? '已经偷过懒了' : '省事 +' + ch.save / 100 + '元', jx + 65, jy + 8, { size: 18, bold: true, align: 'center', color: used ? '#cdb79a' : '#ffd45a', stroke: '#3b2412', strokeW: 3 });
-    }
+    if (!st.job.mat) this.drawMaterialChoice(ctx, st);
     if (step.bg && s.g === 'timing') U.text(ctx, '可以先去忙', PANEL.x + PANEL.w - 90, PANEL.y + 98, { size: 18, align: 'right', color: '#fff3d6', stroke: '#4a2a12', strokeW: 3 });
     this.drawParts(ctx, true);
     this.drawPerfect(ctx);

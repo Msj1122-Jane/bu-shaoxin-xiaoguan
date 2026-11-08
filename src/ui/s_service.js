@@ -150,7 +150,7 @@ BSX.define('ui/s_service', function (require) {
   P.pointerFirst = function (type, x, y, hit) {
     if (this.kitchen.open) {
       this.idle = 0;
-      if (hit && (hit.id === 'closeup_close' || hit.id === 'cheat_btn')) return false;
+      if (hit && (hit.id === 'closeup_close' || hit.id === 'cheat_btn' || hit.id === 'mat_good' || hit.id === 'mat_cheap')) return false;
       if (hit && hit.id === 'hud_pause') return false;
       var k = this.kitchen;
       k.closeupPointer(type, x, y);
@@ -189,7 +189,6 @@ BSX.define('ui/s_service', function (require) {
     if (k.tray.length) U.hit('tray', k.trayRect.x, k.trayRect.y - 10, k.trayRect.w, k.trayRect.h + 20, { label: '托盘', onDown: function (x, y) { return self.startTrayDrag(x, y); }, onTap: function () {} });
     // 顾客热区（点击也能交付：辅助）
     this.customers.forEach(function (c) { if (!c.resolved && c.state !== 'enter') U.hit('cust_' + c.o.id, c.x - 90, 160, 180, 340, { label: '顾客' + (c.o.regular ? R.byId[c.o.regular].name : ''), kind: 'customer', onTap: function () { if (k.tray.length) self.deliverTo(c); } }); });
-    k.drawUrgent(ctx);
     k.drawPicker(ctx);
     this.drawRaid(ctx);
     this.drawEncounter(ctx);
@@ -298,6 +297,29 @@ BSX.define('ui/s_service', function (require) {
     if (this.banner) { var b = this.banner, a = Math.min(1, b.t * 4) * Math.min(1, (2.2 - b.t) * 3), sx = (1 - Math.min(1, b.t * 3)) * 400;
       ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = 'rgba(184,67,47,.9)'; ctx.fillRect(0, 300, 1280, 90); U.text(ctx, b.text, 640 + sx, 362, { size: 52, bold: true, align: 'center', color: '#fff3d6', stroke: '#5a1a10', strokeW: 8 }); U.text(ctx, b.sub, 640 - sx, 410, { size: 20, align: 'center', color: '#fff3d6', stroke: '#3b2412' }); ctx.restore(); }
   };
+
+  // 像素表情（16×16，放大绘制）：一眼看懂客人满不满意（D052）
+  var FACE = {
+    love: ['....YYYYYYYY....','..YYYYYYYYYYYY..','.YYYYYYYYYYYYYY.','.YRR.RRYYRR.RRY.','YRRRRRRYYRRRRRRY','YRRRRRRYYRRRRRRY','YYRRRRYYYYRRRRYY','YYYRRYYYYYYRRYYY','YYYYYYYYYYYYYYYY','YYPPYYYYYYYYPPYY','YYYYKYYYYYYKYYYY','.YYYYKKKKKKYYYY.','.YYYYYKKKKYYYYY.','..YYYYYYYYYYYY..','....YYYYYYYY....','................'],
+    happy:['....YYYYYYYY....','..YYYYYYYYYYYY..','.YYYYYYYYYYYYYY.','.YYYKKYYYYKKYYY.','YYYYKKYYYYKKYYYY','YYYYKKYYYYKKYYYY','YYYYYYYYYYYYYYYY','YYPPYYYYYYYYPPYY','YYYYYYYYYYYYYYYY','YYYKYYYYYYYYKYYY','YYYYKKKKKKKKYYYY','.YYYYKKKKKKYYYY.','.YYYYYYYYYYYYYY.','..YYYYYYYYYYYY..','....YYYYYYYY....','................'],
+    meh:  ['....YYYYYYYY....','..YYYYYYYYYYYY..','.YYYYYYYYYYYYYY.','.YYYYYYYYYYYYYY.','YYYKKKYYYYKKKYYY','YYYYYYYYYYYYYYYY','YYYYKKYYYYKKYYYY','YYYYKKYYYYKKYYYY','YYYYYYYYYYYYYYYY','YYYYYYYYYYYYYYYY','YYYYYKKKKKKYYYYY','.YYYYYYYYYYYYYY.','.YYYYYYYYYYYYYY.','..YYYYYYYYYYYY..','....YYYYYYYY....','................'],
+    sick: ['....GGGGGGGG....','..GGGGGGGGGGGG..','.GGGGGGGGGGGGGG.','.GGKKGGGGGGKKGG.','GGGGKKGGGGKKGGGG','GGGKKGGGGGGKKGGG','GGGGGGGGGGGGGGGG','GGGGGGGGGGGGGGGG','GGGGGKKKKKKGGGGG','GGGGKWWWWWWKGGGG','GGGGKWWWWWWKGGGG','.GGGGKKKKKKGGGG.','.GGGGGGGGGGGGGG.','..GGGGGGGGGGGG..','....GGGGGGGG....','................'],
+    angry:['....OOOOOOOO....','..OOOOOOOOOOOO..','.OOOOOOOOOOOOOO.','.OOKKOOOOOOKKOO.','OOOOKKOOOOKKOOOO','OOOOOKKOOKKOOOOO','OOOOKKOOOOKKOOOO','OOOOKKOOOOKKOOOO','OOOOOOOOOOOOOOOO','OOOOOOOOOOOOOOOO','OOOOOKKKKKKOOOOO','.OOOKOOOOOOKOOO.','.OOOOOOOOOOOOOO.','..OOOOOOOOOOOO..','....OOOOOOOO....','................']
+  };
+  var FCOL = { Y: '#ffd24a', R: '#e8453a', K: '#3b2412', P: '#ff9a7a', G: '#9acb5a', W: '#fff8e8', O: '#ff7a4a' }, FCACHE = {};
+  function face(ctx, kind, cx, cy, size, alpha) {
+    var c = FCACHE[kind];
+    if (!c) {
+      c = BSX.require('game/assets').P.createCanvas(18, 18); var g = c.getContext('2d'), m = FACE[kind];
+      for (var y = 0; y < 16; y++) for (var x = 0; x < 16; x++) { var ch = m[y][x]; if (ch === '.') continue; g.fillStyle = FCOL[ch]; g.fillRect(x + 1, y + 1, 1, 1); }
+      // 1px 深色描边
+      var im = g.getImageData(0, 0, 18, 18), d = im.data, o = g.createImageData(18, 18);
+      for (var i = 0; i < 18 * 18; i++) { if (d[i * 4 + 3]) continue; var px = i % 18, py = (i / 18) | 0, near = [[-1, 0], [1, 0], [0, -1], [0, 1]].some(function (q) { var nx = px + q[0], ny = py + q[1]; return nx >= 0 && ny >= 0 && nx < 18 && ny < 18 && d[(ny * 18 + nx) * 4 + 3]; }); if (near) { o.data[i * 4] = 59; o.data[i * 4 + 1] = 36; o.data[i * 4 + 2] = 18; o.data[i * 4 + 3] = 255; } }
+      var c2 = BSX.require('game/assets').P.createCanvas(18, 18), g2 = c2.getContext('2d'); g2.putImageData(o, 0, 0); g2.drawImage(c, 0, 0); c = c2; FCACHE[kind] = c;
+    }
+    ctx.save(); ctx.imageSmoothingEnabled = false; if (alpha != null) ctx.globalAlpha *= alpha;
+    ctx.drawImage(c, Math.round(cx - size / 2), Math.round(cy - size / 2), size, size); ctx.restore();
+  }
   P.drawCustomer = function (ctx, c) {
     var o = c.o, who = o.regular || 'neighbor', t = this.t;
     var bob = c.bob > 0 ? Math.sin((0.3 - c.bob) / 0.3 * Math.PI) * -12 : 0; if (c.bob > 0) c.bob -= 1 / 60;
@@ -309,7 +331,7 @@ BSX.define('ui/s_service', function (require) {
     if (o.regular) Act.draw(ctx, who, c.x + wrongX, FOOT, who === 'zhao' ? H * 0.95 : H, { t: t, flip: flip, ph: c.seed });
     else Act.draw(ctx, 'neighbor', c.x + wrongX, FOOT, H * 0.95, { t: t, seed: c.seed, flip: flip, walk: c.state === 'enter' || c.state === 'out' });
     ctx.restore();
-    if (c.state === 'sick') { var sk = Math.sin(this.t * 30) * 4; ctx.save(); ctx.globalAlpha = 0.85; for (var q = 0; q < 3; q++) { ctx.strokeStyle = '#7ab040'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(c.x + sk, 230 - q * 6, 14 + q * 8, this.t * 6 + q, this.t * 6 + q + 4); ctx.stroke(); } ctx.restore(); A.cell(ctx, 'atlas_ui', 14, c.x - 30 + sk, 120, 60, 60, { trim: true, fit: true, anchor: 'center' }); if (c.talk) { var tw0 = 40 + c.talk.text.length * 26; U.bubble(ctx, c.x - tw0 / 2 + 60, 198, tw0, 46, c.x + 30, { fill: '#b8432f', line: '#6d2014' }); U.text(ctx, c.talk.text, c.x + 60, 230, { size: 24, align: 'center', color: '#fff8e8', bold: true }); } return; }
+    if (c.state === 'sick') { var sk = Math.sin(this.t * 30) * 4; ctx.save(); ctx.globalAlpha = 0.85; for (var q = 0; q < 3; q++) { ctx.strokeStyle = '#7ab040'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(c.x + sk, 230 - q * 6, 14 + q * 8, this.t * 6 + q, this.t * 6 + q + 4); ctx.stroke(); } ctx.restore(); face(ctx, 'sick', c.x + sk, 150, 100); if (c.talk) { var tw0 = 40 + c.talk.text.length * 26; U.bubble(ctx, c.x - tw0 / 2 + 60, 198, tw0, 46, c.x + 30, { fill: '#b8432f', line: '#6d2014' }); U.text(ctx, c.talk.text, c.x + 60, 230, { size: 24, align: 'center', color: '#fff8e8', bold: true }); } return; }
     if (c.state === 'out' || c.state === 'enter') return;
     // 订单气泡：食物图案为主
     var n = o.items.length, bw = 30 + n * 70, bx = c.x - bw / 2, by = 112;
@@ -326,12 +348,13 @@ BSX.define('ui/s_service', function (require) {
       var f = c.state === 'leaving' ? c.grace / C.patience.leaveGrace : c.pat / c.patMax;
       var col = f > 0.5 ? '#5aa04a' : f > 0.25 ? '#e8b54a' : '#d0603a';
       U.ring(ctx, bx - 4, by + 4, 20, f, col, 7);
-      if (c.state === 'leaving') { U.text(ctx, '!', bx - 4, by + 13, { size: 24, bold: true, align: 'center', color: '#d0603a' }); }
+      if (c.state === 'leaving') face(ctx, 'angry', bx - 4, by + 4, 54 + Math.sin(t * 14) * 4);
       if (o.regular) { ctx.save(); ctx.beginPath(); ctx.arc(bx + bw + 4, by + 8, 20, 0, 7); ctx.fillStyle = '#efe0bf'; ctx.fill(); ctx.clip(); Act.portrait(ctx, o.regular, bx + bw - 16, by - 12, 40); ctx.restore(); ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(bx + bw + 4, by + 8, 20, 0, 7); ctx.stroke(); }
     } else {
       // 接餐反应：招牌爱心、家常小花、匆忙点头
-      var k2 = 1 - c.eat / 1.6, icon = c.frown ? null : c.grade === 'sig' ? 10 : c.grade === 'home' ? 9 : null;
-      if (icon != null) A.cell(ctx, 'atlas_vfx', icon, c.x - 40, 150 - k2 * 40, 80, 80, { trim: true, fit: true, anchor: 'center' });
+      var k2 = 1 - c.eat / 1.6, kind = c.frown || c.grade === 'rush' ? 'meh' : c.grade === 'sig' ? 'love' : 'happy';
+      var pop = k2 < 0.18 ? 0.6 + k2 / 0.18 * 0.55 : k2 < 0.3 ? 1.15 - (k2 - 0.18) / 0.12 * 0.15 : 1;
+      face(ctx, kind, c.x, 160 - k2 * 24, 96 * pop);
       A.cell(ctx, 'atlas_vfx', 8, c.x + 30, 220 - k2 * 120, 46, 46, { trim: true, fit: true, anchor: 'center' });
     }
     if (c.talk) { var tw = 40 + c.talk.text.length * 26, wary = c.talk.mood === 'wary', fr = c.talk.mood === 'friend'; U.bubble(ctx, c.x - tw / 2 + 60, 198, tw, 46, c.x + 30, { fill: wary ? '#8a5a3a' : fr ? '#c88a30' : '#2f6f66', line: '#fff3d6' }); U.text(ctx, c.talk.text, c.x + 60, 230, { size: 24, align: 'center', color: '#fff8e8', bold: true }); }
