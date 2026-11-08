@@ -33,7 +33,7 @@ BSX.define('ui/s_basic', function (require) {
     if (this.entered) return; this.entered = true;
     var st = this.app.P.storage, seen = false; try { seen = st.get('bsx_intro') === '1'; } catch (e) {}
     var pr = this.app.P.params, force = pr && pr.has('intro'), auto = ((pr && (pr.has('dev') || pr.has('auto'))) || (typeof navigator !== 'undefined' && navigator.webdriver)) && !force;
-    var nu = pr && pr.has('newui');
+    var nu = !(pr && pr.has('oldui'));
     if (((!seen && !auto) && nu) || force) { try { st.set('bsx_intro', '1'); } catch (e) {} this.app.go(X.Intro); } else this.app.go(X.Title);
   };
   X.Loading.prototype.draw = function (ctx) {
@@ -270,8 +270,8 @@ BSX.define('ui/s_basic', function (require) {
   };
   X.TitleOld.prototype.describe = function () { return { canContinue: this.canContinue, continueDay: this.contDay, legacyRuns: this.app.legacy.runs, notice: this.notice }; };
   X.TitleNew.prototype.describe = X.TitleOld.prototype.describe;
-  // 默认用原首页；加 ?newui 预览像素风新首页与片头（等用户参考确认后再切换）
-  X.Title = function (app, p) { var pr = app.P.params, T = pr && pr.has('newui') ? X.TitleNew : X.TitleOld; return new T(app, p); };
+  // 默认用像素风街景首页（用户 11-09 确认）；?oldui 可看旧首页
+  X.Title = function (app, p) { var pr = app.P.params, T = pr && pr.has('oldui') ? X.TitleOld : X.TitleNew; return new T(app, p); };
 
   // ───────── 确认弹窗
   X.Confirm = function (app, p) { this.name = 'confirm'; this.app = app; this.p = p; };

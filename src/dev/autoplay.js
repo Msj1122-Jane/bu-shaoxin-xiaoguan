@@ -129,7 +129,7 @@ BSX.define('dev/autoplay', function (require) {
     if (scr.enc && scr.enc.state === 'stand' && this.tapHit('encounter')) { this.wait = 0.3; return; }
     if (k.open && k.open.job) {
       var st = k.open, step = k.stepOf(st), js = st.job.s, V = G.vessel;
-      if (this.pol.cheat && !st.job.cheats && Math.random() < this.pol.cheat && this.tapHit('cheat_btn', 0.1)) { this.g('cheat'); this.wait = 0.2; return; }
+      if (!st.job.mat) { var cheapPick = this.pol.cheat && Math.random() < this.pol.cheat; this.tapHit(cheapPick ? 'mat_cheap' : 'mat_good', 0.1); if (cheapPick) this.g('cheat'); this.wait = 0.25; return; }
       this.g(js.g);
       if (js.g === 'drag') {
         var src = step.key === 'scoop' ? { x: V.x, y: V.y } : G.source, tg = step.key === 'scoop' ? G.bowl : V;
