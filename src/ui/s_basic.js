@@ -33,7 +33,8 @@ BSX.define('ui/s_basic', function (require) {
     if (this.entered) return; this.entered = true;
     var st = this.app.P.storage, seen = false; try { seen = st.get('bsx_intro') === '1'; } catch (e) {}
     var pr = this.app.P.params, force = pr && pr.has('intro'), auto = ((pr && (pr.has('dev') || pr.has('auto'))) || (typeof navigator !== 'undefined' && navigator.webdriver)) && !force;
-    if ((!seen && !auto) || force) { try { st.set('bsx_intro', '1'); } catch (e) {} this.app.go(X.Intro); } else this.app.go(X.Title);
+    var nu = pr && pr.has('newui');
+    if (((!seen && !auto) && nu) || force) { try { st.set('bsx_intro', '1'); } catch (e) {} this.app.go(X.Intro); } else this.app.go(X.Title);
   };
   X.Loading.prototype.draw = function (ctx) {
     var self = this, app = this.app, t = this.t;
@@ -179,27 +180,27 @@ BSX.define('ui/s_basic', function (require) {
 
   // ───────── 标题
   // ───────── 首页：画就是菜单（卷帘门=开门，小黑板=重新开张，墙上告示=店史，电表箱=设置，自行车=常营业）
-  X.Title = function (app, p) {
+  X.TitleNew = function (app, p) {
     this.name = 'title'; this.app = app; this.t = 0; this.lift = 0; this.hold = 0; this.go = null; this.parts = [];
     Sc.set({ view: 'ext', time: 'morning', weather: 'sun', shutter: 0, crowd: 0 }); Sc.moveCam(640, 360, 1, 0);
     var r = app.store.loadRun(); this.canContinue = !!(r && r.state.phase !== 'ended'); this.contDay = r ? r.state.day : 0; this.contMode = r ? r.state.mode : null;
     this.notice = app.store.notice; app.store.notice = null;
     Au.setAmbience('morning', false); Au.music('bgm_dawn');
   };
-  X.Title.prototype.update = function (dt) {
+  X.TitleNew.prototype.update = function (dt) {
     this.t += dt;
     if (this.holding) { this.hold = Math.min(1, this.hold + dt / 0.55); if (this.hold >= 1) this.fire(); } else if (!this.go) this.hold = Math.max(0, this.hold - dt * 2);
     if (this.go) { this.lift = Math.min(1, this.lift + dt * 1.6); if (this.lift >= 1 && !this.go.done) { this.go.done = true; this.go.fn(); } }
     if (Math.random() < 0.3) this.parts.push({ x: 660 + Math.random() * 90, y: 350, vx: (Math.random() - 0.5) * 10, vy: -26 - Math.random() * 16, r: 7 + Math.random() * 7, life: 2.2, t: 0 });
     this.parts.forEach(function (p) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; }); this.parts = this.parts.filter(function (p) { return p.t < p.life; });
   };
-  X.Title.prototype.action = function () {
+  X.TitleNew.prototype.action = function () {
     var app = this.app, self = this, any = app.legacy.runs > 0;
     if (this.canContinue) return function () { if (!app.continueRun()) app.notice('没有可继续的存档'); };
     return function () { if (any) { self.go = null; self.lift = 0; app.openOverlay(X.NewMonth); } else app.newRun({ seed: (Date.now() % 1e9) >>> 0 }); };
   };
-  X.Title.prototype.fire = function () { if (this.go) return; this.holding = false; Au.play('shutter'); this.go = { fn: this.action(), done: false }; };
-  X.Title.prototype.draw = function (ctx) {
+  X.TitleNew.prototype.fire = function () { if (this.go) return; this.holding = false; Au.play('shutter'); this.go = { fn: this.action(), done: false }; };
+  X.TitleNew.prototype.draw = function (ctx) {
     var app = this.app, self = this, L = app.legacy, t = this.t, any = L.runs > 0;
     Sc.drawBack(ctx); Sc.drawFront(ctx);
     // 卷帘门后：拉起时露出店里的暖光
@@ -242,7 +243,35 @@ BSX.define('ui/s_basic', function (require) {
     U.pixelText(ctx, '一个月 · 一间早餐铺 · 一条街的人', 640, 690, { size: 26, px: 2, align: 'center', color: '#fff3d6', outline: '#3b2412' });
     if (this.notice) { U.panel(ctx, 520, 600, 700, 80, 'dark'); U.para(ctx, this.notice, 540, 632, 660, { size: 20, color: '#ffd9b0', lh: 28 }); }
   };
-  X.Title.prototype.describe = function () { return { canContinue: this.canContinue, continueDay: this.contDay, legacyRuns: this.app.legacy.runs, notice: this.notice }; };
+  X.TitleOld = function (app) {
+    this.name = 'title'; this.app = app; this.t = 0;
+    Sc.set({ view: 'ext', time: 'morning', weather: 'sun', shutter: 0.55, crowd: 0 }); Sc.moveCam(640, 360, 1, 0);
+    var r = app.store.loadRun(); this.canContinue = !!(r && r.state.phase !== 'ended'); this.contDay = r ? r.state.day : 0; this.contMode = r ? r.state.mode : null;
+    this.notice = app.store.notice; app.store.notice = null;
+    Au.setAmbience('morning', false);
+  };
+  X.TitleOld.prototype.update = function (dt) { this.t += dt; };
+  X.TitleOld.prototype.draw = function (ctx) {
+    var app = this.app, self = this, L = app.legacy;
+    Sc.drawBack(ctx); Sc.drawFront(ctx);
+    ctx.save(); var g = ctx.createLinearGradient(0, 0, 520, 0); g.addColorStop(0, 'rgba(30,20,10,.72)'); g.addColorStop(1, 'rgba(30,20,10,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, 640, 720); ctx.restore();
+    var bob = Math.sin(this.t * 1.2) * 3;
+    U.text(ctx, '不烧心小馆', 60, 150 + bob, { size: 84, bold: true, color: '#fff3d6', stroke: '#4a2a12', strokeW: 12 });
+    U.text(ctx, '一个月，一间早餐铺，一条街的人', 66, 200, { size: 24, color: '#fff3d6', stroke: '#4a2a12' });
+    var y = 260, any = L.runs > 0;
+    var self2 = this; U.button(ctx, 'title_start', 60, y, 340, 70, any ? '新的一月' : '开门营业', { size: 30, onTap: function () { var go = function () { if (any) app.openOverlay(X.NewMonth); else app.newRun({ seed: (Date.now() % 1e9) >>> 0 }); }; if (self2.canContinue) app.openOverlay(X.Confirm, { text: '开新的一月会覆盖当前进度（' + (self2.contMode === 'week' ? '常营业' : '第' + self2.contDay + '日') + '）。店史、图鉴和结局印章不受影响。', ok: '覆盖并开始', onOk: go }); else go(); } });
+    U.button(ctx, 'title_continue', 60, y + 88, 340, 66, this.canContinue ? '继续 · ' + (this.contMode === 'week' ? '常营业' : '第' + this.contDay + '日') : '继续', { kind: 'wood', disabled: !this.canContinue, onTap: function () { if (!app.continueRun()) app.notice('没有可继续的存档'); } });
+    U.button(ctx, 'title_week', 60, y + 172, 160, 60, '常营业', { kind: 'paper', disabled: !any, onTap: function () { app.openOverlay(X.WeekPick); } });
+    U.button(ctx, 'title_history', 240, y + 172, 160, 60, '店史', { kind: 'paper', onTap: function () { app.go(BSX.require('ui/s_codex').Codex, { from: 'title' }); } });
+    U.button(ctx, 'title_settings', 60, y + 250, 340, 56, '设置', { kind: 'ghost', size: 24, onTap: function () { app.openOverlay(X.Settings); } });
+    if (!any) U.text(ctx, '首次结局后开放常营业', 230, y + 254 - 10 + 90, { size: 16, color: '#f2e6c8', align: 'center' });
+    if (this.notice) { U.panel(ctx, 520, 600, 700, 80, 'dark'); U.para(ctx, this.notice, 540, 632, 660, { size: 20, color: '#ffd9b0', lh: 28 }); }
+    if (L.runs) U.text(ctx, '店史：第 ' + L.runs + ' 个月 · 印章 ' + Object.keys(L.endings).length + '/8', 1240, 700, { size: 18, align: 'right', color: '#fff3d6', stroke: '#4a2a12' });
+  };
+  X.TitleOld.prototype.describe = function () { return { canContinue: this.canContinue, continueDay: this.contDay, legacyRuns: this.app.legacy.runs, notice: this.notice }; };
+  X.TitleNew.prototype.describe = X.TitleOld.prototype.describe;
+  // 默认用原首页；加 ?newui 预览像素风新首页与片头（等用户参考确认后再切换）
+  X.Title = function (app, p) { var pr = app.P.params, T = pr && pr.has('newui') ? X.TitleNew : X.TitleOld; return new T(app, p); };
 
   // ───────── 确认弹窗
   X.Confirm = function (app, p) { this.name = 'confirm'; this.app = app; this.p = p; };
