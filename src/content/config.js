@@ -11,7 +11,7 @@ BSX.define('content/config', function () {
     helper: { capacity: 24, wage: 3000 },
     starCapacity: { per: 6, add: 2, max: 10 },  // 每累计 6 星 +2 份，上限 +10
     // 三项晨备决策：0/1/2 档
-    price: { mult: [0.85, 1.0, 1.25], flow: [1.30, 1.0, 0.65], rep: [0.2, 0, -0.6] },
+    price: { mult: [0.85, 1.0, 1.25], flow: [1.30, 1.0, 0.65], rep: [0.2, 0, -0.7] },
     material: { cost: [0.8, 1.0, 1.26], rep: [-0.05, 0, 0.15] },
     oil: { daily: [800, 3000, 5000], rep: [0, 0, 0.1] }, // 当日用油成本（含油炸菜时全额，否则三成）
     burnOil: { streak2: 3, streak3: 5, step: 1, cap: 10, newOilRelief: 3 },

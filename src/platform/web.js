@@ -12,15 +12,28 @@ BSX.define('platform/web', function () {
     var inputFns = [], keyFns = [], hideFns = [], showFns = [], resizeFns = [];
     // 模拟微信胶囊/刘海安全区：?safe=wechat
     var simSafe = params.get('safe') === 'wechat';
+    // 伪横屏：触屏设备竖着拿（或开了竖屏锁定）时，把画布旋转 90° 铺满屏幕，打开就是横屏；
+    // 手机真的横过来时自动还原。桌面窄窗口不旋转，仍显示“请横过手机”。?rotate=0 可关闭。
+    var touch = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0 || params.get('rotate') === '1';
+    var rotated = false;
     function resize() {
       var dpr = Math.min(window.devicePixelRatio || 1, 2);
-      var w = window.innerWidth, h = window.innerHeight;
+      var vw = window.innerWidth, vh = window.innerHeight;
+      rotated = touch && params.get('rotate') !== '0' && vh > vw;
+      var w = rotated ? vh : vw, h = rotated ? vw : vh;
+      canvas.style.position = 'fixed'; canvas.style.left = '0px'; canvas.style.top = '0px';
       canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+      canvas.style.transformOrigin = '0 0';
+      canvas.style.transform = rotated ? 'translateX(' + vw + 'px) rotate(90deg)' : 'none';
       canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
-      P.dpr = dpr; P.cssW = w; P.cssH = h;
+      P.dpr = dpr; P.cssW = w; P.cssH = h; P.rotated = rotated;
       resizeFns.forEach(function (f) { f(); });
     }
-    function pos(e) { var r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * P.dpr, y: (e.clientY - r.top) * P.dpr }; }
+    // 旋转后：屏幕点 (sx, sy) 对应画布点 (sy, vw - sx)
+    function pos(e) {
+      if (rotated) return { x: e.clientY * P.dpr, y: (window.innerWidth - e.clientX) * P.dpr };
+      var r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * P.dpr, y: (e.clientY - r.top) * P.dpr };
+    }
     var down = false;
     canvas.addEventListener('pointerdown', function (e) { e.preventDefault(); try { canvas.setPointerCapture(e.pointerId); } catch (x) {} down = true; var p = pos(e); inputFns.forEach(function (f) { f('down', p.x, p.y, e.pointerId); }); });
     canvas.addEventListener('pointermove', function (e) { var p = pos(e); inputFns.forEach(function (f) { f(down ? 'move' : 'hover', p.x, p.y, e.pointerId); }); });
@@ -31,6 +44,8 @@ BSX.define('platform/web', function () {
     document.addEventListener('visibilitychange', function () { (document.hidden ? hideFns : showFns).forEach(function (f) { f(); }); });
     window.addEventListener('blur', function () { hideFns.forEach(function (f) { f(); }); });
     window.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', function () { setTimeout(resize, 120); });
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
     var actx = null;
     var P = {
       name: 'web', canvas: canvas, ctx: canvas.getContext('2d'), params: params, dpr: 1, cssW: 0, cssH: 0, devMode: params.has('dev'),
@@ -52,7 +67,7 @@ BSX.define('platform/web', function () {
         });
       },
       fullscreen: function () { try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch (e) {} },
-      portrait: function () { return window.innerHeight > window.innerWidth * 1.05; }
+      portrait: function () { return !rotated && window.innerHeight > window.innerWidth * 1.05; }
     };
     resize();
     return P;
