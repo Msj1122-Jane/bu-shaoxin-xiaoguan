@@ -66,7 +66,8 @@ BSX.define('dev/autoplay', function (require) {
     if (!scr) return;
     if (this.stopAt && this.stopAt(app)) { this.done = true; return; }
     var name = scr.name, s = app.state;
-    if (name === 'loading') { this.wait = 0.2; return; }
+    if (name === 'loading') { this.wait = 0.2; if (scr.state === 'done') this.tapHit('load_enter'); return; }
+    if (name === 'intro') { this.tapHit('intro_skip'); this.wait = 0.5; return; }
     if (name === 'pause' && !this.o.keepPause) { this.tapHit('pause_resume'); return; }
     if (name === 'encounter') { var d0 = scr.describe(); if (d0.picked) { this.tapHit('enc_close'); this.wait = 0.3; return; } var qq = BSX.require('content/encounters').byId[d0.id], greedy = this.pol.greedy; var pk = qq.choices.slice().sort(function (x, y) { return greedy ? (y.effect.cash || 0) - (x.effect.cash || 0) : (x.effect.burn || 0) - (y.effect.burn || 0) || (y.effect.rep || 0) - (x.effect.rep || 0); })[0]; this.stats.choices.push(qq.id + ':' + pk.id); this.tapHit('enc_' + pk.id, 0.4); this.wait = 0.6; return; }
     if (name === 'leisure') { var d1 = scr.describe(); if (d1.done) this.tapHit('rps_close'); else this.tapHit('rps_' + ['rock', 'scissors', 'paper'][Math.floor(Math.random() * 3)], 0.3); this.g('leisure'); this.wait = 0.4; return; }

@@ -18,7 +18,7 @@ BSX.define('ui/s_service', function (require) {
     this.name = 'service'; this.app = app; this.t = 0; this.pausable = true; this.done = false; this.endT = 0; this.idle = 0; this.cashFx = null; this.zhouPose = 'idle'; this.zhouT = 0;
     var time = s.day <= 1 ? 'morning' : s.today.weather === 'rain' ? 'morning' : ['morning', 'noon', 'morning'][s.day % 3];
     Sc.set({ view: 'room', time: time, weather: s.today.weather, crowd: 0 }); Sc.moveCam(640, 360, 1, 0);
-    Au.setAmbience(s.today.weather === 'rain' ? 'rain' : time, s.today.weather === 'rain');
+    Au.setAmbience(s.today.weather === 'rain' ? 'rain' : time, s.today.weather === 'rain'); Au.music(s.today.closed ? 'bgm_tense' : 'bgm_rush');
     var th = Run.theme(s);
     this.patienceMul = th && th.mods.patience ? th.mods.patience : 1;
     this.plan = Run.planOrders(s);

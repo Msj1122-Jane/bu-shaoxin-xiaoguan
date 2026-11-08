@@ -12,7 +12,7 @@ BSX.define('game/audio', function () {
     Au.sfxBus.connect(Au.master); Au.musBus.connect(Au.master); Au.ambBus.connect(Au.master);
     var len = c.sampleRate * 1.5, b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0);
     for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-    Au.noiseBuf = b; Au.setVolumes(); Au.applyAmbience();
+    Au.noiseBuf = b; Au.setVolumes(); Au.applyAmbience(); Au.startMusic();
   };
   Au.pause = function () { if (Au.ctx && Au.ctx.suspend) try { Au.ctx.suspend(); } catch (e) {} };
   Au.resume = function () { if (Au.ctx && Au.ctx.resume) try { Au.ctx.resume(); } catch (e) {} };
@@ -61,7 +61,28 @@ BSX.define('game/audio', function () {
     Au.active++; setTimeout(function () { Au.active--; }, 120);
     try { LIB[name](); } catch (e) {}
   };
-  Au.setAmbience = function (mood, rain) { Au.mood = mood; Au.rain = !!rain; Au.applyAmbience(); };
+  // 配乐：预渲染的江南五声音轨（tools/compose_music.py），循环播放，换场景时 1.2 秒交叉淡入
+  var TRACK_OF = { morning: 'bgm_dawn', noon: 'bgm_dawn', dawn: 'bgm_dawn', story: 'bgm_dawn', dusk: 'bgm_night', night: 'bgm_night', rain: 'bgm_night' };
+  Au.bufs = {}; Au.loading = {};
+  Au.music = function (name) { Au.want = name; Au.startMusic(); };
+  Au.startMusic = function () {
+    var name = Au.want; if (!Au.ctx || !name || (Au.cur && Au.cur.name === name)) return;
+    if (!Au.bufs[name]) {
+      if (Au.loading[name] || !Au.P || !Au.P.loadBytes) return; Au.loading[name] = true;
+      Au.P.loadBytes('assets/runtime/audio/' + name + '.mp3', function (err, data) {
+        if (err || !data) return;
+        var done = function (buf) { Au.bufs[name] = buf; Au.startMusic(); };
+        try { var pr = Au.ctx.decodeAudioData(data, done, function () {}); if (pr && pr.then) pr.then(done, function () {}); } catch (e) {}
+      });
+      return;
+    }
+    var c = Au.ctx, now = c.currentTime;
+    if (Au.cur) { var old = Au.cur; old.g.gain.setTargetAtTime(0, now, 0.4); setTimeout(function () { try { old.s.stop(); } catch (e) {} }, 2000); }
+    var s = c.createBufferSource(), g = c.createGain(); s.buffer = Au.bufs[name]; s.loop = true;
+    g.gain.value = 0; g.gain.setTargetAtTime(1, now, 0.4); s.connect(g); g.connect(Au.musBus); s.start();
+    Au.cur = { name: name, s: s, g: g };
+  };
+  Au.setAmbience = function (mood, rain) { Au.mood = mood; Au.rain = !!rain; Au.applyAmbience(); if (TRACK_OF[mood] && !Au.lockTrack) Au.music(TRACK_OF[mood]); };
   Au.applyAmbience = function () {
     if (!Au.ctx) return;
     var c = Au.ctx;
@@ -74,7 +95,7 @@ BSX.define('game/audio', function () {
   var SCALES = { morning: [523, 587, 659, 784, 880, 1046], noon: [523, 587, 659, 784, 880], rain: [440, 494, 523, 659, 740], dusk: [392, 440, 523, 587, 659], night: [349, 392, 440, 523, 587], story: [440, 523, 587, 659, 784] };
   // 由主循环每帧调用，dt 秒
   Au.update = function (dt) {
-    if (!Au.ctx || !Au.mood || Au.ctx.state !== 'running') return;
+    if (!Au.ctx || !Au.mood || Au.ctx.state !== 'running' || Au.cur) return;
     Au.nextNote -= dt;
     if (Au.nextNote <= 0) {
       var sc = SCALES[Au.mood] || SCALES.morning;

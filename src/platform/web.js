@@ -53,6 +53,7 @@ BSX.define('platform/web', function () {
       raf: function (fn) { return requestAnimationFrame(fn); },
       storage: storage,
       loadImage: function (path, cb) { var img = new Image(); img.onload = function () { cb(null, img); }; img.onerror = function () { cb(new Error('加载失败 ' + path)); }; img.src = path; },
+      loadBytes: function (path, cb) { try { fetch(path).then(function (r) { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }).then(function (b) { cb(null, b); }, function (e) { cb(e); }); } catch (e) { cb(e); } },
       createCanvas: function (w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; },
       onInput: function (f) { inputFns.push(f); }, onKey: function (f) { keyFns.push(f); },
       onHide: function (f) { hideFns.push(f); }, onShow: function (f) { showFns.push(f); }, onResize: function (f) { resizeFns.push(f); },
