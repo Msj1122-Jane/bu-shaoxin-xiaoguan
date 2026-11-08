@@ -216,7 +216,7 @@ BSX.define('ui/s_basic', function (require) {
     var mainId = this.canContinue ? 'title_continue' : 'title_start';
     U.hit(mainId, 304, 238, 482, 314, { label: this.canContinue ? '接着营业' : '开门营业', minSize: 0,
       onTap: function () { self.fire(); },
-      onDown: function () { self.holding = true; Au.play('knob'); return function (type) { if (type === 'up' || type === 'cancel') { self.holding = false; } }; } });
+      onDown: function () { self.holding = true; Au.play('knob'); return function (type) { if (type === 'up') { self.holding = false; self.fire(); } else if (type === 'cancel') self.holding = false; }; } });
     if (!this.go) {
       var pulse = 0.65 + Math.sin(t * 3.2) * 0.35;
       U.pixelText(ctx, this.canContinue ? '接着营业' : '开门营业', 545, 360, { size: 56, px: 4, align: 'center', color: '#fff8e8', outline: '#3b2412', alpha: 0.95 });
