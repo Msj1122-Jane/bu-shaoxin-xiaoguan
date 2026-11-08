@@ -98,6 +98,7 @@ BSX.define('ui/s_prep', function (require) {
     A.cell(ctx, 'atlas_ui', 12, 840, 548, 36, 36, { trim: true, fit: true, anchor: 'center' });
     U.text(ctx, '每份约赚 ' + (Math.round(q.margin * 10) / 10) + ' 元', 884, 574, { size: 20, bold: true, color: q.margin < 2 ? '#b8432f' : '#3b2a1a' });
     U.text(ctx, '最多做 ' + q.cap + ' 份', 1240, 574, { size: 18, align: 'right', color: '#7d5a35' });
+    var hs = s.stats.honestStreak || 0; if (hs >= 1 && !q.risk) { ctx.fillStyle = '#2f6f66'; U.rr(ctx, 1080, 590, 160, 30, 8); ctx.fill(); U.text(ctx, '放心 ' + hs + ' 天 · 客流 +' + Math.round(Math.min(C.honesty.streakFlowMax, hs * C.honesty.streakFlow) * 100) + '%', 1160, 611, { size: 15, bold: true, align: 'center', color: '#fff' }); }
     // 风险倾向（不显示精确烧心）
     if (q.risk) { A.cell(ctx, 'atlas_ui', 14, 840, 590, 36, 36, { trim: true, fit: true, anchor: 'center' }); U.text(ctx, q.risk > 1 ? '油已用了好几天' : '油会越用越旧', 884, 616, { size: 18, color: '#b8432f' }); }
     else { var likely = Run.likelyVisitors(s); U.text(ctx, '可能来：', 840, 616, { size: 18, color: '#7d5a35' }); likely.forEach(function (id, i) { ctx.save(); ctx.beginPath(); ctx.arc(940 + i * 46, 608, 20, 0, 7); ctx.clip(); Act.portrait(ctx, id, 920 + i * 46, 588, 40); ctx.restore(); }); }

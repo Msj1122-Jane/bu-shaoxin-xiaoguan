@@ -28,8 +28,8 @@ BSX.define('content/story', function () {
     { say: 'zhou', text: '一块钱的豆浆……得兑多少水。', face: 3 },
     { narr: '门口排队的人，有几个拐去了对面。' },
     { choice: [
-      { id: 'compete', label: '我也降价，把人抢回来', effect: { flow: 1.1, rep: -1, burn: 3, flag: { priceWar: true } }, result: '价牌改小了，豆浆也跟着淡了。' },
-      { id: 'quality', label: '做好自己的就行', effect: { rep: 1 }, result: '老周把今天的米多泡了半小时。' }
+      { id: 'quality', label: '做好自己的就行', effect: { rep: 1 }, result: '老周把今天的米多泡了半小时。' },
+      { id: 'compete', label: '我也降价，把人抢回来', effect: { flow: 1.1, rep: -1, burn: 3, flag: { priceWar: true } }, result: '价牌改小了，豆浆也跟着淡了。' }
     ] },
     { crowd: 0 }, { exit: 'peer' }, { hide: 'flyer' }
   ] };
