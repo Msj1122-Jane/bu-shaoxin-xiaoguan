@@ -1,14 +1,17 @@
 {
- "errors": [],
+ "errors": [
+  "ui/s_basic.js:29 使用了微信不可用的 API：var pr = this.app.P.params, auto = ((pr && (pr.has('dev') || pr.has('auto'))) || (typeof n",
+  "ui/s_basic.js:35 使用了微信不可用的 API：var pr = this.app.P.params, force = pr && pr.has('intro'), auto = ((pr && (pr.has('dev') |"
+ ],
  "warnings": [
   "game/scene.js：soft-light 混合模式在部分微信基础库不支持，不支持时退化为普通叠加（清晨暖光略弱）",
   "ui/s_codex.js：ctx.filter 在微信中不生效（仅影响图鉴未解锁剪影的灰度，已有透明度兜底）",
   "project.config.json 仍为游客 AppID：真机预览与上传需替换为自己的小游戏 AppID（H02）"
  ],
  "info": {
-  "files": 60,
-  "totalKB": 2690,
-  "codeKB": 427,
-  "assetsKB": 2263
+  "files": 65,
+  "totalKB": 3820,
+  "codeKB": 451,
+  "assetsKB": 2399
  }
 }
