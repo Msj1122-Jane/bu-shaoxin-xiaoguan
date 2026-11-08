@@ -35,6 +35,36 @@ BSX.define('ui/ui', function (require) {
     for (var i = 0; i < toks.length; i++) { var ch = toks[i]; if (ch === '\n') { lines.push(line); line = ''; continue; } var t = line + ch; if (ctx.measureText(t).width > maxW && line) { if ('，。！？、”：；）'.indexOf(ch) >= 0) { line = t; continue; } lines.push(line); line = ch; } else line = t; }
     if (line) lines.push(line); ctx.restore(); return lines;
   };
+  // 像素字：在低分辨率画布上写字→阈值化成硬边→描边→无平滑放大。用于招牌、标签，避免“网页字”。
+  var PX = {};
+  U.pixelText = function (ctx, str, x, y, o) {
+    o = o || {}; var px = o.px || 3, size = o.size || 36, fs = Math.max(8, Math.round(size / px)), key = str + '|' + fs + '|' + (o.color || '') + '|' + (o.outline || '') + '|' + (o.shadow || '');
+    var c = PX[key];
+    if (!c) {
+      var P = BSX.require('game/assets').P, m = P.createCanvas(4, 4).getContext('2d'); m.font = 'bold ' + fs + 'px ' + FONT;
+      var w = Math.ceil(m.measureText(str).width) + 6, h = fs + 8;
+      c = P.createCanvas(w, h); var g = c.getContext('2d'); g.font = 'bold ' + fs + 'px ' + FONT; g.textBaseline = 'top'; g.fillStyle = '#fff'; g.fillText(str, 3, 3);
+      try {
+        var im = g.getImageData(0, 0, w, h), d = im.data, mask = new Uint8Array(w * h), i, j;
+        for (i = 0; i < w * h; i++) mask[i] = d[i * 4 + 3] > 120 ? 1 : 0;
+        var hex = function (s) { var n = parseInt(s.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+        var fc = hex(o.color || '#fff3d6'), oc = o.outline ? hex(o.outline) : null, sc = o.shadow ? hex(o.shadow) : null;
+        for (j = 0; j < h; j++) for (i = 0; i < w; i++) {
+          var k = j * w + i, q = k * 4, col = null;
+          if (mask[k]) col = fc;
+          else if (oc && ((i > 0 && mask[k - 1]) || (i < w - 1 && mask[k + 1]) || (j > 0 && mask[k - w]) || (j < h - 1 && mask[k + w]))) col = oc;
+          else if (sc && i > 0 && j > 0 && mask[k - w - 1]) col = sc;
+          if (col) { d[q] = col[0]; d[q + 1] = col[1]; d[q + 2] = col[2]; d[q + 3] = 255; } else d[q + 3] = 0;
+        }
+        g.putImageData(im, 0, 0);
+      } catch (e) {}
+      PX[key] = c;
+    }
+    var W = c.width * px, H = c.height * px, ax = o.align === 'center' ? W / 2 : o.align === 'right' ? W : 0;
+    ctx.save(); ctx.imageSmoothingEnabled = false; if (o.alpha != null) ctx.globalAlpha *= o.alpha;
+    ctx.drawImage(c, Math.round(x - ax), Math.round(y - H / 2), W, H); ctx.restore();
+    return { w: W, h: H };
+  };
   U.para = function (ctx, str, x, y, maxW, o) { o = o || {}; var size = o.size || 22, lh = o.lh || size * 1.5; var lines = U.wrap(ctx, str, maxW, size, o.weight); if (o.maxLines && lines.length > o.maxLines) { lines = lines.slice(0, o.maxLines); lines[o.maxLines - 1] = lines[o.maxLines - 1].slice(0, -1) + '…'; } lines.forEach(function (l, i) { U.text(ctx, l, x, y + i * lh * U.textScale, o); }); return lines.length * lh * U.textScale; };
   function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath(); }
   U.rr = rr;

@@ -63,6 +63,7 @@ BSX.define('ui/s_story', function (require) {
     var time = s.phase === 'dusk' ? (s.today.weather === 'rain' ? 'night' : 'dusk') : 'morning';
     var ending = it.id === 'S28' || it.id === 'X_LEAVE' ? Run.prospectiveEnding(s) : null;
     var self = this;
+    var Au0 = BSX.require('game/audio'); if (it.kind === 'crisis' || it.kind === 'rescue' || (it.kind === 'event' && E.byId[it.id] && E.byId[it.id].type === 'tense')) { Au0.lockTrack = true; Au0.music('bgm_tense'); } else Au0.lockTrack = false;
     this.dir = new Cut.Director(script, { state: s, time: time, weather: s.today.weather, ending: ending, auto: app.settings.autoPlay, log: app.storyLog, onLog: function () { app.openOverlay(BSX.require('ui/s_basic').Log, {}); } });
     var seenKey = it.kind + ':' + (it.id || '');
     var L = app.legacy;

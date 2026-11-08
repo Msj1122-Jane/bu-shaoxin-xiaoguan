@@ -29,6 +29,7 @@ BSX.define('platform/wechat', function () {
         set: function (k, v) { wx.setStorageSync(k, v); },
         remove: function (k) { try { wx.removeStorageSync(k); } catch (e) {} }
       },
+      loadBytes: function (path, cb) { try { wx.getFileSystemManager().readFile({ filePath: path, success: function (r) { cb(null, r.data); }, fail: function (e) { cb(e); } }); } catch (e) { cb(e); } },
       loadImage: function (path, cb) { var img = wx.createImage(); img.onload = function () { cb(null, img); }; img.onerror = function () { cb(new Error('加载失败 ' + path)); }; img.src = path; },
       createCanvas: function (w, h) { var c = wx.createCanvas(); c.width = w; c.height = h; return c; },
       onInput: function (f) { inputFns.push(f); }, onKey: function () {},

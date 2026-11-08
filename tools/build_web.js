@@ -12,6 +12,8 @@ m.entries = m.entries.filter(e => e.group !== 'unused');
 const src = fs.existsSync(path.join(root, 'assets/runtime_wx')) ? 'assets/runtime_wx' : 'assets/runtime';
 m.entries.forEach(e => { copy(path.join(root, src, e.path), path.join(out, 'assets/runtime', e.path)); e.bytes = fs.statSync(path.join(out, 'assets/runtime', e.path)).size; });
 fs.writeFileSync(path.join(out, 'assets/runtime/manifest.json'), JSON.stringify(m));
+// 配乐（tools/compose_music.py 生成的 mp3）
+const audDir = path.join(root, 'assets/runtime/audio'); if (fs.existsSync(audDir)) fs.readdirSync(audDir).filter(f => f.endsWith('.mp3')).forEach(f => copy(path.join(audDir, f), path.join(out, 'assets/runtime/audio', f)));
 fs.writeFileSync(path.join(out, '.nojekyll'), '');
 const size = (d) => fs.readdirSync(d, { withFileTypes: true }).reduce((s, x) => s + (x.isDirectory() ? size(path.join(d, x.name)) : fs.statSync(path.join(d, x.name)).size), 0);
 console.log('dist/web built:', Math.round(size(out) / 1024), 'KB');
