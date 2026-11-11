@@ -9,13 +9,16 @@ BSX.define('game/actors', function (require) {
     supplier: { name: '供应商', body: '#3f6a8a', pants: '#2d3440', hair: '#2a1e18', skin: '#d9ad84', acc: 'cap' },
     inspector: { name: '检查员', body: '#2f4f7a', pants: '#26303d', hair: '#1f1712', skin: '#e3bb92', acc: 'clipboard' },
     influencer: { hairStyle: 1, name: '探店博主', body: '#e07a5f', pants: '#3b3b58', hair: '#4a2a1a', skin: '#f0caa4', acc: 'phone' },
-    peer: { name: '同行老板', body: '#a8423a', pants: '#3a2f2a', hair: '#1a1410', skin: '#d9ad84', acc: 'apron' },
+    peer: { name: '快好老板', body: '#a8423a', pants: '#3a2f2a', hair: '#1a1410', skin: '#d9ad84', acc: 'apron' },
     recycler: { name: '回收商', body: '#5c6b3c', pants: '#3e3a2c', hair: '#2a2018', skin: '#c99a70', acc: 'cap' },
     helper: { hairStyle: 2, name: '帮工', body: '#8a6aa0', pants: '#3e3348', hair: '#2a1a14', skin: '#e3bb92', acc: 'scarf' },
     camera: { name: '摄像', body: '#4a4a4a', pants: '#2a2a2a', hair: '#1a1a1a', skin: '#e3bb92', acc: 'camera' },
     students: { hairStyle: 0, name: '学生们', body: '#3c6fb0', pants: '#2b3a55', hair: '#1a1410', skin: '#f0caa4', acc: 'flag', small: true },
+    jin: { name: '老金', body: '#4a5a3a', pants: '#2e2a24', hair: '#2a1e18', skin: '#d9ad84', acc: null },
+    father: { name: '周师傅', body: '#3a4a6a', pants: '#2e3440', hair: '#cfc8bc', skin: '#e3bb92', acc: 'apron', hairStyle: 3 },
     neighbor: { hairStyle: 2, name: '街坊', body: '#6e8a6a', pants: '#3a3a3a', hair: '#3a2a20', skin: '#e3bb92', acc: null }
   };
+  var QV = { jin: 'q_c03', father: 'q_c02', peer: 'q_c04' };
   var cache = {};
   // 配角/路人：40×72 Q 版像素小人（大头、描边、明暗、发型与配饰），比例对齐常客立绘。
   var CW = 40, CH = 72;
@@ -109,6 +112,9 @@ BSX.define('game/actors', function (require) {
     }
     var r = R.byId[who];
     if (r) { A.sprite(ctx, r.sprite, cx, foot, h, { alpha: o.alpha, flip: o.flip, squash: o.squash != null ? o.squash : -breathe }); return; }
+    // 剧情新角色：老金 / 周师傅 / 快好老板 用 Lovart Q 版全身
+    var q = QV[who];
+    if (q && A.img(q)) { ctx.save(); ctx.imageSmoothingEnabled = false; A.sprite(ctx, q, cx, foot + (o.walk ? -Math.abs(Math.sin((o.t || 0) * 9)) * 4 : 0), h * 0.92, { alpha: o.alpha, flip: o.flip, squash: o.squash != null ? o.squash : -breathe }); ctx.restore(); return; }
     drawNpc(ctx, who, cx, foot, h * 0.9, { alpha: o.alpha, flip: o.flip, seed: o.seed, bob: o.walk ? Math.abs(Math.sin((o.t || 0) * 9)) * 3 : 0 });
   }
   function nameOf(who) { if (who === 'zhou') return '老周'; if (R.byId[who]) return R.byId[who].name; return (NPC[who] || { name: '街坊' }).name; }

@@ -15,41 +15,50 @@ BSX.define('ui/s_basic', function (require) {
   };
   X.Loading.prototype.start = function () {
     var self = this; this.state = 'loading'; this.p = 0; A.errors.length = 0; A.groupState = {};
-    A.loadGroup('boot', function (p) { self.p = p * 0.75; }, function () {
-      A.loadGroup('chars', function (p) { self.p = 0.75 + p * 0.25; }, function () {
-        self.p = 1; self.state = A.errors.length ? 'error' : 'done';
-        if (!A.errors.length) A.loadGroup('late');
+    A.loadGroup('pre', null, function () {
+      A.loadGroup('boot', function (p) { self.p = p * 0.75; }, function () {
+        A.loadGroup('chars', function (p) { self.p = 0.75 + p * 0.25; }, function () {
+          self.p = 1; self.state = A.errors.length ? 'error' : 'done';
+          if (!A.errors.length) { A.loadGroup('late'); A.loadGroup('story'); }
+        });
       });
     });
+    this.tip = TIPS[Math.floor(Math.random() * TIPS.length)];
   };
   // 加载完：像素风“点一下进门”（顺便解锁音频），首次进入播放片头，之后直接到首页
   X.Loading.prototype.update = function (dt) {
     this.t += dt;
     if (this.state === 'done' && !this.doneT) this.doneT = this.t;
-    var pr = this.app.P.params, auto = ((pr && (pr.has('dev') || pr.has('auto'))) || (typeof navigator !== 'undefined' && navigator.webdriver)) && !(pr && pr.has('intro'));
+    var pr = this.app.P.params, auto = ((pr && (pr.has('dev') || pr.has('auto'))) || this.app.P.webdriver) && !(pr && pr.has('intro'));
     if (this.state === 'done' && auto && this.t > 0.4) this.enter();
   };
   X.Loading.prototype.enter = function () {
     if (this.entered) return; this.entered = true;
     var st = this.app.P.storage, seen = false; try { seen = st.get('bsx_intro') === '1'; } catch (e) {}
-    var pr = this.app.P.params, force = pr && pr.has('intro'), auto = ((pr && (pr.has('dev') || pr.has('auto'))) || (typeof navigator !== 'undefined' && navigator.webdriver)) && !force;
+    var pr = this.app.P.params, force = pr && pr.has('intro'), auto = ((pr && (pr.has('dev') || pr.has('auto'))) || this.app.P.webdriver) && !force;
     var nu = !(pr && pr.has('oldui'));
     if (((!seen && !auto) && nu) || force) { try { st.set('bsx_intro', '1'); } catch (e) {} this.app.go(X.Intro); } else this.app.go(X.Title);
   };
+  // 加载页小贴士：物品描述里藏着里剧情（单看是闲笔，合起来是真相）
+  var TIPS = ['旧油壶底有一层洗不掉的黄。父亲说，那是好油留下的。', '蒸笼用了十几年，竹篾磨得发亮。', '靠窗那张桌子，桌板有点松。',
+    '赵爷爷每天只喝一碗粥，从不加糖。', '老秦的菜筐里，最好的那筐总是放在最底下。', '父亲的旧茶杯，杯口缺了一小块。', '账本封皮上的“周记”，是父亲用毛笔写的。',
+    '好油炸出来的油条，放凉了也不塌。', '巷口那棵槐树，比周记还老。'];
   X.Loading.prototype.draw = function (ctx) {
-    var self = this, app = this.app, t = this.t;
+    var self = this, app = this.app, t = this.t, bg = A.img('loading_bg');
     ctx.fillStyle = '#17110c'; ctx.fillRect(0, 0, 1280, 720);
-    // 像素卷帘门 + 木招牌
-    pixelShutter(ctx, 340, 150, 600, 330, 1, t);
-    ctx.fillStyle = '#5a3418'; ctx.fillRect(320, 70, 640, 80); ctx.fillStyle = '#7a4a22'; ctx.fillRect(328, 78, 624, 64);
-    U.pixelText(ctx, '不烧心小馆', 640, 112, { size: 60, px: 4, align: 'center', color: '#ffd45a', outline: '#3b2412' });
-    // 进度：一排小碗逐个盛满
-    for (var i = 0; i < 10; i++) { var on = this.p * 10 > i, bx = 445 + i * 40; ctx.fillStyle = '#3b2a1a'; ctx.fillRect(bx, 548, 28, 14); ctx.fillStyle = on ? '#fff3d6' : '#5a4632'; ctx.fillRect(bx + 2, 544, 24, 6); if (on) { ctx.fillStyle = '#f6efe0'; ctx.fillRect(bx + 4, 540, 20, 4); } }
+    if (bg) { ctx.save(); ctx.imageSmoothingEnabled = false; var z = 1.04 + Math.sin(t * 0.3) * 0.01; ctx.drawImage(bg, 640 - 640 * z, 360 - 360 * z, 1280 * z, 720 * z); ctx.restore(); }
+    else { pixelShutter(ctx, 340, 150, 600, 330, 1, t); }
+    // 底部：木招牌进度条 + 小贴士
+    ctx.fillStyle = 'rgba(20,12,6,.72)'; ctx.fillRect(0, 556, 1280, 164);
+    ctx.fillStyle = '#3b2412'; ctx.fillRect(236, 600, 808, 34); ctx.fillStyle = '#5a3418'; ctx.fillRect(240, 604, 800, 26);
+    var fw = Math.round(792 * this.p / 8) * 8; ctx.fillStyle = '#f2b440'; ctx.fillRect(244, 608, fw, 18); ctx.fillStyle = '#ffe08a'; ctx.fillRect(244, 608, fw, 5);
+    U.pixelText(ctx, this.tip || '', 640, 676, { size: 22, px: 2, align: 'center', color: '#f2e2c0', outline: '#1e120a' });
+    U.pixelText(ctx, this.state === 'done' ? '' : '正在备料开铺…  ' + Math.round(this.p * 100) + '%', 640, 582, { size: 22, px: 2, align: 'center', color: '#ffe08a', outline: '#1e120a' });
     if (this.state === 'done') {
       var k = 0.6 + Math.sin(t * 4) * 0.4;
       U.hit('load_enter', 0, 0, 1280, 720, { label: '进门', minSize: 0, onTap: function () { self.enter(); } });
-      U.pixelText(ctx, '点一下，进门', 640, 620, { size: 32, px: 2, align: 'center', color: '#fff3d6', outline: '#3b2412', alpha: k });
-    } else U.pixelText(ctx, this.state === 'error' ? '有 ' + A.errors.length + ' 个资源没加载上' : '生火中…', 640, 620, { size: 26, px: 2, align: 'center', color: '#e8c89a', outline: '#2a1a10' });
+      U.pixelText(ctx, '点一下，进门', 640, 582, { size: 30, px: 2, align: 'center', color: '#fff3d6', outline: '#3b2412', alpha: k });
+    } else if (this.state === 'error') U.pixelText(ctx, '有 ' + A.errors.length + ' 个资源没加载上', 640, 520, { size: 26, px: 2, align: 'center', color: '#e8c89a', outline: '#2a1a10' });
     if (this.state === 'error') {
       A.errors.slice(0, 3).forEach(function (e, i) { U.text(ctx, e.path, 640, 650 + i * 22, { size: 16, align: 'center', color: '#ffb08a' }); });
       U.button(ctx, 'load_retry', 420, 470, 200, 60, '重试', { onTap: function () { self.start(); } });
@@ -235,7 +244,7 @@ BSX.define('ui/s_basic', function (require) {
       U.pixelText(ctx, any ? '带着店史再开一次' : '从第 1 日开始', 137, 470, { size: 18, px: 2, align: 'center', color: '#c8d8c8' });
     }
     // 墙上告示 = 店史
-    tag(ctx, 'title_history', L.runs ? '店史 · 印章 ' + Object.keys(L.endings).length + '/8' : '店史', 1010, 410, { hx: 950, hy: 290, hw: 120, hh: 140, onTap: function () { app.go(BSX.require('ui/s_codex').Codex, { from: 'title' }); } });
+    tag(ctx, 'title_history', L.runs ? '店史 · 印章 ' + Object.keys(L.endings).length + '/9' : '店史', 1010, 410, { hx: 950, hy: 290, hw: 120, hh: 140, onTap: function () { app.go(BSX.require('ui/s_codex').Codex, { from: 'title' }); } });
     // 电表箱 = 设置
     tag(ctx, 'title_settings', '设置', 940, 236, { size: 22, hx: 900, hy: 140, hw: 80, hh: 120, onTap: function () { app.openOverlay(X.Settings); } });
     // 自行车 = 常营业（首次结局后才出现）
@@ -243,6 +252,84 @@ BSX.define('ui/s_basic', function (require) {
     U.pixelText(ctx, '一个月 · 一间早餐铺 · 一条街的人', 640, 690, { size: 26, px: 2, align: 'center', color: '#fff3d6', outline: '#3b2412' });
     if (this.notice) { U.panel(ctx, 520, 600, 700, 80, 'dark'); U.para(ctx, this.notice, 540, 632, 660, { size: 20, color: '#ffd9b0', lh: 28 }); }
   };
+  // ───────── 首页（Lovart 封面：街角周记 + 木牌按钮，用户 11-11 提供）
+  X.TitleArt = function (app, p) {
+    this.name = 'title'; this.app = app; this.t = 0;
+    var r = app.store.loadRun(); this.canContinue = !!(r && r.state.phase !== 'ended'); this.contDay = r ? r.state.day : 0; this.contMode = r ? r.state.mode : null;
+    this.pages = (r && r.state.pages) || [];
+    this.notice = app.store.notice; app.store.notice = null;
+    Au.setAmbience('morning', false); Au.music('bgm_dawn');
+  };
+  X.TitleArt.prototype.update = function (dt) { this.t += dt; };
+  function imgButton(ctx, id, imgId, x, y, w, o) {
+    o = o || {}; var im = A.img(imgId), h = im ? Math.round(im.height * w / im.width) : 80;
+    var hit = U.hit(id, x, y, w, h, { label: o.label, onTap: o.disabled ? null : o.onTap, minSize: 44 });
+    var hov = U.hover === id && !o.disabled, dy = hit.pressed ? 3 : hov ? -3 : 0, sc = hov ? 1.03 : 1;
+    ctx.save(); if (o.disabled) ctx.globalAlpha = 0.45;
+    if (im) { ctx.translate(x + w / 2, y + h / 2 + dy); ctx.scale(sc, sc); ctx.drawImage(im, -w / 2, -h / 2, w, h); }
+    else { ctx.fillStyle = '#8a5a2a'; ctx.fillRect(x, y, w, h); U.pixelText(ctx, o.label || id, x + w / 2, y + h / 2, { size: 24, px: 2, align: 'center', color: '#fff3d6' }); }
+    ctx.restore(); return { hit: hit, h: h };
+  }
+  X.imgButton = imgButton;
+  X.TitleArt.prototype.draw = function (ctx) {
+    var app = this.app, self = this, L = app.legacy, t = this.t, any = L.runs > 0, bg = A.img('cover_bg');
+    if (bg) { ctx.save(); ctx.imageSmoothingEnabled = false; var z = 1.02 + Math.sin(t * 0.25) * 0.01; ctx.drawImage(bg, 640 - 640 * z + Math.sin(t * 0.2) * 6, 360 - 360 * z, 1280 * z, 720 * z); ctx.restore(); }
+    else { Sc.drawBack(ctx); Sc.drawFront(ctx); }
+    // 左侧压暗，让牌匾和按钮站得住
+    var g = ctx.createLinearGradient(0, 0, 560, 0); g.addColorStop(0, 'rgba(24,14,6,.55)'); g.addColorStop(1, 'rgba(24,14,6,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, 560, 720);
+    var pl = A.img('title_plaque'), bob = Math.sin(t * 1.4) * 3;
+    if (pl) { var pw = 440, ph = pl.height * pw / pl.width; ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(pl, 46, 24 + bob, pw, ph); ctx.restore(); }
+    else U.pixelText(ctx, '不烧心小馆', 266, 120, { size: 72, px: 4, align: 'center', color: '#fff3d6', outline: '#3b2412' });
+    var x = 126, y = 292, w = 288, gap = 98;
+    var startFn = function () { var go = function () { if (any) app.openOverlay(X.NewMonth); else app.newRun({ seed: (Date.now() % 1e9) >>> 0 }); }; if (self.canContinue) app.openOverlay(X.Confirm, { text: '开新的一月会覆盖当前进度（' + (self.contMode === 'week' ? '常营业' : '第' + self.contDay + '日') + '）。店史、图鉴和结局印章不受影响。', ok: '覆盖并开始', onOk: go }); else go(); };
+    imgButton(ctx, 'title_start', 'btn_start', x, y, w, { label: any ? '新的一月' : '开始游戏', onTap: startFn });
+    imgButton(ctx, 'title_continue', 'btn_continue', x, y + gap, w, { label: '继续游戏', disabled: !this.canContinue, onTap: function () { if (!app.continueRun()) app.notice('没有可继续的存档'); } });
+    if (this.canContinue) X.tag(ctx, 'title_cont_day', this.contMode === 'week' ? '常营业' : '第 ' + this.contDay + ' 日', x + w + 54, y + gap + 44, { size: 20, onTap: function () { if (!app.continueRun()) app.notice('没有可继续的存档'); } });
+    imgButton(ctx, 'title_history', 'btn_records', x, y + gap * 2, w, { label: '旧账图鉴', onTap: function () { app.go(BSX.require('ui/s_codex').Codex, { from: 'title' }); } });
+    imgButton(ctx, 'title_settings', 'btn_settings', x, y + gap * 3, w, { label: '游戏设置', onTap: function () { app.openOverlay(X.Settings); } });
+    // 右下角：旧账本（宝箱）、常营业（日历）
+    imgButton(ctx, 'title_ledger', 'ico_chest', 1170, 614, 84, { label: '旧账本', onTap: function () { app.openOverlay(X.Ledger, { pages: self.pages }); } });
+    U.pixelText(ctx, '旧账本', 1212, 600, { size: 18, px: 2, align: 'center', color: '#fff3d6', outline: '#1e120a' });
+    if (any) { imgButton(ctx, 'title_week', 'ico_calendar', 1070, 614, 84, { label: '常营业', onTap: function () { app.openOverlay(X.WeekPick); } }); U.pixelText(ctx, '常营业', 1112, 600, { size: 18, px: 2, align: 'center', color: '#fff3d6', outline: '#1e120a' }); }
+    if (L.runs) U.pixelText(ctx, '店史 · 第 ' + L.runs + ' 个月 · 印章 ' + Object.keys(L.endings).length + '/9', 1250, 30, { size: 18, px: 2, align: 'right', color: '#fff3d6', outline: '#1e120a' });
+    if (this.notice) { U.panel(ctx, 520, 600, 520, 80, 'dark'); U.para(ctx, this.notice, 540, 632, 480, { size: 20, color: '#ffd9b0', lh: 28 }); }
+  };
+  X.TitleArt.prototype.describe = function () { return { canContinue: this.canContinue, continueDay: this.contDay, legacyRuns: this.app.legacy.runs, notice: this.notice, pages: this.pages }; };
+
+  // ───────── 旧账本：七页，找回的能翻看；第 7 页空白，真结局后写上
+  X.Ledger = function (app, p) { this.name = 'ledger_book'; this.app = app; this.t = 0; this.p = p || {}; this.sel = null; };
+  X.Ledger.prototype.update = function (dt) { this.t += dt; };
+  X.Ledger.prototype.draw = function (ctx) {
+    var app = this.app, self = this, ST = BSX.require('content/story'), L = app.legacy;
+    var have = {}; (L.pages || []).concat(this.p.pages || []).concat(app.state && app.state.pages || []).forEach(function (n) { have[n] = true; });
+    var bk = A.img('ledger_book');
+    ctx.fillStyle = 'rgba(14,9,5,.86)'; ctx.fillRect(0, 0, 1280, 720);
+    if (bk) { ctx.save(); ctx.globalAlpha = 0.35; ctx.drawImage(bk, 0, 0, 1280, 720); ctx.restore(); }
+    U.pixelText(ctx, '父亲的旧账本', 640, 62, { size: 40, px: 2, align: 'center', color: '#fff3d6', outline: '#3b2412' });
+    var n = Object.keys(have).length;
+    U.pixelText(ctx, '找回 ' + n + ' / 7 页', 640, 108, { size: 22, px: 2, align: 'center', color: '#e8c89a', outline: '#1e120a' });
+    if (this.sel == null) { for (var q = 1; q <= 7; q++) if (have[q]) { this.sel = q; break; } }
+    ST.pages.forEach(function (pg, i) {
+      var x = 70 + i * 162, y = 150, w = 130, h = 162, on = have[pg.n], im = A.img('ledger_page_' + pg.n);
+      U.hit('ledger_p' + pg.n, x, y, w, h, { label: '第' + pg.n + '页', onTap: on ? function () { self.sel = pg.n; } : null });
+      ctx.save();
+      if (on && im) { ctx.drawImage(im, x, y, w, h); if (self.sel === pg.n) { ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 4; ctx.strokeRect(x - 4, y - 4, w + 8, h + 8); } }
+      else { ctx.fillStyle = 'rgba(255,240,210,.08)'; ctx.fillRect(x, y, w, h); ctx.strokeStyle = 'rgba(255,240,210,.3)'; ctx.setLineDash([6, 6]); ctx.strokeRect(x, y, w, h); ctx.setLineDash([]); U.pixelText(ctx, '缺页', x + w / 2, y + h / 2, { size: 22, px: 2, align: 'center', color: 'rgba(255,240,210,.5)' }); }
+      ctx.restore();
+      U.pixelText(ctx, String(pg.n), x + w / 2, y + h + 22, { size: 18, px: 2, align: 'center', color: on ? '#fff3d6' : '#8a7a62' });
+    });
+    if (this.sel) {
+      var pg = ST.pages[this.sel - 1], im = A.img('ledger_page_' + this.sel);
+      if (im) ctx.drawImage(im, 300, 360, 400, 300);
+      var lines = pg.text.length ? pg.text : (L.lastPage ? pg.last : ['（空白）']);
+      lines.forEach(function (l, i) { U.pixelText(ctx, l, 500, 440 + i * 44, { size: 24, px: 2, align: 'center', color: '#4a2a12' }); });
+      U.pixelText(ctx, '第 ' + pg.n + ' 页 · 在' + pg.where + '找到', 740, 440, { size: 22, px: 2, color: '#e8c89a', outline: '#1e120a' });
+      if (this.sel === 7 && !L.lastPage) U.pixelText(ctx, '父亲没写完的一页。', 740, 484, { size: 22, px: 2, color: '#fff3d6', outline: '#1e120a' });
+    } else U.pixelText(ctx, '还一页都没找回来。开门营业，慢慢会找到的。', 640, 470, { size: 24, px: 2, align: 'center', color: '#fff3d6', outline: '#1e120a' });
+    U.button(ctx, 'ledger_close', 1080, 640, 160, 56, '合上', { kind: 'wood', onTap: function () { app.closeOverlay(); } });
+  };
+  X.Ledger.prototype.describe = function () { return { sel: this.sel }; };
+
   X.TitleOld = function (app) {
     this.name = 'title'; this.app = app; this.t = 0;
     Sc.set({ view: 'ext', time: 'morning', weather: 'sun', shutter: 0.55, crowd: 0 }); Sc.moveCam(640, 360, 1, 0);
@@ -266,12 +353,12 @@ BSX.define('ui/s_basic', function (require) {
     U.button(ctx, 'title_settings', 60, y + 250, 340, 56, '设置', { kind: 'ghost', size: 24, onTap: function () { app.openOverlay(X.Settings); } });
     if (!any) U.text(ctx, '首次结局后开放常营业', 230, y + 254 - 10 + 90, { size: 16, color: '#f2e6c8', align: 'center' });
     if (this.notice) { U.panel(ctx, 520, 600, 700, 80, 'dark'); U.para(ctx, this.notice, 540, 632, 660, { size: 20, color: '#ffd9b0', lh: 28 }); }
-    if (L.runs) U.text(ctx, '店史：第 ' + L.runs + ' 个月 · 印章 ' + Object.keys(L.endings).length + '/8', 1240, 700, { size: 18, align: 'right', color: '#fff3d6', stroke: '#4a2a12' });
+    if (L.runs) U.text(ctx, '店史：第 ' + L.runs + ' 个月 · 印章 ' + Object.keys(L.endings).length + '/9', 1240, 700, { size: 18, align: 'right', color: '#fff3d6', stroke: '#4a2a12' });
   };
   X.TitleOld.prototype.describe = function () { return { canContinue: this.canContinue, continueDay: this.contDay, legacyRuns: this.app.legacy.runs, notice: this.notice }; };
   X.TitleNew.prototype.describe = X.TitleOld.prototype.describe;
   // 默认用像素风街景首页（用户 11-09 确认）；?oldui 可看旧首页
-  X.Title = function (app, p) { var pr = app.P.params, T = pr && pr.has('oldui') ? X.TitleOld : X.TitleNew; return new T(app, p); };
+  X.Title = function (app, p) { var pr = app.P.params, T = pr && pr.has('oldui') ? X.TitleOld : pr && pr.has('streetui') ? X.TitleNew : X.TitleArt; return new T(app, p); };
 
   // ───────── 确认弹窗
   X.Confirm = function (app, p) { this.name = 'confirm'; this.app = app; this.p = p; };

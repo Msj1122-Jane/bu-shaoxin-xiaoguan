@@ -11,7 +11,9 @@ BSX.define('ui/s_ending', function (require) {
   var Legacy = require('core/legacy');
   var Run = require('core/run');
   // 篆刻风朱印：方形红底白字，两字竖排（替代原来圆圈里的“印”字）
-  var SEAL = { E_HONEST: '放心', E_PRIVATE: '私房', E_CANTEEN: '食堂', E_REOPEN: '重开', E_PILLS: '胃药', E_FAREWELL: '送行', E_TRANSFER: '转让', E_SOMEONE: '记得' };
+  var SEAL = { E_HONEST: '放心', E_PRIVATE: '私房', E_CANTEEN: '食堂', E_REOPEN: '重开', E_PILLS: '胃药', E_FAREWELL: '送行', E_TRANSFER: '转让', E_SOMEONE: '记得', E_TRUTH: '正名' };
+  // 结局关键帧（Lovart V02–V10）
+  var KEYART = { E_TRUTH: 'end_02', E_HONEST: 'end_03', E_PRIVATE: 'end_04', E_CANTEEN: 'end_05', E_REOPEN: 'end_06', E_PILLS: 'end_07', E_FAREWELL: 'end_08', E_TRANSFER: 'end_09', E_SOMEONE: 'end_10' };
   function seal(ctx, txt, r) {
     ctx.fillStyle = '#c0392b'; ctx.fillRect(-r, -r, r * 2, r * 2);
     ctx.strokeStyle = '#fbe9d8'; ctx.lineWidth = Math.max(2, r * 0.08); ctx.strokeRect(-r * 0.82, -r * 0.82, r * 1.64, r * 1.64);
@@ -38,10 +40,15 @@ BSX.define('ui/s_ending', function (require) {
   P.update = function (dt) { this.t += dt; };
   P.draw = function (ctx) {
     var app = this.app, s = app.state, self = this, e = this.e;
-    Sc.drawBack(ctx); Sc.drawFront(ctx);
-    ctx.save(); ctx.fillStyle = 'rgba(20,12,6,.55)'; ctx.fillRect(0, 0, 1280, 720); ctx.restore();
-    var k = Math.min(1, this.t / 1.2);
-    U.text(ctx, '第一章 · 月底', 80, 90, { size: 24, color: '#ffd9a0', alpha: k });
+    var art = A.img(KEYART[e.id]);
+    if (art) { var z = 1.06 - Math.min(1, this.t / 8) * 0.06; ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(art, 640 - 640 * z, 360 - 360 * z, 1280 * z, 720 * z); ctx.restore(); }
+    else { Sc.drawBack(ctx); Sc.drawFront(ctx); }
+    // 先让结局画面独自停 2.2 秒，再压暗出文字
+    var dim = art ? Math.max(0, Math.min(1, (this.t - 2.2) / 0.8)) : 1;
+    ctx.save(); ctx.fillStyle = 'rgba(20,12,6,' + 0.62 * dim + ')'; ctx.fillRect(0, 0, 1280, 720); ctx.restore();
+    if (art && dim < 1) { U.pixelText(ctx, e.name, 640, 660, { size: 48, px: 2, align: 'center', color: '#fff3d6', outline: '#3b2412', alpha: Math.min(1, this.t / 0.8) * (1 - dim) }); if (dim <= 0) { U.hit('end_reveal', 0, 0, 1280, 720, { label: '继续', minSize: 0, onTap: function () { self.t = Math.max(self.t, 2.2); } }); return; } }
+    var k = art ? dim : Math.min(1, this.t / 1.2);
+    U.text(ctx, '终章 · 月底那天', 80, 90, { size: 24, color: '#ffd9a0', alpha: k });
     U.text(ctx, e.name, 80, 156, { size: 50, bold: true, color: '#fff3d6', stroke: '#3b2412', strokeW: 8, alpha: k, maxW: 760 });
     var mood = e.id === 'E_SOMEONE' ? e.tiers[s.ending.tier || 0] : e.mood;
     U.text(ctx, mood, 82, 202, { size: 24, color: '#fff3d6', alpha: k });

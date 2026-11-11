@@ -10,8 +10,8 @@ BSX.define('core/validate', function (require) {
   var Cond = require('core/cond');
   var GESTURES = ['circle', 'drag', 'hold', 'swipe', 'timing'];
   var EFFECT_KEYS = ['cash', 'rep', 'burn', 'flow', 'cap', 'aff', 'flag', 'hireHelper', 'helperLeave', 'renewalDelta', 'audit', 'delayed', 'chain', 'unlockDish', 'renew', 'borrowNeighbors', 'leave', 'recall', 'note', 'after', 'buyout'];
-  var BEATS = ['cam', 't', 'enter', 'x', 'exit', 'say', 'text', 'face', 'prop', 'y', 'hide', 'light', 'weather', 'act', 'choice', 'wait', 'shutter', 'sfx', 'if', 'then', 'else', 'crowd', 'visitors', 'view', 'photo', 'unlockDish', 'eventChoice', 'narr'];
-  var NPCS = ['zhou', 'landlord', 'supplier', 'inspector', 'influencer', 'peer', 'recycler', 'helper', 'camera', 'students', 'neighbor', 'best'];
+  var BEATS = ['cam', 't', 'enter', 'x', 'exit', 'say', 'text', 'face', 'prop', 'y', 'hide', 'light', 'weather', 'act', 'choice', 'wait', 'shutter', 'sfx', 'if', 'then', 'else', 'crowd', 'visitors', 'view', 'photo', 'unlockDish', 'eventChoice', 'narr', 'card', 'memory', 'lines', 'page', 'bg', 'pt'];
+  var NPCS = ['zhou', 'landlord', 'supplier', 'inspector', 'influencer', 'peer', 'recycler', 'helper', 'camera', 'students', 'neighbor', 'best', 'jin', 'father'];
   function run(manifest) {
     var errs = [], warn = [];
     function dup(list, what) { var seen = {}; list.forEach(function (x) { if (seen[x.id]) errs.push('重复 ' + what + ' ID ' + x.id); seen[x.id] = 1; }); }
@@ -19,7 +19,7 @@ BSX.define('core/validate', function (require) {
     if (D.list.length !== 20) errs.push('菜品应为 20 道，实际 ' + D.list.length);
     if (R.list.length !== 8) errs.push('常客应为 8 位');
     if (E.list.length !== 30) errs.push('事件应为 30 张');
-    if (EN.list.length !== 8) errs.push('结局应为 8 个');
+    if (EN.list.length !== 9) errs.push('结局应为 9 个');
     if (EN.themes.length < 6) errs.push('常营业主题至少 6 套');
     var gUsed = {};
     D.list.forEach(function (d) {
@@ -79,7 +79,7 @@ BSX.define('core/validate', function (require) {
     });
     Q.list.forEach(function (q) { if (q.choices.length < 2) errs.push(q.id + ' 奇遇至少两个选项'); q.choices.forEach(function (c) { checkEffect(c.effect, q.id + '/' + c.id); }); });
     (C.festivals || []).forEach(function (f) { f.dishes.forEach(function (d) { if (!D.byId[d]) errs.push('节令菜不存在 ' + d); }); });
-    if (sCount !== 7) errs.push('S 级主线演出应为 7 段，实际 ' + sCount);
+    if (sCount !== 9) errs.push('S 级主线演出应为 9 段，实际 ' + sCount);
     if (aCount !== 16) errs.push('A 级常客演出应为 16 段，实际 ' + aCount);
     var days = Object.keys(ST.storyDays).map(Number);
     days.forEach(function (d) { if (d < 1 || d > C.days) errs.push('主线日不可达 ' + d); });

@@ -91,8 +91,11 @@ BSX.define('ui/s_story', function (require) {
     return false;
   };
   P.draw = function (ctx) {
-    ctx.save(); Sc.applyCam(ctx); Sc.drawBack(ctx); if (this.dir) this.dir.drawWorld(ctx); ctx.restore();
-    Sc.drawFront(ctx);
+    var bgi = this.dir && this.dir.bg && BSX.require('game/assets').img(this.dir.bg);
+    ctx.save(); Sc.applyCam(ctx);
+    if (bgi) { ctx.imageSmoothingEnabled = false; ctx.drawImage(bgi, 0, 0, 1280, 720); } else Sc.drawBack(ctx);
+    if (this.dir) this.dir.drawWorld(ctx); ctx.restore();
+    if (!bgi) Sc.drawFront(ctx);
     // 电影黑边（减少动效时不推入）
     var bar = this.app.settings.reduceMotion ? 0 : 36; ctx.fillStyle = '#120c08'; ctx.fillRect(0, 0, 1280, bar); ctx.fillRect(0, 720 - bar, 1280, bar);
     if (this.dir) this.dir.drawUI(ctx);

@@ -34,7 +34,7 @@ BSX.define('core/run', function (require) {
       events: { seen: [], cd: {}, delayed: [], chains: [], lastType: null },
       flags: {}, crisis: { state: 'none', day: null }, rescue: { used: false, choice: null, refused: false },
       negativeDays: 0, early: null, ending: null,
-      history: [], keyChoices: [], photos: [], nodesDone: [], storySeen: [],
+      history: [], keyChoices: [], photos: [], nodesDone: [], storySeen: [], pages: [],
       stats: { tierDays: { oil: [0, 0, 0], material: [0, 0, 0], price: [0, 0, 0] }, goodDays: 0, recycleDays: 0, signature: 0, rushed: 0, lostTotal: 0, noWaitDays: 0, bestStreak: 0, streak: 0, cooked: {}, startRep: C.startRep, startCash: C.startCash, burnStart: 0 },
       weatherPlan: [], today: null, ledger: null, executed: []
     };
@@ -512,6 +512,8 @@ BSX.define('core/run', function (require) {
     var days = Math.max(1, s.stats.tierDays.price.reduce(function (a, b) { return a + b; }, 0));
     if (s.crisis.state === 'hold' && (!s.early || s.early.reason === 'leave')) return { id: 'E_PILLS' };
     if (s.early) return { id: s.rep >= 60 ? 'E_FAREWELL' : 'E_TRANSFER' };
+    // 真结局「最后一页」：对质时把账本摊开（连父亲的错一起认），收齐 6 页，赵爷爷的旧事听完，心里没鬼
+    if (s.flags.truth && (s.pages || []).length >= 6 && s.burn <= 40 && s.rep >= 55 && s.crisis.state !== 'hold') return { id: 'E_TRUTH' };
     if ((s.crisis.state === 'rectify' || s.crisis.state === 'refund') && s.burn < 70 && s.rep >= 55) return { id: 'E_REOPEN' };
     var peopleNodes = R.list.filter(function (r) { return s.regulars[r.id].nodes.length > 0; }).length;
     var highShare = s.stats.tierDays.price[2] / days, lowShare = s.stats.tierDays.price[0] / days;
@@ -575,8 +577,14 @@ BSX.define('core/run', function (require) {
       if (choiceId === 'refuse') s.rescue.refused = true;
       s.keyChoices.push({ day: s.day, src: 'RESCUE', title: '房东通牒', choice: choiceId, label: { sell: '卖掉设备', borrow: '街坊短借', refuse: '不借' }[choiceId], weight: 4 });
     }
+    if ((item.kind === 'story' || item.kind === 'node') && ST.all[item.id]) grantPages(s, ST.all[item.id]);
     s.pending.shift();
     return true;
+  }
+  // 账本缺页：剧本里的 { page: n } 指令（不放在条件分支里），结算时记入 s.pages
+  function grantPages(s, sc) {
+    if (!s.pages) s.pages = [];
+    sc.beats.forEach(function (b) { if (b.page && s.pages.indexOf(b.page) < 0) { s.pages.push(b.page); s.pages.sort(); } });
   }
   function storyHasChoice(sc) { return JSON.stringify(sc.beats).indexOf('"choice"') >= 0 || JSON.stringify(sc.beats).indexOf('eventChoice') >= 0; }
   function findStoryChoice(sc, id, s) {

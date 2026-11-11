@@ -29,8 +29,8 @@ const orders = (s, grade = 'home') => ({ orders: Run.planOrders(s).map(o => ({ i
 test('内容校验器通过，数量符合 1.0 范围', () => {
   const v = Validate.run();
   assert.deepStrictEqual(v.errors, []);
-  assert.strictEqual(v.counts.dishes, 20); assert.strictEqual(v.counts.events, 30); assert.strictEqual(v.counts.endings, 8);
-  assert.strictEqual(v.counts.S, 7); assert.strictEqual(v.counts.A, 16);
+  assert.strictEqual(v.counts.dishes, 20); assert.strictEqual(v.counts.events, 30); assert.strictEqual(v.counts.endings, 9);
+  assert.strictEqual(v.counts.S, 9); assert.strictEqual(v.counts.A, 16);
 });
 
 test('账本与手算一致（整数分）', () => {
@@ -97,15 +97,15 @@ test('延期效果只执行一次（含存档往返）', () => {
   const count = t.executed.filter(u => u === 't1').length; assert.strictEqual(count, 1);
 });
 
-test('八个结局：每条路线都能从第 1 日正常游玩稳定达成（20 种子 ≥85%）', () => {
-  const want = { canteen: 'E_CANTEEN', private: 'E_PRIVATE', honest: 'E_HONEST', pills: 'E_PILLS', reopen: 'E_REOPEN', average: 'E_SOMEONE', farewell: 'E_FAREWELL', transfer: 'E_TRANSFER' };
+test('九个结局：每条路线都能从第 1 日正常游玩稳定达成（20 种子 ≥85%）', () => {
+  const want = { canteen: 'E_CANTEEN', private: 'E_PRIVATE', honest: 'E_HONEST', pills: 'E_PILLS', reopen: 'E_REOPEN', average: 'E_SOMEONE', farewell: 'E_FAREWELL', transfer: 'E_TRANSFER', truth: 'E_TRUTH' };
   const got = new Set();
   for (const [p, e] of Object.entries(want)) {
     let hit = 0;
     for (let i = 0; i < 20; i++) { const r = play(p, 2000 + i * 7); if (r.state.ending.id === e) { hit++; got.add(e); assert.ok(r.state.history.length >= 26); } }
     assert.ok(hit >= 17, p + ' 达成 ' + hit + '/20');
   }
-  assert.strictEqual(got.size, 8);
+  assert.strictEqual(got.size, 9);
 });
 
 test('结局判定互斥且全覆盖（边界状态枚举）', () => {
@@ -241,4 +241,15 @@ test('开局身份与特性：好处必须配代价；盘店需要足够现金',
   assert.strictEqual(Cond.check(Object.assign({}, b, { cash: C.buyout.price - 1 }), { canBuy: true }), false);
   assert.strictEqual(Cond.check(Object.assign({}, b, { cash: C.buyout.price }), { canBuy: true }), true);
   const r = play('honest', 1000).state; assert.ok(r.flags.owner, '诚信路线能盘下店面');
+});
+
+test('账本缺页：剧情结算时收集，对质选项按页数开放', () => {
+  const r = play('truth', 4242);
+  assert.ok(r.state.pages.length >= 6, '页数 ' + r.state.pages);
+  assert.strictEqual(r.state.flags.truth, true);
+  const ST = BSX.require('content/story');
+  const s = Run.create({ seed: 1 }); s.pages = [1, 2];
+  assert.strictEqual(Run.findStoryChoice(ST.all.S24, 'truth', s), null);
+  s.pages = [1, 2, 3, 4];
+  assert.ok(Run.findStoryChoice(ST.all.S24, 'truth', s));
 });

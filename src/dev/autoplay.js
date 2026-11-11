@@ -9,9 +9,9 @@ BSX.define('dev/autoplay', function (require) {
   var POL = {
     average: { tiers: { oil: 1, material: 1, price: 1 }, prefer: { S26: 'renew' }, skill: 'good' },
     canteen: { tiers: { oil: 1, material: 1, price: 0 }, prefer: { E07: 'ask', E12: 'help', E29: 'take', E20: 'free', E03: 'more', E05: 'refuse', E14: 'refuse', S12: 'paper', S18: 'cook', S26: 'renew', E22: 'hire' }, skill: 'good' },
-    honest: { buy: ['board', 'tables', 'sign', 'helper'], tiers: { oil: 2, material: 2, price: 1 }, prefer: { E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'post', S26: 'buy', E08: 'public', E04: 'show', E22: 'hire', E11: 'some' }, skill: 'great', menu: ['pidan', 'shengjian', 'congee', 'soy'] },
+    honest: { buy: ['board', 'tables', 'sign', 'helper'], tiers: { oil: 2, material: 2, price: 1 }, prefer: { S02: 'refuse', S24: 'truth', E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'post', S26: 'buy', E08: 'public', E04: 'show', E22: 'hire', E11: 'some' }, skill: 'great', menu: ['pidan', 'shengjian', 'congee', 'soy'] },
     pills: { tiers: { oil: 0, material: 0, price: 1 }, prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S12: 'cheap', S26: 'renew', CRISIS: 'hold', E23: 'deny', E18: 'go', E10: 'risk', E04: 'delay', E08: 'silent' }, skill: 'sloppy' },
-    black: { tiers: { oil: 0, material: 0, price: 1 }, prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S12: 'cheap', S04: 'compete', S26: 'renew', CRISIS: 'hold', E23: 'deny', E18: 'go', E04: 'delay', E08: 'silent' }, skill: 'good', cheat: 0.85, greedy: true, buy: ['fire', 'tray'] },
+    black: { tiers: { oil: 0, material: 0, price: 1 }, prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S02: 'take', S24: 'deal', S12: 'cheap', S04: 'compete', S26: 'renew', CRISIS: 'hold', E23: 'deny', E18: 'go', E04: 'delay', E08: 'silent' }, skill: 'good', cheat: 0.85, greedy: true, buy: ['fire', 'tray'] },
     neglect: { tiers: { oil: 1, material: 1, price: 1 }, prefer: { S26: 'renew' }, skill: 'sloppy', idle: 0.12 },
     chef: { tiers: { oil: 2, material: 2, price: 1 }, prefer: { S12: 'paper', S26: 'renew' }, skill: 'great', menu: ['chicken', 'mutton', 'pidan', 'shengjian'] },
     farewell: { tiers: { oil: 1, material: 1, price: 1 }, prefer: { S26: 'leave', E22: 'no' }, skill: 'good' }
@@ -117,7 +117,7 @@ BSX.define('dev/autoplay', function (require) {
       if (this.tapHit('choice_' + pick.id, 0.3)) this.stats.choices.push((item.id || item.kind) + ':' + pick.id);
       this.wait = 0.5; return;
     }
-    if (d.line) { this.tap(640, 400, this.o.fast ? 0.05 : 0.35); this.wait = 0.1; return; }
+    if (d.line || d.ov) { this.tap(640, 400, this.o.fast ? 0.05 : 0.35); this.wait = d.ov ? 0.6 : 0.1; return; }
     this.wait = 0.2;
   };
   B.service = function (scr, s) {

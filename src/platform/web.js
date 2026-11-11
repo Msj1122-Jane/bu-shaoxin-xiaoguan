@@ -48,7 +48,7 @@ BSX.define('platform/web', function () {
     if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
     var actx = null;
     var P = {
-      name: 'web', canvas: canvas, ctx: canvas.getContext('2d'), params: params, dpr: 1, cssW: 0, cssH: 0, devMode: params.has('dev'),
+      name: 'web', canvas: canvas, ctx: canvas.getContext('2d'), params: params, dpr: 1, cssW: 0, cssH: 0, devMode: params.has('dev'), webdriver: !!navigator.webdriver,
       now: function () { return performance.now(); },
       raf: function (fn) { return requestAnimationFrame(fn); },
       storage: storage,

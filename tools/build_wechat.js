@@ -14,12 +14,12 @@ const pc = JSON.parse(fs.readFileSync(path.join(root, 'project.config.json'), 'u
 pc.compileType = 'game'; pc.setting = Object.assign({ es6: true, minified: true }, pc.setting || {}); delete pc.packOptions;
 fs.writeFileSync(path.join(out, 'project.config.json'), JSON.stringify(pc, null, 1));
 const m = JSON.parse(fs.readFileSync(path.join(root, 'assets/runtime/manifest.json'), 'utf8'));
-m.entries = m.entries.filter(e => e.group !== 'unused');
+m.entries = m.entries.filter(e => e.group !== 'unused' && e.group !== 'story'); // 剧情美术（约 9MB）不进小游戏主包：后续放 CDN，缺图时代码已有降级
 const wxDir = fs.existsSync(path.join(root, 'assets/runtime_wx')) ? 'assets/runtime_wx' : 'assets/runtime';
 m.entries.forEach(e => { copy(path.join(root, wxDir, e.path), path.join(out, 'assets/runtime', e.path)); e.bytes = fs.statSync(path.join(out, 'assets/runtime', e.path)).size; });
 fs.writeFileSync(path.join(out, 'assets/runtime/manifest.js'), 'module.exports = ' + JSON.stringify(m) + ';\n');
 // 配乐（tools/compose_music.py 生成的 mp3）
-const audDir = path.join(root, 'assets/runtime/audio'); if (fs.existsSync(audDir)) fs.readdirSync(audDir).filter(f => f.endsWith('.mp3')).forEach(f => copy(path.join(audDir, f), path.join(out, 'assets/runtime/audio', f)));
+const audDir = fs.existsSync(path.join(root, 'assets/runtime_wx/audio')) ? path.join(root, 'assets/runtime_wx/audio') : path.join(root, 'assets/runtime/audio'); if (fs.existsSync(audDir)) fs.readdirSync(audDir).filter(f => f.endsWith('.mp3')).forEach(f => copy(path.join(audDir, f), path.join(out, 'assets/runtime/audio', f)));
 // ── 检查
 const report = { errors: [], warnings: [], info: {} };
 const FORBID = [/\bdocument\./, /\blocalStorage\b/, /\bfetch\(/, /new Image\(/, /\bURLSearchParams\b/, /\bperformance\./, /\bnavigator\./, /\bwindow\.(?!__)/];

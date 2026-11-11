@@ -8,6 +8,7 @@ BSX.define('content/endings', function () {
     { id: 'E_PILLS', order: 2, name: '胃药和账单堆在收银台', mood: '钱或许还在，店和人都已经没了余地。', cond: '烧心满后硬撑并活到月底' },
     { id: 'E_FAREWELL', order: 1, name: '搬走那天，常客来送行', mood: '生意没撑住，人情留下了。', cond: '提前结束经营·口碑≥60' },
     { id: 'E_TRANSFER', order: 1, name: '转让', mood: '店铺转了手，账本停在那一天。', cond: '提前结束经营·口碑<60' },
+    { id: 'E_TRUTH', order: 8, name: '最后一页', mood: '父亲没写完的那页账，老周替他写上了。', cond: '对质时连父亲的错一起认·收齐 6 页账本·烧心≤40·口碑≥55' },
     { id: 'E_SOMEONE', order: 7, name: '月底那天，还是有人来了', mood: '普通而不完美的一个月。', cond: '其他存活状态', tiers: ['门口冷清，但还有人推门。', '熟悉的几张脸，照常来吃早饭。', '门口排着队，老周笑着招呼。'] }
   ];
   var byId = {};
