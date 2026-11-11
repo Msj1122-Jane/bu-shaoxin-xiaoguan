@@ -55,6 +55,20 @@ BSX.define('content/story', function () {
     { dungeon: 'market' },
     { exit: 'qin' }, { bg: null }
   ] };
+  // ── 第二章 第10日 庙会早高峰（pre）：游客多，熟客挤不进来
+  S.S10 = { id: 'S10', tier: 'B', day: 10, phase: 'pre', title: '庙会早高峰', stage: { time: 'morning', weather: 'sun', view: 'ext' }, beats: [
+    { bg: 'scene_fair' }, { cam: [640, 360, 1.0], t: 0 },
+    { narr: '老街庙会，天没亮，巷子里就挂满了红灯笼。' },
+    { enter: 'man', x: 900 },
+    { say: 'man', text: '今天人多，至少翻三倍。', face: 1 },
+    { say: 'man', text: '对面在门口摆了长桌，一块钱一碗。', face: 2 },
+    { say: 'zhou', text: '赵叔他们，今天怕是挤不进来。', face: 2 },
+    { choice: [
+      { id: 'regulars', label: '照常开，先顾好熟客', effect: { flow: 1.15, aff: { zhao: 0.5, gong: 0.5 } }, result: '老周在靠窗那张桌上，压了张“留座”的条子。' },
+      { id: 'tourists', label: '门口加两张桌，多接游客', effect: { flow: 1.4, cap: 2, rep: -0.5 }, result: '两张折叠桌支了起来，队排到了槐树底下。' }
+    ] },
+    { exit: 'man' }, { bg: null }
+  ] };
   // ── 对手黑心店（B 级主线插曲，D033）：第4日开张抢客
   S.S04 = { id: 'S04', tier: 'B', day: 8, phase: 'pre', title: '街对面开了新店', stage: { time: 'morning', weather: 'auto', view: 'ext' }, beats: [
     { card: 2 }, { cam: [640, 360, 1.0], t: 0 }, { prop: 'flyer', x: 760, y: 600 },

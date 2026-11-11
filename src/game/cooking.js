@@ -312,6 +312,8 @@ BSX.define('game/cooking', function (require) {
   // 好料 / 便宜料并排放：拿哪个下锅就是良心选择（D051，替代“偷懒”按钮）
   var MAT = { pot: ['新米', '陈米'], fryer: ['新油', '回锅油'], soy: ['现磨黄豆', '兑水豆浆'], pan: ['新油', '回锅油'], wok: ['现蒸米饭', '隔夜饭'], noodle: ['鲜面·新汤', '隔夜汤'], stew: ['新卤汁', '隔夜卤'], steamer: ['鲜肉馅', '过期馅'] };
   K.MAT = MAT;
+  // 用早市副本的好料/坏料图（D058）：工位 → [图集, 行]
+  var MATART = { pot: ['mk_grain', 3], wok: ['mk_grain', 3], fryer: ['mk_grain', 0], pan: ['mk_grain', 0], soy: ['mk_grain', 1], noodle: ['mk_grain', 2], stew: ['mk_veg', 3], steamer: ['mk_veg', 2] };
   K.chooseMat = function (st, cheap) {
     var job = st.job; if (!job || job.mat) return;
     job.mat = cheap ? 'cheap' : 'good';
@@ -333,11 +335,14 @@ BSX.define('game/cooking', function (require) {
       var lift = hit.pressed ? 4 : Math.sin(self.t * 3 + o[0]) * 2;
       ctx.save(); ctx.fillStyle = '#fff8e8'; U.rr(ctx, x, y + lift, w, h, 16); ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = o[2]; ctx.stroke(); ctx.restore();
       // 料：好料是干净的白袋/金黄油瓶，便宜料是灰暗、带污渍的
-      var cx = x + w / 2, cy = y + 104 + lift;
+      var cx = x + w / 2, cy = y + 104 + lift, mi = MATART[st.type];
+      if (mi && A.img(mi[0])) { A.cell(ctx, mi[0], mi[1] * 2 + o[0], cx - 105, cy - 70, 210, 140, { fit: true, anchor: 'center' }); if (!o[0]) { ctx.fillStyle = '#ffd45a'; ctx.beginPath(); ctx.arc(cx + 88, cy - 58, 14, 0, 7); ctx.fill(); U.text(ctx, '鲜', cx + 88, cy - 51, { size: 16, bold: true, align: 'center', color: '#5a3418' }); } }
+      else {
       ctx.fillStyle = o[0] ? '#8a7a62' : '#efe6d2'; U.rr(ctx, cx - 50, cy - 56, 100, 112, 20); ctx.fill();
       ctx.fillStyle = o[0] ? '#6a5a42' : '#d8ccb0'; ctx.fillRect(cx - 30, cy - 66, 60, 16);
       if (o[0]) { ctx.fillStyle = 'rgba(60,40,20,.5)'; ctx.beginPath(); ctx.arc(cx + 22, cy + 22, 14, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(cx - 18, cy - 10, 8, 0, 7); ctx.fill(); }
       else { ctx.fillStyle = '#ffd45a'; ctx.beginPath(); ctx.arc(cx + 30, cy - 34, 14, 0, 7); ctx.fill(); U.text(ctx, '鲜', cx + 30, cy - 27, { size: 16, bold: true, align: 'center', color: '#5a3418' }); }
+      }
       U.text(ctx, o[1], cx, y + 196 + lift, { size: 24, bold: true, align: 'center', color: '#3b2a1a', maxW: w - 20 });
       ctx.save(); ctx.fillStyle = o[2]; U.rr(ctx, cx - 60, y + 210 + lift, 120, 30, 8); ctx.fill(); ctx.restore();
       U.text(ctx, o[3], cx, y + 232 + lift, { size: 18, bold: true, align: 'center', color: '#fff' });

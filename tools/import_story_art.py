@@ -140,6 +140,15 @@ def main(src):
         im = unbg(S(f)).resize((512, 512), Image.LANCZOS)
         add(aid, 'market/%s.png' % aid, im, 'story', f[:-4], colors=128)
         entries[-1].update({'cols': 2, 'rows': 4, 'cellW': 256, 'cellH': 128})
+    # 菜品新图（3×3）：面点煎炸 / 粥汤饮品小菜；每格 160px，带 cellTrim
+    for f, aid in (('中式早餐菜品_面点与煎炸集.png', 'food_a'), ('中式早餐菜品_粥汤饮品与小菜集.png', 'food_b')):
+        im = unbg(S(f)).resize((480, 480), Image.LANCZOS)
+        add(aid, 'food/%s.png' % aid, im, 'boot', f[:-4], colors=160)
+        out = Image.open(os.path.join(OUT, 'food/%s.png' % aid)).convert('RGBA'); tr = []
+        for i in range(9):
+            cx, cy = (i % 3) * 160, (i // 3) * 160; bb = out.crop((cx, cy, cx + 160, cy + 160)).getchannel('A').getbbox() or (0, 0, 160, 160)
+            tr.append(list(bb))
+        entries[-1].update({'cols': 3, 'rows': 3, 'cellW': 160, 'cellH': 160, 'cellTrim': tr})
     mp = os.path.join(ROOT, 'assets/runtime/manifest.json')
     m = json.load(open(mp))
     ids = {e['id'] for e in entries}

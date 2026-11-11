@@ -64,7 +64,9 @@ BSX.define('game/assets', function (require) {
     opts = opts || {};
     ctx.save();
     if (opts.alpha != null) ctx.globalAlpha *= opts.alpha;
-    if (ic.cell != null) {
+    if (ic.art && A.imgs[ic.art[0]]) { // Lovart 新菜品图（D058）
+      A.cell(ctx, ic.art[0], ic.art[1], x, y, size, size, { trim: true, fit: true, anchor: 'center' });
+    } else if (ic.cell != null) {
       A.cell(ctx, 'atlas_food', ic.cell, x, y, size, size, { trim: true, fit: true, anchor: 'center' });
       if (ic.tint) { ctx.globalCompositeOperation = 'source-atop'; }
       if (ic.tint) { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha *= 0.28; ctx.fillStyle = ic.tint; ctx.beginPath(); ctx.ellipse(x + size / 2, y + size * 0.42, size * 0.3, size * 0.12, 0, 0, 7); ctx.fill(); ctx.globalAlpha /= 0.28; }
