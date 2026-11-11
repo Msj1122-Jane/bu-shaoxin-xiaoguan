@@ -34,7 +34,7 @@ BSX.define('dev/autoplay', function (require) {
         if (it.kind === 'crisis') c = want || 'rectify'; else if (it.kind === 'rescue') c = want || 'borrow';
         else if (it.kind === 'event') { var ev = E.byId[it.id]; c = ev.choices.some(function (x) { return x.id === want; }) ? want : ev.choices[0].id; }
         else { var sc = ST.all[it.id]; c = want && Run.findStoryChoice(sc, want, s) ? want : undefined; if (!c) { var m = /"(?:choice)":\[\{"id":"(\w+)"/.exec(JSON.stringify(sc.beats)); if (m && Run.findStoryChoice(sc, m[1], s)) c = m[1]; else if (JSON.stringify(sc.beats).indexOf('eventChoice') >= 0) c = E.byId['E20'].choices[0].id; else if (m) { var all = []; JSON.stringify(sc.beats).replace(/"id":"(\w+)"/g, function (_, id) { all.push(id); }); c = all.filter(function (id) { return Run.findStoryChoice(sc, id, s); })[0]; } } }
-        var n = Run.reduce(s, { t: 'resolve', choice: c, dungeon: it.id === 'S03' ? { id: 'market', good: 7, bad: 0 } : undefined }); if (n === s) throw new Error('autoplay stuck ' + JSON.stringify(it)); s = n;
+        var n = Run.reduce(s, { t: 'resolve', choice: c, dungeon: it.id === 'S03' ? { id: 'market', good: 7, bad: 0 } : it.id === 'S15' ? { id: 'check', found: 7 } : undefined }); if (n === s) throw new Error('autoplay stuck ' + JSON.stringify(it)); s = n;
       } else if (s.phase === 'prep') {
         ['oil', 'material', 'price'].forEach(function (k) { s = Run.reduce(s, { t: 'tier', key: k, v: pol.tiers[k] }); });
         s = Run.reduce(s, { t: 'confirmPrep' });
@@ -105,6 +105,12 @@ BSX.define('dev/autoplay', function (require) {
   };
   B.story = function (scr, s) {
     var d = scr.dir; if (!d) { this.wait = 0.2; return; }
+    if (d.mini && d.mini.describe().todo) {
+      var cm = d.mini.describe(), lazy = this.pol.cheat || this.pol.greedy;
+      if (cm.over) { this.tapHit('ck_done'); this.wait = 0.8; return; }
+      if (cm.todo.length && !(lazy && 9 - cm.todo.length >= 3)) { this.g('check_find'); this.tap(cm.todo[0].x, cm.todo[0].y, 0.1); this.wait = 0.6; return; }
+      this.wait = 0.5; return;
+    }
     if (d.mini) {
       var mm = d.mini.describe(), greedy = this.pol.cheat || this.pol.greedy;
       if (mm.over) { this.tapHit('mk_done'); this.wait = 0.8; return; }

@@ -21,6 +21,7 @@ require('./src/game/scene.js');
 require('./src/game/actors.js');
 require('./src/game/cooking.js');
 require('./src/game/market.js');
+require('./src/game/check.js');
 require('./src/game/cutscene.js');
 require('./src/ui/hud.js');
 require('./src/ui/s_basic.js');

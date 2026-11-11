@@ -77,7 +77,9 @@ BSX.define('content/story', function () {
   // ── 对手被曝光查封：第15日，客人回流；黑心的你也会被顺路查到
   S.S15 = { id: 'S15', tier: 'B', day: 15, phase: 'pre', title: '对面被查封了', stage: { time: 'morning', weather: 'auto', view: 'ext' }, beats: [
     { card: 3 }, { cam: [640, 360, 1.0], t: 0 }, { prop: 'phoneglow', x: 640, y: 330 },
-    { narr: '早间新闻推送：快好早点后厨使用回收油、兑水豆浆，已被查封。' },
+    { narr: '一早，街坊群里传开了：快好早点后厨用回收油、兑水豆浆，被查封了。' },
+    { say: 'zhou', text: '检查的人，下一家就是我这儿。', face: 2 },
+    { dungeon: 'check' },
     { crowd: 5 }, { enter: 'inspector', x: 1000 },
     { say: 'inspector', text: '对面封了。你这儿也顺便看看。' },
     { if: { burnMin: 50 },
