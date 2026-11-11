@@ -10,7 +10,7 @@ const E = BSX.require('content/events');
 const POLICIES = {
   canteen: { tiers: { oil: 1, material: 1, price: 0 }, skill: [0.6, 0.35, 0.05], buy: ['helper', 'pot2'], prefer: { E07: 'ask', E12: 'help', E29: 'take', E20: 'free', E03: 'more', E05: 'refuse', E14: 'refuse', S12: 'paper', S18: 'cook', S26: 'renew', E22: 'hire' }, menu: ['congee', 'youtiao', 'soy', 'scallion'] },
   private: { tiers: { oil: 2, material: 2, price: 2 }, skill: [0.75, 0.25, 0], buy: ['tables', 'counter'], prefer: { E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'open', S26: 'renew', E03: 'hold', E22: 'hire' }, menu: ['pidan', 'shengjian', 'noodle', 'soy'] },
-  truth: { tiers: { oil: 2, material: 2, price: 1 }, skill: [0.8, 0.2, 0], buy: ['board', 'tables', 'sign'], prefer: { S02: 'refuse', S24: 'truth', E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'post', S26: 'buy', E08: 'public', E16: 'normal', E04: 'show', E01: 'normal', E22: 'hire', E11: 'some' }, menu: ['congee', 'youtiao', 'soy', 'pidan'] },
+  truth: { admit: true, tiers: { oil: 2, material: 2, price: 1 }, skill: [0.8, 0.2, 0], buy: ['board', 'tables', 'sign'], prefer: { S02: 'refuse', S24: 'confront', E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'post', S26: 'buy', E08: 'public', E16: 'normal', E04: 'show', E01: 'normal', E22: 'hire', E11: 'some' }, menu: ['congee', 'youtiao', 'soy', 'pidan'] },
   honest: { tiers: { oil: 2, material: 2, price: 1 }, skill: [0.8, 0.2, 0], buy: ['board', 'tables', 'sign'], prefer: { E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'post', S26: 'buy', E08: 'public', E16: 'normal', E04: 'show', E01: 'normal', E22: 'hire', E11: 'some' }, menu: ['pidan', 'shengjian', 'congee', 'soy'] },
   pills: { tiers: { oil: 0, material: 0, price: 1 }, skill: [0.4, 0.5, 0.1], cheat: 0.7, buy: ['fire', 'tray'], prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S02: 'take', S24: 'deal', S12: 'cheap', S18: 'cook', S26: 'renew', CRISIS: 'hold', E23: 'deny', E18: 'go', E10: 'risk', E04: 'delay', E08: 'silent' }, menu: ['youtiao', 'scallion', 'congee', 'soy'] },
   reopen: { tiers: { oil: 0, material: 0, price: 1 }, skill: [0.6, 0.35, 0.05], cheat: 0.5, buy: ['fire'], prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S02: 'take', S12: 'cheap', S18: 'cook', S26: 'renew', CRISIS: 'rectify', E23: 'deny', E18: 'go', E04: 'delay' }, after: { CRISIS: { oil: 2, material: 1, price: 1 } }, menu: ['youtiao', 'scallion', 'congee', 'soy'] },
@@ -66,7 +66,7 @@ function play(name, seed, opts) {
     if (['dawn', 'open', 'dusk'].includes(s.phase)) {
       const item = s.pending[0];
       const c = choose(s, item, pol);
-      const dg = item.id === 'S03' ? (pol.cheat || pol.greedy ? { id: 'market', good: 2, bad: 6 } : { id: 'market', good: 7, bad: 0 }) : item.id === 'S15' ? { id: 'check', found: pol.cheat || pol.greedy ? 3 : 7 } : undefined;
+      const dg = item.id === 'S03' ? (pol.cheat || pol.greedy ? { id: 'market', good: 2, bad: 6 } : { id: 'market', good: 7, bad: 0 }) : item.id === 'S15' ? { id: 'check', found: pol.cheat || pol.greedy ? 3 : 7 } : item.id === 'S24' && c === 'confront' ? { id: 'face', score: (s.pages.includes(3) ? 1 : 0) + (s.pages.includes(5) ? 1 : 0) + (pol.admit ? 1 : 0), admit: !!pol.admit } : undefined;
       const n = Run.reduce(s, { t: 'resolve', choice: c, dungeon: dg });
       if (n === s) throw new Error('stuck resolving ' + JSON.stringify(item) + ' choice=' + c + ' day ' + s.day);
       if (item.kind === 'crisis' && pol.after && pol.after.CRISIS) tiers = Object.assign({}, pol.after.CRISIS);

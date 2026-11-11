@@ -79,7 +79,7 @@ BSX.define('game/cutscene', function (require) {
     if (b.card != null) { this.ov = { kind: 'card', n: b.card, t: 0 }; Au.play('page'); if (this.skipping) { this.ov = null; return false; } return true; }
     if (b.memory) { this.ov = { kind: 'memory', img: b.memory, lines: b.lines || [], li: 0, typed: 0, t: 0 }; Au.play('page'); (b.lines || []).forEach(function (l) { self.log.push({ who: '回忆', text: l, day: self.state && self.state.day }); }); if (this.skipping) { this.ov = null; return false; } return true; }
     if (b.page) { this.ov = { kind: 'page', n: b.page, t: 0 }; Au.play('stamp'); this.log.push({ who: '', text: '找到账本第 ' + b.page + ' 页', day: this.state && this.state.day }); if (this.skipping) { this.ov = null; return false; } return true; }
-    if (b.dungeon) { this.skipping = false; if (b.dungeon === 'check') this.mini = new (require('game/check').Check)({ jinOil: !!(this.state && this.state.flags.jinOil) }); else this.mini = new (require('game/market').Market)({ seed: (this.state && this.state.seed || 7) + (this.state ? this.state.day : 0) * 31, auto: false }); Au.music(b.dungeon === 'check' ? 'bgm_tense' : 'bgm_rush'); return true; }
+    if (b.dungeon) { this.skipping = false; if (b.dungeon === 'face') this.mini = new (require('game/face').Face)({ pages: (this.state && this.state.pages) || [] }); else if (b.dungeon === 'check') this.mini = new (require('game/check').Check)({ jinOil: !!(this.state && this.state.flags.jinOil) }); else this.mini = new (require('game/market').Market)({ seed: (this.state && this.state.seed || 7) + (this.state ? this.state.day : 0) * 31, auto: false }); Au.music(b.dungeon === 'market' ? 'bgm_rush' : 'bgm_tense'); return true; }
     if (b.bg !== undefined) { this.bg = b.bg; return false; }
     if (b.photo) { this.result.photo = b.photo; Sc.flash = 0.6; Au.play('stamp'); return false; }
     if (b.unlockDish) { this.result.unlocks.push(b.unlockDish); this.toast = { text: '新菜谱：' + BSX.require('content/dishes').byId[b.unlockDish].name, t: 0, dish: b.unlockDish }; Au.play('open'); return false; }
@@ -158,7 +158,7 @@ BSX.define('game/cutscene', function (require) {
     Au.play('perfect'); Sc.flash = 0.25;
     this.next();
   };
-  P.pick = function (c) { this.result.choice = c.id; this.choiceResult = c.result; this.choice = null; Au.play('stamp'); this.line = { who: 'zhou', key: 'zhou', text: c.result, face: 0, narr: true }; this.typed = 0; this.lineT = 0; this.log.push({ who: '', text: c.result, day: this.state && this.state.day }); };
+  P.pick = function (c) { this.result.choice = c.id; this.choiceResult = c.result; this.choice = null; if (c.then) { var more = this.flatten(c.then, []); Array.prototype.splice.apply(this.beats, [this.i + 1, 0].concat(more)); } Au.play('stamp'); this.line = { who: 'zhou', key: 'zhou', text: c.result, face: 0, narr: true }; this.typed = 0; this.lineT = 0; this.log.push({ who: '', text: c.result, day: this.state && this.state.day }); };
   // 输入：对白点击推进；动作需在目标处完成
   P.pointer = function (type, x, y) {
     if (this.mini) return this.mini.pointer(type, x, y);

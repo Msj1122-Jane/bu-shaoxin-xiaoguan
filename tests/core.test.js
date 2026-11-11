@@ -248,10 +248,14 @@ test('账本缺页：剧情结算时收集，对质选项按页数开放', () =>
   assert.ok(r.state.pages.length >= 6, '页数 ' + r.state.pages);
   assert.strictEqual(r.state.flags.truth, true);
   const ST = BSX.require('content/story');
-  const s = Run.create({ seed: 1 }); s.pages = [1, 2];
-  assert.strictEqual(Run.findStoryChoice(ST.all.S24, 'truth', s), null);
-  s.pages = [1, 2, 3, 4];
-  assert.ok(Run.findStoryChoice(ST.all.S24, 'truth', s));
+  const s = Run.create({ seed: 1 }); s.pages = [1];
+  assert.strictEqual(Run.findStoryChoice(ST.all.S24, 'confront', s), null);
+  s.pages = [1, 2, 3];
+  assert.ok(Run.findStoryChoice(ST.all.S24, 'confront', s));
+  const face = (dg) => { let t = Run.create({ seed: 2 }); t.day = 24; t.phase = 'dusk'; t.pages = [1, 2, 3, 5, 6]; t.pending = [{ kind: 'story', id: 'S24' }]; return Run.reduce(t, { t: 'resolve', choice: 'confront', dungeon: dg }); };
+  assert.strictEqual(face({ id: 'face', score: 3, admit: true }).flags.truth, true);
+  const ex = face({ id: 'face', score: 2, admit: false }); assert.strictEqual(ex.flags.exposed, true); assert.ok(!ex.flags.truth);
+  assert.strictEqual(face({ id: 'face', score: 1 }).flags.jinWon, true);
 });
 
 test('凌晨早市副本：坏料省钱但烧心，全好料加老秦好感', () => {

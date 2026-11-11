@@ -181,8 +181,7 @@ BSX.define('content/story', function () {
     { choice: [
       { id: 'silent', label: '不接话，送客', effect: {}, result: '老金走到门口，回头看了一眼，什么也没说。' },
       { id: 'deal', label: '收下他的钱，旧事不提', effect: { cash: 3000, burn: 8, flag: { jinDeal: true } }, result: '信封压在了账本上面。' },
-      { id: 'expose', label: '把账页拍在桌上：你卖的是什么油', when: { pagesMin: 3 }, effect: { rep: 2, flag: { exposed: true } }, result: '老金的脸沉了下来，把信封揣回了兜里。' },
-      { id: 'truth', label: '把账本摊开：我爸有错，你也有', when: { pagesMin: 4 }, effect: { rep: 3, flag: { exposed: true, truth: true } }, result: '老周一页一页翻过去。老金没再说话。' }
+      { id: 'confront', label: '把账本拿出来，一条条对', when: { pagesMin: 2 }, effect: {}, result: '老周把账本从柜台底下拿了出来。', then: [{ dungeon: 'face' }] }
     ] },
     { exit: 'jin' }, { cam: [640, 360, 1.0], t: 800 }
   ] };
