@@ -135,6 +135,11 @@ def main(src):
         im = unbg(S(f)).resize((512, 512), Image.LANCZOS)
         add(aid, 'ui/%s.png' % aid, im, 'story', f[:-4])
 
+    # 早市副本：好料 / 坏料图标（2 列 × 4 行：左好右坏）
+    for f, aid in (('早市副本_好料vs坏料图标_果蔬肉蛋.png', 'mk_veg'), ('早市副本_好料vs坏料图标_粮油主料.png', 'mk_grain')):
+        im = unbg(S(f)).resize((512, 512), Image.LANCZOS)
+        add(aid, 'market/%s.png' % aid, im, 'story', f[:-4], colors=128)
+        entries[-1].update({'cols': 2, 'rows': 4, 'cellW': 256, 'cellH': 128})
     mp = os.path.join(ROOT, 'assets/runtime/manifest.json')
     m = json.load(open(mp))
     ids = {e['id'] for e in entries}

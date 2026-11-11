@@ -551,6 +551,7 @@ BSX.define('core/run', function (require) {
         s.today.choices.push({ src: item.id, label: c2.label, result: c2.result });
       } else if (storyHasChoice(sc)) return false;
       (a.unlocks || []).forEach(function (id) { s.unlocked[id] = true; });
+      if (a.dungeon && JSON.stringify(sc.beats).indexOf('"dungeon"') >= 0) applyDungeon(s, a.dungeon, sc);
     } else if (item.kind === 'node') {
       var st = s.regulars[item.who];
       if (st.nodes.indexOf(item.idx) < 0) st.nodes.push(item.idx);
@@ -580,6 +581,16 @@ BSX.define('core/run', function (require) {
     if ((item.kind === 'story' || item.kind === 'node') && ST.all[item.id]) grantPages(s, ST.all[item.id]);
     s.pending.shift();
     return true;
+  }
+  // 副本结算（凌晨早市）：坏料每样省 15 元、烧心 +3；全挑好料且基本买齐 → 老秦好感、口碑；没买到太多 → 口碑 −1
+  function applyDungeon(s, r, sc) {
+    var good = Math.max(0, Math.min(8, r.good | 0)), bad = Math.max(0, Math.min(8 - good, r.bad | 0)), missed = 8 - good - bad;
+    var e = { cash: bad * 1500, burn: bad * 3 };
+    if (!bad && missed <= 1) { e.rep = 1; e.aff = { qin: 1 }; e.flag = { marketClean: true }; }
+    if (missed >= 4) e.rep = (e.rep || 0) - 1;
+    applyEffect(s, e, sc.id);
+    s.dungeons = s.dungeons || {}; s.dungeons[r.id || 'market'] = { good: good, bad: bad, missed: missed };
+    s.keyChoices.push({ day: s.day, src: sc.id, title: '凌晨早市', choice: 'market', label: '好料 ' + good + ' · 坏料 ' + bad, weight: bad >= 3 ? 4 : 2 });
   }
   // 账本缺页：剧本里的 { page: n } 指令（不放在条件分支里），结算时记入 s.pages
   function grantPages(s, sc) {

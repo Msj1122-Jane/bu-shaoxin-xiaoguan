@@ -34,7 +34,7 @@ BSX.define('dev/autoplay', function (require) {
         if (it.kind === 'crisis') c = want || 'rectify'; else if (it.kind === 'rescue') c = want || 'borrow';
         else if (it.kind === 'event') { var ev = E.byId[it.id]; c = ev.choices.some(function (x) { return x.id === want; }) ? want : ev.choices[0].id; }
         else { var sc = ST.all[it.id]; c = want && Run.findStoryChoice(sc, want, s) ? want : undefined; if (!c) { var m = /"(?:choice)":\[\{"id":"(\w+)"/.exec(JSON.stringify(sc.beats)); if (m && Run.findStoryChoice(sc, m[1], s)) c = m[1]; else if (JSON.stringify(sc.beats).indexOf('eventChoice') >= 0) c = E.byId['E20'].choices[0].id; else if (m) { var all = []; JSON.stringify(sc.beats).replace(/"id":"(\w+)"/g, function (_, id) { all.push(id); }); c = all.filter(function (id) { return Run.findStoryChoice(sc, id, s); })[0]; } } }
-        var n = Run.reduce(s, { t: 'resolve', choice: c }); if (n === s) throw new Error('autoplay stuck ' + JSON.stringify(it)); s = n;
+        var n = Run.reduce(s, { t: 'resolve', choice: c, dungeon: it.id === 'S03' ? { id: 'market', good: 7, bad: 0 } : undefined }); if (n === s) throw new Error('autoplay stuck ' + JSON.stringify(it)); s = n;
       } else if (s.phase === 'prep') {
         ['oil', 'material', 'price'].forEach(function (k) { s = Run.reduce(s, { t: 'tier', key: k, v: pol.tiers[k] }); });
         s = Run.reduce(s, { t: 'confirmPrep' });
@@ -105,6 +105,13 @@ BSX.define('dev/autoplay', function (require) {
   };
   B.story = function (scr, s) {
     var d = scr.dir; if (!d) { this.wait = 0.2; return; }
+    if (d.mini) {
+      var mm = d.mini.describe(), greedy = this.pol.cheat || this.pol.greedy;
+      if (mm.over) { this.tapHit('mk_done'); this.wait = 0.8; return; }
+      var tgt = mm.slots.filter(function (x) { return x && x.ready && (greedy || !x.bad); })[0];
+      if (tgt) { this.g('market_pick'); this.tapHit('mk_slot' + tgt.i, 0.15); this.wait = 0.35; return; }
+      this.wait = 0.2; return;
+    }
     if (d.act) {
       var a = d.describe().act; this.g('story_' + a.kind);
       if (a.kind === 'tap') this.tap(a.x, a.y, 0.2);

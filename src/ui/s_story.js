@@ -78,7 +78,7 @@ BSX.define('ui/s_story', function (require) {
     if (this.dir.done && !this.resolving) {
       this.resolving = true;
       var app = this.app, r = this.dir.result;
-      var ok = app.dispatch({ t: 'resolve', choice: r.choice || undefined, unlocks: r.unlocks });
+      var ok = app.dispatch({ t: 'resolve', choice: r.choice || undefined, unlocks: r.unlocks, dungeon: r.dungeon });
       if (!ok) { app.reportError(new Error('剧情结算失败 ' + JSON.stringify(this.item) + ' choice=' + r.choice)); }
       var s = app.state;
       if (['dawn', 'open', 'dusk'].indexOf(s.phase) >= 0 && s.pending.length) { this.resolving = false; this.load(); }
@@ -99,6 +99,7 @@ BSX.define('ui/s_story', function (require) {
     // 电影黑边（减少动效时不推入）
     var bar = this.app.settings.reduceMotion ? 0 : 36; ctx.fillStyle = '#120c08'; ctx.fillRect(0, 0, 1280, bar); ctx.fillRect(0, 720 - bar, 1280, bar);
     if (this.dir) this.dir.drawUI(ctx);
+    if (this.dir && this.dir.mini) return;
     var s = this.app.state, it = this.item;
     if (it && this.script && this.script.title) U.text(ctx, (it.kind === 'story' ? '· ' : '') + this.script.title, 32, 64, { size: 24, bold: true, color: '#fff3d6', stroke: '#3b2412' });
     if (s) U.text(ctx, s.mode === 'week' ? '常营业' : '第' + s.day + '日', 32, 96, { size: 18, color: '#fff3d6', stroke: '#3b2412' });

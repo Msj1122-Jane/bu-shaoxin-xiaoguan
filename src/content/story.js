@@ -43,6 +43,18 @@ BSX.define('content/story', function () {
     ] },
     { exit: 'jin' }, { hide: 'oilcan' }, { cam: [640, 360, 1.0], t: 700 }
   ] };
+  // ── 第一章 第3日 凌晨早市（pre，副本）：老秦带老周去挑货
+  S.S03 = { id: 'S03', tier: 'B', day: 3, phase: 'pre', title: '凌晨早市', stage: { time: 'dawn', weather: 'auto', view: 'ext' }, beats: [
+    { bg: 'scene_market' }, { light: 'dawn' }, { cam: [640, 360, 1.0], t: 0 },
+    { enter: 'qin', x: 900 },
+    { say: 'qin', text: '四点的早市，好货不等人。', face: 1 },
+    { say: 'qin', text: '叶子要挺，蛋壳要干，油要清。', face: 0 },
+    { say: 'qin', text: '标着半价的，你自己掂量。', face: 2 },
+    { say: 'zhou', text: '我爸以前也这么挑？', face: 0 },
+    { say: 'qin', text: '他眼睛毒着呢。去吧。', face: 1 },
+    { dungeon: 'market' },
+    { exit: 'qin' }, { bg: null }
+  ] };
   // ── 对手黑心店（B 级主线插曲，D033）：第4日开张抢客
   S.S04 = { id: 'S04', tier: 'B', day: 8, phase: 'pre', title: '街对面开了新店', stage: { time: 'morning', weather: 'auto', view: 'ext' }, beats: [
     { card: 2 }, { cam: [640, 360, 1.0], t: 0 }, { prop: 'flyer', x: 760, y: 600 },

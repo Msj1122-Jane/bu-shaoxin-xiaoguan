@@ -253,3 +253,14 @@ test('账本缺页：剧情结算时收集，对质选项按页数开放', () =>
   s.pages = [1, 2, 3, 4];
   assert.ok(Run.findStoryChoice(ST.all.S24, 'truth', s));
 });
+
+test('凌晨早市副本：坏料省钱但烧心，全好料加老秦好感', () => {
+  const ST = BSX.require('content/story');
+  const go = (dg) => { let s = Run.create({ seed: 9 }); s.day = 3; s.phase = 'dawn'; s.pending = [{ kind: 'story', id: 'S03' }]; return Run.reduce(s, { t: 'resolve', dungeon: dg }); };
+  const base = Run.create({ seed: 9 });
+  const bad = go({ id: 'market', good: 2, bad: 6 });
+  assert.strictEqual(bad.cash - base.cash, 6 * 1500); assert.strictEqual(bad.burn, 18);
+  const good = go({ id: 'market', good: 8, bad: 0 });
+  assert.strictEqual(good.regulars.qin.aff, base.regulars.qin.aff + 1); assert.strictEqual(good.flags.marketClean, true);
+  assert.ok(ST.all.S03);
+});

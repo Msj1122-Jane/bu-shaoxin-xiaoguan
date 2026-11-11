@@ -79,6 +79,7 @@ BSX.define('game/cutscene', function (require) {
     if (b.card != null) { this.ov = { kind: 'card', n: b.card, t: 0 }; Au.play('page'); if (this.skipping) { this.ov = null; return false; } return true; }
     if (b.memory) { this.ov = { kind: 'memory', img: b.memory, lines: b.lines || [], li: 0, typed: 0, t: 0 }; Au.play('page'); (b.lines || []).forEach(function (l) { self.log.push({ who: '回忆', text: l, day: self.state && self.state.day }); }); if (this.skipping) { this.ov = null; return false; } return true; }
     if (b.page) { this.ov = { kind: 'page', n: b.page, t: 0 }; Au.play('stamp'); this.log.push({ who: '', text: '找到账本第 ' + b.page + ' 页', day: this.state && this.state.day }); if (this.skipping) { this.ov = null; return false; } return true; }
+    if (b.dungeon) { this.skipping = false; var Mk = require('game/market'); this.mini = new Mk.Market({ seed: (this.state && this.state.seed || 7) + (this.state ? this.state.day : 0) * 31, auto: false }); Au.music('bgm_rush'); return true; }
     if (b.bg !== undefined) { this.bg = b.bg; return false; }
     if (b.photo) { this.result.photo = b.photo; Sc.flash = 0.6; Au.play('stamp'); return false; }
     if (b.unlockDish) { this.result.unlocks.push(b.unlockDish); this.toast = { text: '新菜谱：' + BSX.require('content/dishes').byId[b.unlockDish].name, t: 0, dish: b.unlockDish }; Au.play('open'); return false; }
@@ -113,6 +114,7 @@ BSX.define('game/cutscene', function (require) {
     if (this.shutterAnim) { var s = this.shutterAnim; s.t += dt / 1.2; Sc.set({ shutter: s.from + (s.to - s.from) * Math.min(1, s.t) }); if (s.t >= 1) this.shutterAnim = null; }
     if (this.toast) { this.toast.t += dt; if (this.toast.t > 2.6) this.toast = null; }
     if (this.paused) return;
+    if (this.mini) { this.mini.update(dt); if (this.mini.done) { this.result.dungeon = this.mini.result; this.mini = null; Au.music('bgm_dawn'); this.next(); } return; }
     if (this.ov) {
       var o = this.ov; o.t += dt;
       if (o.kind === 'memory') { var L0 = o.lines[o.li] || ''; o.typed = Math.min(L0.length, o.typed + dt * 14); if (this.auto && o.typed >= L0.length && o.t > 1.6 + L0.length * 0.1) this.ovAdvance(); }
@@ -140,7 +142,7 @@ BSX.define('game/cutscene', function (require) {
     if (this.line) { if (this.typed < this.line.text.length) { this.typed = this.line.text.length; return; } Au.setDuck(false); this.next(); Au.play('tap'); }
   };
   P.skip = function () { // 跳到下一个动作/选择点或结束
-    if (this.act || this.choice) return;
+    if (this.act || this.choice || this.mini) return;
     this.skipping = true; this.wait = 0; this.o.canSkip = true; this.ov = null;
     Au.setDuck(false);
     this.next();
@@ -159,6 +161,7 @@ BSX.define('game/cutscene', function (require) {
   P.pick = function (c) { this.result.choice = c.id; this.choiceResult = c.result; this.choice = null; Au.play('stamp'); this.line = { who: 'zhou', key: 'zhou', text: c.result, face: 0, narr: true }; this.typed = 0; this.lineT = 0; this.log.push({ who: '', text: c.result, day: this.state && this.state.day }); };
   // 输入：对白点击推进；动作需在目标处完成
   P.pointer = function (type, x, y) {
+    if (this.mini) return this.mini.pointer(type, x, y);
     var a = this.act;
     if (a) {
       var tp = Sc.toScreen(a.x, a.y), near = Math.hypot(x - tp.x, y - tp.y) < 150;
@@ -208,6 +211,7 @@ BSX.define('game/cutscene', function (require) {
   }
   P.drawUI = function (ctx, opts) {
     var self = this;
+    if (this.mini) { this.mini.draw(ctx); return; }
     // 动作提示
     if (this.act) {
       var a = this.act, sp = Sc.toScreen(a.x, a.y);
@@ -294,7 +298,7 @@ BSX.define('game/cutscene', function (require) {
   P.describe = function () {
     return { id: this.script.id, beat: this.i, of: this.beats.length, line: this.line ? { who: this.line.who, text: this.line.text, typed: this.typed >= this.line.text.length } : null,
       act: this.act ? { kind: this.act.kind, label: this.act.label, x: Math.round(Sc.toScreen(this.act.x, this.act.y).x), y: Math.round(Sc.toScreen(this.act.x, this.act.y).y), progress: this.act.n || Math.round(this.act.hold * 100) / 100 } : null,
-      choice: this.choice ? this.choice.list.map(function (c) { return { id: c.id, label: c.label }; }) : null, overlay: this.ov ? this.ov.kind : null, bg: this.bg || null, auto: this.auto, done: this.done, actors: Object.keys(this.actors) };
+      choice: this.choice ? this.choice.list.map(function (c) { return { id: c.id, label: c.label }; }) : null, overlay: this.ov ? this.ov.kind : null, mini: this.mini ? this.mini.describe() : null, bg: this.bg || null, auto: this.auto, done: this.done, actors: Object.keys(this.actors) };
   };
   return { Director: Director, bigPortrait: bigPortrait, CARDS: CARDS };
 });

@@ -66,7 +66,8 @@ function play(name, seed, opts) {
     if (['dawn', 'open', 'dusk'].includes(s.phase)) {
       const item = s.pending[0];
       const c = choose(s, item, pol);
-      const n = Run.reduce(s, { t: 'resolve', choice: c });
+      const dg = item.id === 'S03' ? (pol.cheat || pol.greedy ? { id: 'market', good: 2, bad: 6 } : { id: 'market', good: 7, bad: 0 }) : undefined;
+      const n = Run.reduce(s, { t: 'resolve', choice: c, dungeon: dg });
       if (n === s) throw new Error('stuck resolving ' + JSON.stringify(item) + ' choice=' + c + ' day ' + s.day);
       if (item.kind === 'crisis' && pol.after && pol.after.CRISIS) tiers = Object.assign({}, pol.after.CRISIS);
       s = n;
