@@ -149,6 +149,14 @@ def main(src):
             cx, cy = (i % 3) * 160, (i // 3) * 160; bb = out.crop((cx, cy, cx + 160, cy + 160)).getchannel('A').getbbox() or (0, 0, 160, 160)
             tr.append(list(bb))
         entries[-1].update({'cols': 3, 'rows': 3, 'cellW': 160, 'cellH': 160, 'cellTrim': tr})
+    # 做饭过程生熟三阶段（4 行 × 3 列：油条 / 包子 / 豆浆 / 煎饼）
+    im = unbg(S('做饭过程_生熟多阶段食材状态图集.png')).resize((768, 1024), Image.LANCZOS)
+    add('cook_stages', 'food/cook_stages.png', im, 'story', '做饭过程生熟三阶段', colors=160)
+    out = Image.open(os.path.join(OUT, 'food/cook_stages.png')).convert('RGBA'); tr = []
+    for i in range(12):
+        cx, cy = (i % 3) * 256, (i // 3) * 256; bb = out.crop((cx, cy, cx + 256, cy + 256)).getchannel('A').getbbox() or (0, 0, 256, 256)
+        tr.append(list(bb))
+    entries[-1].update({'cols': 3, 'rows': 4, 'cellW': 256, 'cellH': 256, 'cellTrim': tr})
     mp = os.path.join(ROOT, 'assets/runtime/manifest.json')
     m = json.load(open(mp))
     ids = {e['id'] for e in entries}
