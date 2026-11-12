@@ -76,7 +76,7 @@ BSX.define('ui/s_story', function (require) {
     if (!this.dir) return;
     this.dir.update(dt);
     if (this.dir.done && !this.resolving) {
-      this.resolving = true;
+      this.resolving = true; Au.popAllMusic();
       var app = this.app, r = this.dir.result;
       var ok = app.dispatch({ t: 'resolve', choice: r.choice || undefined, unlocks: r.unlocks, dungeon: r.dungeon });
       if (!ok) { app.reportError(new Error('剧情结算失败 ' + JSON.stringify(this.item) + ' choice=' + r.choice)); }

@@ -67,7 +67,10 @@ BSX.define('game/cutscene', function (require) {
     if (b.light) { Sc.set({ time: b.light === 'rain' ? Sc.time : b.light }); if (b.light === 'rain') Sc.set({ weather: 'rain' }); return false; }
     if (b.weather) { Sc.set({ weather: b.weather }); Au.setAmbience(Au.mood, b.weather === 'rain'); return false; }
     if (b.view) { Sc.set({ view: b.view }); this.view = b.view; this.foot = b.view === 'ext' ? 650 : 600; this.h = b.view === 'ext' ? 250 : 330; return false; }
+    if (b.enter === 'jin' && !this.skipping) Au.pushMusic('bgm_jin');
+    if (b.card === 3) Au.music('bgm_tense');
     if (b.enter) { var w = this.resolveWho(b.enter); var from = b.x > 640 ? 1400 : -120; this.actors[b.enter] = { who: w, x: from, tx: b.x, a: 1, ta: 1, pose: 'walk', flip: b.x > 640 }; if (!this.skipping) { this.wait = 0.9; return true; } this.actors[b.enter].x = b.x; return false; }
+    if (b.exit === 'jin') Au.popMusic();
     if (b.exit) { var a = this.actors[b.exit]; if (a) { a.tx = a.x > 640 ? 1450 : -150; a.leaving = true; a.pose = 'walk'; a.flip = !a.flip; } return false; }
     if (b.prop) { this.props[b.prop] = { x: b.x, y: b.y, a: 0 }; Au.play('drop'); return false; }
     if (b.hide) { delete this.props[b.hide]; return false; }
@@ -77,9 +80,9 @@ BSX.define('game/cutscene', function (require) {
     if (b.crowd != null) { Sc.crowd = b.crowd; return false; }
     if (b.visitors) { var s = this.state, list = R.list.filter(function (r) { return s.regulars[r.id].visits > 0; }).sort(function (x, y) { return s.regulars[y.id].aff - s.regulars[x.id].aff; }).slice(0, b.visitors); list.forEach(function (r, i) { self.actors['v' + i] = { who: r.id, x: 1400, tx: 760 + i * 170, a: 1, ta: 1, pose: 'walk', flip: true }; }); if (!this.skipping) { this.wait = 1; return true; } return false; }
     if (b.card != null) { this.ov = { kind: 'card', n: b.card, t: 0 }; Au.play('page'); if (this.skipping) { this.ov = null; return false; } return true; }
-    if (b.memory) { this.ov = { kind: 'memory', img: b.memory, lines: b.lines || [], li: 0, typed: 0, t: 0 }; Au.play('page'); (b.lines || []).forEach(function (l) { self.log.push({ who: '回忆', text: l, day: self.state && self.state.day }); }); if (this.skipping) { this.ov = null; return false; } return true; }
+    if (b.memory) { Au.pushMusic('bgm_memory'); this.ov = { kind: 'memory', img: b.memory, lines: b.lines || [], li: 0, typed: 0, t: 0 }; Au.play('page'); (b.lines || []).forEach(function (l) { self.log.push({ who: '回忆', text: l, day: self.state && self.state.day }); }); if (this.skipping) { this.ov = null; return false; } return true; }
     if (b.page) { this.ov = { kind: 'page', n: b.page, t: 0 }; Au.play('stamp'); this.log.push({ who: '', text: '找到账本第 ' + b.page + ' 页', day: this.state && this.state.day }); if (this.skipping) { this.ov = null; return false; } return true; }
-    if (b.dungeon) { this.skipping = false; if (b.dungeon === 'face') this.mini = new (require('game/face').Face)({ pages: (this.state && this.state.pages) || [] }); else if (b.dungeon === 'check') this.mini = new (require('game/check').Check)({ jinOil: !!(this.state && this.state.flags.jinOil) }); else this.mini = new (require('game/market').Market)({ seed: (this.state && this.state.seed || 7) + (this.state ? this.state.day : 0) * 31, auto: false }); Au.music(b.dungeon === 'market' ? 'bgm_rush' : 'bgm_tense'); return true; }
+    if (b.dungeon) { this.skipping = false; if (b.dungeon === 'face') this.mini = new (require('game/face').Face)({ pages: (this.state && this.state.pages) || [] }); else if (b.dungeon === 'check') this.mini = new (require('game/check').Check)({ jinOil: !!(this.state && this.state.flags.jinOil) }); else this.mini = new (require('game/market').Market)({ seed: (this.state && this.state.seed || 7) + (this.state ? this.state.day : 0) * 31, auto: false }); Au.pushMusic(b.dungeon === 'market' ? 'bgm_rush' : b.dungeon === 'face' ? 'bgm_face' : 'bgm_tense'); return true; }
     if (b.bg !== undefined) { this.bg = b.bg; return false; }
     if (b.photo) { this.result.photo = b.photo; Sc.flash = 0.6; Au.play('stamp'); return false; }
     if (b.unlockDish) { this.result.unlocks.push(b.unlockDish); this.toast = { text: '新菜谱：' + BSX.require('content/dishes').byId[b.unlockDish].name, t: 0, dish: b.unlockDish }; Au.play('open'); return false; }
@@ -114,7 +117,7 @@ BSX.define('game/cutscene', function (require) {
     if (this.shutterAnim) { var s = this.shutterAnim; s.t += dt / 1.2; Sc.set({ shutter: s.from + (s.to - s.from) * Math.min(1, s.t) }); if (s.t >= 1) this.shutterAnim = null; }
     if (this.toast) { this.toast.t += dt; if (this.toast.t > 2.6) this.toast = null; }
     if (this.paused) return;
-    if (this.mini) { this.mini.update(dt); if (this.mini.done) { this.result.dungeon = this.mini.result; this.mini = null; Au.music('bgm_dawn'); this.next(); } return; }
+    if (this.mini) { this.mini.update(dt); if (this.mini.done) { this.result.dungeon = this.mini.result; this.mini = null; Au.popMusic(); this.next(); } return; }
     if (this.ov) {
       var o = this.ov; o.t += dt;
       if (o.kind === 'memory') { var L0 = o.lines[o.li] || ''; o.typed = Math.min(L0.length, o.typed + dt * 14); if (this.auto && o.typed >= L0.length && o.t > 1.6 + L0.length * 0.1) this.ovAdvance(); }
@@ -136,6 +139,7 @@ BSX.define('game/cutscene', function (require) {
       if (o.typed < L0.length) { o.typed = L0.length; return; }
       if (o.li < o.lines.length - 1) { o.li++; o.typed = 0; o.t = 0; Au.play('tap'); return; }
     } else if (o.t < 0.5) return;
+    if (o.kind === 'memory') Au.popMusic();
     this.ov = null; Au.play('tap'); this.next();
   };
   P.advance = function () {
@@ -143,7 +147,7 @@ BSX.define('game/cutscene', function (require) {
   };
   P.skip = function () { // 跳到下一个动作/选择点或结束
     if (this.act || this.choice || this.mini) return;
-    this.skipping = true; this.wait = 0; this.o.canSkip = true; this.ov = null;
+    this.skipping = true; this.wait = 0; this.o.canSkip = true; if (this.ov && this.ov.kind === 'memory') Au.popMusic(); this.ov = null;
     Au.setDuck(false);
     this.next();
     this.skipping = false;

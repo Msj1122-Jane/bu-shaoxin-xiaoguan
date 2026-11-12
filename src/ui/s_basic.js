@@ -101,7 +101,7 @@ BSX.define('ui/s_basic', function (require) {
   X.Intro = function (app) {
     this.name = 'intro'; this.app = app; this.t = 0; this.parts = []; this.fired = {};
     Sc.set({ view: 'ext', time: 'morning', weather: 'sun', shutter: 0, crowd: 0 }); Sc.moveCam(640, 360, 1, 0);
-    Au.music('bgm_dawn');
+    Au.music('bgm_intro');
   };
   var SHOTS = [
     { from: 0, to: 4.6, text: '清晨五点，老街还没醒。' },

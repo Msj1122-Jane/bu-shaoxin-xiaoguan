@@ -34,7 +34,7 @@ BSX.define('ui/s_ending', function (require) {
     this.e = EN.byId[s.ending.id]; this.best = Legacy.bestRegular(s); this.choices = keyChoices(s);
     var total = Object.keys(ST.nodes).length, seen = s.nodesDone.length; this.missed = total - seen;
     Sc.set({ view: 'ext', time: 'dusk', weather: 'sun', shutter: s.ending.id === 'E_TRANSFER' || s.ending.id === 'E_FAREWELL' ? 1 : 0.2, crowd: 0 }); Sc.moveCam(640, 360, 1, 0);
-    Au.setAmbience('dusk', false); Au.play('bell');
+    Au.stack = []; Au.lockTrack = true; Au.music(['E_PILLS', 'E_TRANSFER'].indexOf(s.ending.id) >= 0 ? 'bgm_bad' : 'bgm_good'); Au.setAmbience('dusk', false); Au.lockTrack = false; Au.play('bell');
   }
   var P = Ending.prototype;
   P.update = function (dt) { this.t += dt; };

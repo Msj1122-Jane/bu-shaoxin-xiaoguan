@@ -61,10 +61,15 @@ BSX.define('game/audio', function () {
     Au.active++; setTimeout(function () { Au.active--; }, 120);
     try { LIB[name](); } catch (e) {}
   };
-  // 配乐：预渲染的江南五声音轨（tools/compose_music.py），循环播放，换场景时 1.2 秒交叉淡入
+  // 配乐：Lovart 制作的 10 首（用户 11-13，BGM01–BGM10），循环播放，换场景时交叉淡入；解码后的音频很占内存，只缓存最近 2 首
   var TRACK_OF = { morning: 'bgm_dawn', noon: 'bgm_dawn', dawn: 'bgm_dawn', story: 'bgm_dawn', dusk: 'bgm_night', night: 'bgm_night', rain: 'bgm_night' };
   Au.bufs = {}; Au.loading = {};
   Au.music = function (name) { Au.want = name; Au.startMusic(); };
+  // 临时换曲（回忆、老金登场、对质），结束后回到原来那首
+  Au.stack = [];
+  Au.pushMusic = function (name) { Au.stack.push(Au.want); Au.music(name); };
+  Au.popMusic = function () { if (Au.stack.length) Au.music(Au.stack.pop()); };
+  Au.popAllMusic = function () { if (Au.stack.length) { var n = Au.stack[0]; Au.stack = []; Au.music(n); } };
   Au.startMusic = function () {
     var name = Au.want; if (!Au.ctx || !name || (Au.cur && Au.cur.name === name)) return;
     if (!Au.bufs[name]) {
@@ -81,6 +86,8 @@ BSX.define('game/audio', function () {
     var s = c.createBufferSource(), g = c.createGain(); s.buffer = Au.bufs[name]; s.loop = true;
     g.gain.value = 0; g.gain.setTargetAtTime(1, now, 0.4); s.connect(g); g.connect(Au.musBus); s.start();
     Au.cur = { name: name, s: s, g: g };
+    Au.recent = (Au.recent || []).filter(function (n) { return n !== name; }); Au.recent.unshift(name);
+    Au.recent.slice(2).forEach(function (n) { delete Au.bufs[n]; Au.loading[n] = false; }); Au.recent = Au.recent.slice(0, 2);
   };
   Au.setAmbience = function (mood, rain) { Au.mood = mood; Au.rain = !!rain; Au.applyAmbience(); if (TRACK_OF[mood] && !Au.lockTrack) Au.music(TRACK_OF[mood]); };
   Au.applyAmbience = function () {
