@@ -109,7 +109,16 @@ BSX.define('ui/s_basic', function (require) {
     { from: 9.2, to: 13.4, text: '一锅粥，熬的是米，也是良心。' },
     { from: 13.4, to: 18.5, text: '' }
   ];
+  // Lovart 片头关键帧（V01，2×2 四格）：槐树巷夜色 / 拉起卷帘门 / 父亲的照片和旧账本 / 第一锅油（窗外有人在看）
+  var SHOTS2 = [
+    { rect: [0, 0, 634, 353], text: '清晨五点，槐树巷还没醒。', pan: [-1, 0] },
+    { rect: [644, 0, 636, 353], text: '周记的卷帘门，十年没拉开过。', pan: [0, 1] },
+    { rect: [0, 362, 634, 358], text: '父亲的照片后面，夹着一本旧账。', pan: [1, 0] },
+    { rect: [644, 362, 636, 358], text: '', pan: [0, -1] }
+  ];
   X.Intro.prototype.update = function (dt) {
+    // 等片头关键帧加载（最多 4 秒），没有就用程序绘制的旧片头
+    if (!A.img('end_01') && A.groupState.story !== 'done' && (this.wt = (this.wt || 0) + dt) < 4) return;
     this.t += dt; var t = this.t, self = this;
     var once = function (k, fn) { if (t >= k && !self.fired[k]) { self.fired[k] = 1; fn(); } };
     once(5.0, function () { Au.play('bell'); });
@@ -133,7 +142,22 @@ BSX.define('ui/s_basic', function (require) {
     var shot = t < 4.6 ? 0 : t < 9.2 ? 1 : t < 13.4 ? 2 : 3, s = SHOTS[shot], lt = t - s.from;
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 1280, 720);
     ctx.save(); ctx.imageSmoothingEnabled = false;
-    if (shot === 2) {
+    var kv = img('end_01');
+    if (kv) {
+      var R = SHOTS2[shot].rect, pn = SHOTS2[shot].pan, z = 1.08 + lt * 0.02, w = 1280 * z, h = 720 * z;
+      ctx.drawImage(kv, R[0], R[1], R[2], R[3], 640 - w / 2 + pn[0] * lt * 6, 360 - h / 2 + pn[1] * lt * 5, w, h);
+      if (shot === 0) { ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgba(40,52,110,' + Math.max(0, 0.35 - lt * 0.06) + ')'; ctx.fillRect(0, 0, 1280, 720); ctx.globalCompositeOperation = 'source-over'; }
+      if (shot === 3) {
+        ctx.fillStyle = 'rgba(14,8,4,' + Math.min(0.45, lt * 0.3) + ')'; ctx.fillRect(0, 0, 1280, 720);
+        ['不', '烧', '心', '小', '馆'].forEach(function (ch, j) {
+          var st = 0.8 + j * 0.22, p = Math.max(0, Math.min(1, (lt - st) / 0.28)); if (p <= 0) return;
+          var yy = 300 - (1 - p) * 260 + (p >= 1 ? Math.sin(Math.min(1, (lt - st - 0.28) / 0.25) * Math.PI) * -8 : 0);
+          U.pixelText(ctx, ch, 640 + (j - 2) * 112, yy, { size: 96, px: 4, align: 'center', color: '#fff3d6', outline: '#3b2412', shadow: '#1e120a' });
+        });
+        if (lt > 2.4) U.pixelText(ctx, '一个月 · 一间早餐铺 · 一条街的人', 640, 676, { size: 28, px: 2, align: 'center', color: '#fff3d6', outline: '#3b2412', alpha: Math.min(1, (lt - 2.4) * 2) });
+      }
+      s = { text: SHOTS2[shot].text, from: s.from };
+    } else if (shot === 2) {
       // 特写：灶上的锅，缓慢推近
       var z = 1 + lt * 0.035, k2 = img('bg_kitchen_closeup');
       ctx.translate(640, 380); ctx.scale(z, z); ctx.translate(-640, -380);
@@ -169,7 +193,7 @@ BSX.define('ui/s_basic', function (require) {
       }
     }
     // 粒子
-    this.parts.forEach(function (p) { var a = 1 - p.t / p.life; if (p.k === 'dust') { ctx.fillStyle = 'rgba(200,170,120,' + a + ')'; ctx.fillRect(p.x, p.y, p.r, p.r); } else { ctx.fillStyle = 'rgba(255,255,255,' + (0.35 * a) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (1 + p.t * 0.6), 0, 7); ctx.fill(); } });
+    if (!kv) this.parts.forEach(function (p) { var a = 1 - p.t / p.life; if (p.k === 'dust') { ctx.fillStyle = 'rgba(200,170,120,' + a + ')'; ctx.fillRect(p.x, p.y, p.r, p.r); } else { ctx.fillStyle = 'rgba(255,255,255,' + (0.35 * a) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (1 + p.t * 0.6), 0, 7); ctx.fill(); } });
     ctx.restore();
     // 电影黑边 + 字幕（像素字，逐字打出）
     if (shot < 3) {
