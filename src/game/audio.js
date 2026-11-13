@@ -3,9 +3,10 @@
 BSX.define('game/audio', function () {
   var Au = { ctx: null, master: null, sfxBus: null, musBus: null, ambBus: null, vol: { music: 0.5, sfx: 0.8 }, active: 0, muted: false, mood: null, rain: false, rainNode: null, noiseBuf: null, nextNote: 0, log: [], loopPour: null, duck: 1 };
   Au.init = function (P, settings) { Au.P = P; Au.setVolumes(settings); };
-  Au.setVolumes = function (st) { if (st) { Au.vol.music = st.music; Au.vol.sfx = st.sfx; } if (Au.musBus) { Au.musBus.gain.value = Au.vol.music * 0.35 * Au.duck; Au.sfxBus.gain.value = Au.vol.sfx; Au.ambBus.gain.value = Au.vol.music * 0.5 * Au.duck; } };
+  Au.setVolumes = function (st) { if (st) { Au.vol.music = st.music; Au.vol.sfx = st.sfx; } if (Au.musBus) { Au.musBus.gain.value = Au.vol.music * 0.9 * Au.duck; Au.sfxBus.gain.value = Au.vol.sfx; Au.ambBus.gain.value = Au.vol.music * 0.5 * Au.duck; } };
   Au.unlock = function () {
-    if (Au.ctx) { if (Au.ctx.state === 'suspended' && Au.ctx.resume) Au.ctx.resume(); return; }
+    if (Au.P && Au.P.audioSession && !Au.sessionOk) { Au.P.audioSession(); if (Au.ctx && Au.ctx.state === 'running') Au.sessionOk = true; }
+    if (Au.ctx) { if (Au.ctx.state !== 'running' && Au.ctx.resume) try { Au.ctx.resume(); } catch (e) {} return; }
     var c = Au.P.audio(); if (!c) return;
     Au.ctx = c; Au.master = c.createGain(); Au.master.connect(c.destination);
     Au.sfxBus = c.createGain(); Au.musBus = c.createGain(); Au.ambBus = c.createGain();
