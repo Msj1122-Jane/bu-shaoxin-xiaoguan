@@ -19,6 +19,7 @@ BSX.define('app', function (require) {
     this.state = null; this.screen = null; this.overlay = null; this.storyLog = []; this.seenCs = {}; this.lastSave = null; this.dev = !!P.devMode; this.paused = false;
     A.init(P, manifest);
     Au.init(P, this.settings);
+    if (P.onGesture) P.onGesture(function () { Au.unlock(); });
     this.applySettings();
     P.onInput(function (type, px, py, id) { app.input(type, px, py, id); });
     P.onKey(function (key, e) { app.key(key, e); });
