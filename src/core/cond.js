@@ -2,7 +2,7 @@
 BSX.define('core/cond', function (require) {
   var C = require('content/config');
   var KEYS = ['minDay', 'maxDay', 'day', 'weather', 'helper', 'aff', 'anyAff', 'affSum', 'burnMin', 'burnMax', 'repMin', 'repMax',
-    'cashMax', 'cashMin', 'flag', 'notFlag', 'oilUsedRecycle', 'ending', 'canRenew', 'cantRenew', 'canBuy'];
+    'cashMax', 'cashMin', 'flag', 'notFlag', 'oilUsedRecycle', 'ending', 'canRenew', 'cantRenew', 'canBuy', 'pagesMin', 'pagesMax'];
   function affSum(s) { var n = 0; for (var k in s.regulars) n += s.regulars[k].aff; return n; }
   function renewCost(s) { return C.renewal.deposit + (s.flags.renewalDelta || 0); }
   function check(s, c, ctx) {
@@ -28,6 +28,8 @@ BSX.define('core/cond', function (require) {
         case 'notFlag': if (s.flags[v]) return false; break;
         case 'oilUsedRecycle': if (!!s.stats.recycleDays !== v) return false; break;
         case 'canBuy': if ((s.cash >= C.buyout.price) !== !!v) return false; break;
+        case 'pagesMin': if ((s.pages || []).length < v) return false; break;
+        case 'pagesMax': if ((s.pages || []).length > v) return false; break;
         case 'ending': if (!ctx || ctx.ending !== v) return false; break;
         case 'canRenew': if ((s.cash >= renewCost(s)) !== v) return false; break;
         case 'cantRenew': if ((s.cash < renewCost(s)) !== v) return false; break;

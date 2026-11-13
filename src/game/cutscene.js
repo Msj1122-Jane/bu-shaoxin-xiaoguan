@@ -9,6 +9,16 @@ BSX.define('game/cutscene', function (require) {
   var Au = require('game/audio');
   var A = require('game/assets');
 
+  var CARDS = [['序章', '开门'], ['第一章', '第一锅油'], ['第二章', '对街'], ['第三章', '风声'], ['第四章', '旧账'], ['终章', '月底那天']];
+  // 新立绘（Lovart 新增）：角色 → 编号；表情 face → 文件后缀
+  var PT = { zhou: 'c01', father: 'c02', jin: 'c03', peer: 'c04', zhao: 'c05', man: 'c06', zheng: 'c07', ali: 'c08', qin: 'c09' };
+  var FACE = ['calm', 'happy', 'worried', 'angry', 'sad'];
+  function bigPortrait(who, face) {
+    var c = PT[who]; if (!c) return null;
+    var f = FACE[face || 0] || 'calm';
+    if (who === 'zhou') f = ['worried', 'happy', 'worried', 'worried', 'sad'][face || 0];
+    return A.img('pt_' + c + '_' + f) || A.img('pt_' + c + '_calm') || A.img('pt_' + c + '_worried');
+  }
   function Director(script, opts) {
     this.script = script; this.o = opts || {}; this.state = this.o.state;
     this.beats = this.flatten(script.beats, []);
@@ -57,7 +67,10 @@ BSX.define('game/cutscene', function (require) {
     if (b.light) { Sc.set({ time: b.light === 'rain' ? Sc.time : b.light }); if (b.light === 'rain') Sc.set({ weather: 'rain' }); return false; }
     if (b.weather) { Sc.set({ weather: b.weather }); Au.setAmbience(Au.mood, b.weather === 'rain'); return false; }
     if (b.view) { Sc.set({ view: b.view }); this.view = b.view; this.foot = b.view === 'ext' ? 650 : 600; this.h = b.view === 'ext' ? 250 : 330; return false; }
+    if (b.enter === 'jin' && !this.skipping) Au.pushMusic('bgm_jin');
+    if (b.card === 3) Au.music('bgm_tense');
     if (b.enter) { var w = this.resolveWho(b.enter); var from = b.x > 640 ? 1400 : -120; this.actors[b.enter] = { who: w, x: from, tx: b.x, a: 1, ta: 1, pose: 'walk', flip: b.x > 640 }; if (!this.skipping) { this.wait = 0.9; return true; } this.actors[b.enter].x = b.x; return false; }
+    if (b.exit === 'jin') Au.popMusic();
     if (b.exit) { var a = this.actors[b.exit]; if (a) { a.tx = a.x > 640 ? 1450 : -150; a.leaving = true; a.pose = 'walk'; a.flip = !a.flip; } return false; }
     if (b.prop) { this.props[b.prop] = { x: b.x, y: b.y, a: 0 }; Au.play('drop'); return false; }
     if (b.hide) { delete this.props[b.hide]; return false; }
@@ -66,6 +79,11 @@ BSX.define('game/cutscene', function (require) {
     if (b.wait) { if (!this.skipping) { this.wait = b.wait / 1000; return true; } return false; }
     if (b.crowd != null) { Sc.crowd = b.crowd; return false; }
     if (b.visitors) { var s = this.state, list = R.list.filter(function (r) { return s.regulars[r.id].visits > 0; }).sort(function (x, y) { return s.regulars[y.id].aff - s.regulars[x.id].aff; }).slice(0, b.visitors); list.forEach(function (r, i) { self.actors['v' + i] = { who: r.id, x: 1400, tx: 760 + i * 170, a: 1, ta: 1, pose: 'walk', flip: true }; }); if (!this.skipping) { this.wait = 1; return true; } return false; }
+    if (b.card != null) { this.ov = { kind: 'card', n: b.card, t: 0 }; Au.play('page'); if (this.skipping) { this.ov = null; return false; } return true; }
+    if (b.memory) { Au.pushMusic('bgm_memory'); this.ov = { kind: 'memory', img: b.memory, lines: b.lines || [], li: 0, typed: 0, t: 0 }; Au.play('page'); (b.lines || []).forEach(function (l) { self.log.push({ who: '回忆', text: l, day: self.state && self.state.day }); }); if (this.skipping) { this.ov = null; return false; } return true; }
+    if (b.page) { this.ov = { kind: 'page', n: b.page, t: 0 }; Au.play('stamp'); this.log.push({ who: '', text: '找到账本第 ' + b.page + ' 页', day: this.state && this.state.day }); if (this.skipping) { this.ov = null; return false; } return true; }
+    if (b.dungeon) { this.skipping = false; if (b.dungeon === 'face') this.mini = new (require('game/face').Face)({ pages: (this.state && this.state.pages) || [] }); else if (b.dungeon === 'check') this.mini = new (require('game/check').Check)({ jinOil: !!(this.state && this.state.flags.jinOil) }); else this.mini = new (require('game/market').Market)({ seed: (this.state && this.state.seed || 7) + (this.state ? this.state.day : 0) * 31, auto: false }); Au.pushMusic(b.dungeon === 'market' ? 'bgm_rush' : b.dungeon === 'face' ? 'bgm_face' : 'bgm_tense'); return true; }
+    if (b.bg !== undefined) { this.bg = b.bg; return false; }
     if (b.photo) { this.result.photo = b.photo; Sc.flash = 0.6; Au.play('stamp'); return false; }
     if (b.unlockDish) { this.result.unlocks.push(b.unlockDish); this.toast = { text: '新菜谱：' + BSX.require('content/dishes').byId[b.unlockDish].name, t: 0, dish: b.unlockDish }; Au.play('open'); return false; }
     if (b.narr) { this.line = { who: 'zhou', key: 'zhou', text: b.narr, narr: true }; this.typed = 0; this.lineT = 0; this.log.push({ who: '', text: b.narr, day: this.state && this.state.day }); if (this.skipping && this.o.canSkip) return false; return true; }
@@ -99,6 +117,13 @@ BSX.define('game/cutscene', function (require) {
     if (this.shutterAnim) { var s = this.shutterAnim; s.t += dt / 1.2; Sc.set({ shutter: s.from + (s.to - s.from) * Math.min(1, s.t) }); if (s.t >= 1) this.shutterAnim = null; }
     if (this.toast) { this.toast.t += dt; if (this.toast.t > 2.6) this.toast = null; }
     if (this.paused) return;
+    if (this.mini) { this.mini.update(dt); if (this.mini.done) { this.result.dungeon = this.mini.result; this.mini = null; Au.popMusic(); this.next(); } return; }
+    if (this.ov) {
+      var o = this.ov; o.t += dt;
+      if (o.kind === 'memory') { var L0 = o.lines[o.li] || ''; o.typed = Math.min(L0.length, o.typed + dt * 14); if (this.auto && o.typed >= L0.length && o.t > 1.6 + L0.length * 0.1) this.ovAdvance(); }
+      else if (this.auto && o.t > 2.4) this.ovAdvance();
+      return;
+    }
     if (this.wait > 0) { this.wait -= dt; if (this.wait <= 0) this.next(); return; }
     if (this.line) {
       this.typed = Math.min(this.line.text.length, this.typed + dt * 28);
@@ -107,12 +132,22 @@ BSX.define('game/cutscene', function (require) {
     }
     if (this.act && this.act.kind === 'hold' && this.act.holding) { this.act.hold += dt; if (this.act.hold >= 1.1) this.completeAct(); }
   };
+  P.ovAdvance = function () {
+    var o = this.ov; if (!o) return;
+    if (o.kind === 'memory') {
+      var L0 = o.lines[o.li] || '';
+      if (o.typed < L0.length) { o.typed = L0.length; return; }
+      if (o.li < o.lines.length - 1) { o.li++; o.typed = 0; o.t = 0; Au.play('tap'); return; }
+    } else if (o.t < 0.5) return;
+    if (o.kind === 'memory') Au.popMusic();
+    this.ov = null; Au.play('tap'); this.next();
+  };
   P.advance = function () {
     if (this.line) { if (this.typed < this.line.text.length) { this.typed = this.line.text.length; return; } Au.setDuck(false); this.next(); Au.play('tap'); }
   };
   P.skip = function () { // 跳到下一个动作/选择点或结束
-    if (this.act || this.choice) return;
-    this.skipping = true; this.wait = 0; this.o.canSkip = true;
+    if (this.act || this.choice || this.mini) return;
+    this.skipping = true; this.wait = 0; this.o.canSkip = true; if (this.ov && this.ov.kind === 'memory') Au.popMusic(); this.ov = null;
     Au.setDuck(false);
     this.next();
     this.skipping = false;
@@ -127,9 +162,10 @@ BSX.define('game/cutscene', function (require) {
     Au.play('perfect'); Sc.flash = 0.25;
     this.next();
   };
-  P.pick = function (c) { this.result.choice = c.id; this.choiceResult = c.result; this.choice = null; Au.play('stamp'); this.line = { who: 'zhou', key: 'zhou', text: c.result, face: 0, narr: true }; this.typed = 0; this.lineT = 0; this.log.push({ who: '', text: c.result, day: this.state && this.state.day }); };
+  P.pick = function (c) { this.result.choice = c.id; this.choiceResult = c.result; this.choice = null; if (c.then) { var more = this.flatten(c.then, []); Array.prototype.splice.apply(this.beats, [this.i + 1, 0].concat(more)); } Au.play('stamp'); this.line = { who: 'zhou', key: 'zhou', text: c.result, face: 0, narr: true }; this.typed = 0; this.lineT = 0; this.log.push({ who: '', text: c.result, day: this.state && this.state.day }); };
   // 输入：对白点击推进；动作需在目标处完成
   P.pointer = function (type, x, y) {
+    if (this.mini) return this.mini.pointer(type, x, y);
     var a = this.act;
     if (a) {
       var tp = Sc.toScreen(a.x, a.y), near = Math.hypot(x - tp.x, y - tp.y) < 150;
@@ -138,6 +174,7 @@ BSX.define('game/cutscene', function (require) {
       if (a.kind === 'swipe') { if (type === 'down' && near) a.sx = x; if (type === 'up' && a.sx != null) { if (Math.abs(x - a.sx) > 120) this.completeAct(); a.sx = null; } return true; }
       return true;
     }
+    if (type === 'down' && this.ov) { this.ovAdvance(); return true; }
     if (type === 'down' && this.line) { this.advance(); return true; }
     return false;
   };
@@ -178,6 +215,7 @@ BSX.define('game/cutscene', function (require) {
   }
   P.drawUI = function (ctx, opts) {
     var self = this;
+    if (this.mini) { this.mini.draw(ctx); return; }
     // 动作提示
     if (this.act) {
       var a = this.act, sp = Sc.toScreen(a.x, a.y);
@@ -188,17 +226,26 @@ BSX.define('game/cutscene', function (require) {
       U.hit('cs_act', sp.x - 120, sp.y - 120, 240, 240, { label: a.label, kind: 'act' });
     }
     // 对白框
-    if (this.line) {
+    if (this.line && !this.ov) {
       var L = this.line, bx = 120, by = 562, bw = 1040, bh = 122;
-      U.panel(ctx, bx, by, bw, bh, L.narr ? 'dark' : 'cream');
-      if (!L.narr) {
-        ctx.save(); ctx.fillStyle = '#efe0bf'; U.rr(ctx, bx + 14, by + 11, 100, 100, 12); ctx.fill(); ctx.beginPath(); U.rr(ctx, bx + 14, by + 11, 100, 100, 12); ctx.clip(); Act.portrait(ctx, L.who, bx + 14, by + 11, 100, L.face); ctx.restore();
-        U.text(ctx, Act.nameOf(L.who), bx + 134, by + 38, { size: 24, bold: true, color: '#2f6f66' });
+      var big = !L.narr && bigPortrait(L.who, L.face), tx = bx + 134;
+      if (big) {
+        // 立绘站在对话框后面：老周在左，其他人在右
+        var left = L.who === 'zhou', ph = 330, pw = big.width * ph / big.height, px = left ? bx + 10 : bx + bw - pw - 10, py = by - ph + 40;
+        ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = Math.min(1, this.lineT * 6);
+        ctx.drawImage(big, px, py + Math.max(0, 1 - this.lineT * 6) * 16, pw, ph); ctx.restore();
       }
-      U.para(ctx, L.text.slice(0, Math.floor(this.typed)), L.narr ? bx + 40 : bx + 134, by + (L.narr ? 52 : 80), L.narr ? bw - 80 : bw - 174, { size: 26, color: L.narr ? '#fff3d6' : '#3b2a1a', lh: 34 });
+      U.panel(ctx, bx, by, bw, bh, L.narr ? 'dark' : 'cream');
+      if (!L.narr && !big) {
+        ctx.save(); ctx.fillStyle = '#efe0bf'; U.rr(ctx, bx + 14, by + 11, 100, 100, 12); ctx.fill(); ctx.beginPath(); U.rr(ctx, bx + 14, by + 11, 100, 100, 12); ctx.clip(); Act.portrait(ctx, L.who, bx + 14, by + 11, 100, L.face); ctx.restore();
+      }
+      if (big) tx = L.who === 'zhou' ? bx + 260 : bx + 40;
+      if (!L.narr) U.text(ctx, Act.nameOf(L.who), tx, by + 38, { size: 24, bold: true, color: '#2f6f66' });
+      U.para(ctx, L.text.slice(0, Math.floor(this.typed)), L.narr ? bx + 40 : tx, by + (L.narr ? 52 : 80), L.narr ? bw - 80 : (big ? bw - 300 : bw - 174), { size: 26, color: L.narr ? '#fff3d6' : '#3b2a1a', lh: 34 });
       if (this.typed >= L.text.length) { ctx.save(); ctx.globalAlpha = 0.5 + Math.sin(this.t * 6) * 0.4; U.text(ctx, '▼', bx + bw - 34, by + bh - 20, { size: 22, color: L.narr ? '#fff3d6' : '#7d5a35' }); ctx.restore(); }
       U.hit('cs_next', 0, 0, 1280, 720, { label: '继续', onTap: function () { self.advance(); }, minSize: 0 });
     }
+    if (this.ov) this.drawOverlay(ctx);
     // 选择
     if (this.choice) {
       var list = this.choice.list, h = 76, gap = 16, total = list.length * (h + gap) - gap, y0 = 360 - total / 2 + (this.choice.title ? 50 : 0);
@@ -215,10 +262,47 @@ BSX.define('game/cutscene', function (require) {
     }
     if (this.toast) { var k = Math.min(1, this.toast.t * 3) * Math.min(1, (2.6 - this.toast.t) * 3); ctx.save(); ctx.globalAlpha = k; U.panel(ctx, 440, 90, 400, 90, 'cream'); A.food(ctx, this.toast.dish, 456, 96, 78); U.text(ctx, this.toast.text, 690, 145, { size: 26, bold: true, align: 'center' }); ctx.restore(); }
   };
+  // 章节标题卡 / 回忆插画 / 找到账页
+  P.drawOverlay = function (ctx) {
+    var o = this.ov, self = this, k = Math.min(1, o.t * 3);
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    if (o.kind === 'card') {
+      var im = A.img('card_' + o.n), z = 1.04 - Math.min(1, o.t / 3) * 0.04;
+      ctx.fillStyle = '#0b0805'; ctx.fillRect(0, 0, 1280, 720);
+      ctx.globalAlpha = k; if (im) ctx.drawImage(im, 640 - 640 * z, 360 - 360 * z, 1280 * z, 720 * z);
+      var g = ctx.createLinearGradient(0, 0, 0, 300); g.addColorStop(0, 'rgba(10,6,4,.75)'); g.addColorStop(1, 'rgba(10,6,4,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, 1280, 300);
+      var c = CARDS[o.n] || ['', ''], a2 = Math.max(0, Math.min(1, (o.t - 0.4) * 2.5));
+      U.pixelText(ctx, c[0], 640, 92, { size: 34, px: 2, align: 'center', color: '#f2d9a0', outline: '#1e120a', alpha: a2 });
+      U.pixelText(ctx, c[1], 640, 162, { size: 76, px: 4, align: 'center', color: '#fff3d6', outline: '#3b2412', shadow: '#1e120a', alpha: a2 });
+      if (o.t > 1) U.pixelText(ctx, '点一下继续', 1240, 690, { size: 20, px: 2, align: 'right', color: '#fff3d6', outline: '#1e120a', alpha: 0.6 + Math.sin(o.t * 4) * 0.3 });
+    } else if (o.kind === 'memory') {
+      var im2 = A.img(o.img), pan = Math.min(1, o.t / 8 + o.li * 0.2);
+      ctx.fillStyle = '#120c07'; ctx.fillRect(0, 0, 1280, 720);
+      ctx.globalAlpha = k;
+      if (im2) { var zz = 1.08 + pan * 0.06, w = 1280 * zz, h = 720 * zz; ctx.drawImage(im2, (1280 - w) / 2 - 30 + pan * 60, (720 - h) / 2, w, h); }
+      // 泛黄与暗角
+      ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgba(220,190,140,.35)'; ctx.fillRect(0, 0, 1280, 720); ctx.globalCompositeOperation = 'source-over';
+      var vg = ctx.createRadialGradient(640, 360, 280, 640, 360, 760); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,6,2,.7)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, 1280, 720);
+      ctx.fillStyle = 'rgba(12,8,4,.72)'; ctx.fillRect(0, 590, 1280, 130);
+      var line = o.lines[o.li] || '';
+      U.pixelText(ctx, line.slice(0, Math.floor(o.typed)), 640, 652, { size: 32, px: 2, align: 'center', color: '#f6e6c4', outline: '#1e120a' });
+      U.pixelText(ctx, '回忆', 40, 40, { size: 22, px: 2, color: '#e8c89a', outline: '#1e120a', alpha: 0.8 });
+      if (o.typed >= line.length) U.text(ctx, '▼', 1220, 690, { size: 22, color: '#f6e6c4' });
+    } else if (o.kind === 'page') {
+      ctx.fillStyle = 'rgba(14,9,5,' + 0.7 * k + ')'; ctx.fillRect(0, 0, 1280, 720);
+      var pg = A.img('ledger_page_' + o.n), e = Math.min(1, o.t * 2.2), sc = 0.6 + 0.4 * (1 - Math.pow(1 - e, 3)), rot = (1 - e) * -0.3;
+      if (pg) { ctx.save(); ctx.translate(640, 330); ctx.rotate(rot); ctx.scale(sc * 1.25, sc * 1.25); ctx.drawImage(pg, -pg.width / 2, -pg.height / 2); ctx.restore(); }
+      U.pixelText(ctx, '找到账本第 ' + o.n + ' 页', 640, 600, { size: 40, px: 2, align: 'center', color: '#ffe28a', outline: '#3b2412', alpha: e });
+      var have = (this.state && this.state.pages ? this.state.pages.length : 0) + ((this.state && this.state.pages && this.state.pages.indexOf(o.n) >= 0) ? 0 : 1);
+      U.pixelText(ctx, '已找回 ' + Math.min(7, have) + ' / 7', 640, 650, { size: 24, px: 2, align: 'center', color: '#fff3d6', outline: '#3b2412', alpha: e });
+    }
+    ctx.restore();
+    U.hit('cs_next', 0, 0, 1280, 720, { label: '继续', onTap: function () { self.ovAdvance(); }, minSize: 0 });
+  };
   P.describe = function () {
     return { id: this.script.id, beat: this.i, of: this.beats.length, line: this.line ? { who: this.line.who, text: this.line.text, typed: this.typed >= this.line.text.length } : null,
       act: this.act ? { kind: this.act.kind, label: this.act.label, x: Math.round(Sc.toScreen(this.act.x, this.act.y).x), y: Math.round(Sc.toScreen(this.act.x, this.act.y).y), progress: this.act.n || Math.round(this.act.hold * 100) / 100 } : null,
-      choice: this.choice ? this.choice.list.map(function (c) { return { id: c.id, label: c.label }; }) : null, auto: this.auto, done: this.done, actors: Object.keys(this.actors) };
+      choice: this.choice ? this.choice.list.map(function (c) { return { id: c.id, label: c.label }; }) : null, overlay: this.ov ? this.ov.kind : null, mini: this.mini ? this.mini.describe() : null, bg: this.bg || null, auto: this.auto, done: this.done, actors: Object.keys(this.actors) };
   };
-  return { Director: Director };
+  return { Director: Director, bigPortrait: bigPortrait, CARDS: CARDS };
 });

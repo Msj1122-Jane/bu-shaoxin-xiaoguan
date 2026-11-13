@@ -312,6 +312,10 @@ BSX.define('game/cooking', function (require) {
   // 好料 / 便宜料并排放：拿哪个下锅就是良心选择（D051，替代“偷懒”按钮）
   var MAT = { pot: ['新米', '陈米'], fryer: ['新油', '回锅油'], soy: ['现磨黄豆', '兑水豆浆'], pan: ['新油', '回锅油'], wok: ['现蒸米饭', '隔夜饭'], noodle: ['鲜面·新汤', '隔夜汤'], stew: ['新卤汁', '隔夜卤'], steamer: ['鲜肉馅', '过期馅'] };
   K.MAT = MAT;
+  // 菜 → 生熟三阶段格位（cook_stages：0–2 油条，3–5 包子，6–8 豆浆，9–11 煎饼）
+  var STAGES = { youtiao: [0, 1, 2], yeerba: [3, 4, 5], soy: [6, 7, 8], scallion: [9, 10, 10] };
+  // 用早市副本的好料/坏料图（D058）：工位 → [图集, 行]
+  var MATART = { pot: ['mk_grain', 3], wok: ['mk_grain', 3], fryer: ['mk_grain', 0], pan: ['mk_grain', 0], soy: ['mk_grain', 1], noodle: ['mk_grain', 2], stew: ['mk_veg', 3], steamer: ['mk_veg', 2] };
   K.chooseMat = function (st, cheap) {
     var job = st.job; if (!job || job.mat) return;
     job.mat = cheap ? 'cheap' : 'good';
@@ -333,11 +337,14 @@ BSX.define('game/cooking', function (require) {
       var lift = hit.pressed ? 4 : Math.sin(self.t * 3 + o[0]) * 2;
       ctx.save(); ctx.fillStyle = '#fff8e8'; U.rr(ctx, x, y + lift, w, h, 16); ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = o[2]; ctx.stroke(); ctx.restore();
       // 料：好料是干净的白袋/金黄油瓶，便宜料是灰暗、带污渍的
-      var cx = x + w / 2, cy = y + 104 + lift;
+      var cx = x + w / 2, cy = y + 104 + lift, mi = MATART[st.type];
+      if (mi && A.img(mi[0])) { A.cell(ctx, mi[0], mi[1] * 2 + o[0], cx - 105, cy - 70, 210, 140, { fit: true, anchor: 'center' }); if (!o[0]) { ctx.fillStyle = '#ffd45a'; ctx.beginPath(); ctx.arc(cx + 88, cy - 58, 14, 0, 7); ctx.fill(); U.text(ctx, '鲜', cx + 88, cy - 51, { size: 16, bold: true, align: 'center', color: '#5a3418' }); } }
+      else {
       ctx.fillStyle = o[0] ? '#8a7a62' : '#efe6d2'; U.rr(ctx, cx - 50, cy - 56, 100, 112, 20); ctx.fill();
       ctx.fillStyle = o[0] ? '#6a5a42' : '#d8ccb0'; ctx.fillRect(cx - 30, cy - 66, 60, 16);
       if (o[0]) { ctx.fillStyle = 'rgba(60,40,20,.5)'; ctx.beginPath(); ctx.arc(cx + 22, cy + 22, 14, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(cx - 18, cy - 10, 8, 0, 7); ctx.fill(); }
       else { ctx.fillStyle = '#ffd45a'; ctx.beginPath(); ctx.arc(cx + 30, cy - 34, 14, 0, 7); ctx.fill(); U.text(ctx, '鲜', cx + 30, cy - 27, { size: 16, bold: true, align: 'center', color: '#5a3418' }); }
+      }
       U.text(ctx, o[1], cx, y + 196 + lift, { size: 24, bold: true, align: 'center', color: '#3b2a1a', maxW: w - 20 });
       ctx.save(); ctx.fillStyle = o[2]; U.rr(ctx, cx - 60, y + 210 + lift, 120, 30, 8); ctx.fill(); ctx.restore();
       U.text(ctx, o[3], cx, y + 232 + lift, { size: 18, bold: true, align: 'center', color: '#fff' });
@@ -476,6 +483,22 @@ BSX.define('game/cooking', function (require) {
     ctx.save(); ctx.translate(wob, 0);
     var tp = s.g === 'timing' ? s.p : (job.idx > 0 ? 0.5 : 0);
     if (s.g === 'hold') { drawPourScene(ctx, this, st, step, s); ctx.restore(); return; }
+    // Lovart 生熟三阶段图（D059）：油条 / 叶儿粑 / 豆浆 / 葱油饼，有图时整锅换成插画，没图回退程序绘制
+    var SG = STAGES[job.dish];
+    if (SG && A.img('cook_stages')) {
+      var from = SG[0], to = SG[0], mix = 0, burn = 0, w0 = step.win ? step.win[0] : 0.62, w1 = step.win ? step.win[1] : 0.88;
+      if (job.idx === 0) { if (s.g === 'circle') { to = SG[1]; mix = Math.min(1, (s.angle || 0) / ((step.turns || 1) * TAU)); } }
+      else if (s.g === 'timing') { from = SG[1]; to = SG[2]; mix = Math.max(0, Math.min(1, ((s.p || 0) - w0 + 0.12) / 0.14)); burn = Math.max(0, Math.min(1, ((s.p || 0) - w1) / 0.25)); }
+      else { from = to = SG[2]; }
+      var bw = r * 2.7, bh = r * 2.05, bx = x - bw / 2, by = y - bh / 2 - 10 + Math.sin(t * 2) * 2;
+      ctx.save(); ctx.imageSmoothingEnabled = false;
+      if (mix < 1) { ctx.globalAlpha = 1 - mix; A.cell(ctx, 'cook_stages', from, bx, by, bw, bh, { trim: true, fit: true, anchor: 'center' }); }
+      if (mix > 0) { ctx.globalAlpha = mix; A.cell(ctx, 'cook_stages', to, bx, by, bw, bh, { trim: true, fit: true, anchor: 'center' }); }
+      if (burn > 0) { ctx.globalAlpha = burn * 0.55; ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#5a2a0a'; ctx.beginPath(); ctx.ellipse(x, y, r * 0.95, r * 0.7, 0, 0, 7); ctx.fill(); }
+      ctx.restore();
+      if (s.g === 'timing') for (var sb2 = 0; sb2 < 8; sb2++) { var ph3 = (t * 1.6 + sb2 * 0.17) % 1; ctx.fillStyle = 'rgba(255,255,255,' + (0.35 * (1 - ph3)) + ')'; ctx.beginPath(); ctx.arc(x - 90 + (sb2 * 29) % 180, y - 60 - ph3 * 90, 8 + ph3 * 14, 0, 7); ctx.fill(); }
+      ctx.restore(); return;
+    }
     // 锅体（俯视）
     var rim = view === 'pan' || view === 'wok' ? '#2a2a2e' : view === 'fryer' ? '#2f5c58' : view === 'steamer' ? '#a8804a' : '#b8b8b0';
     ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x + 8, y + 16, r + 16, r * 0.62 + 12, 0, 0, 7); ctx.fill();

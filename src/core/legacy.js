@@ -19,7 +19,8 @@ BSX.define('core/legacy', function (require) {
       E_PILLS: '周叔，你自己也要好好吃饭。—— 小宋',
       E_FAREWELL: '新地方开了，记得告诉我们地址。—— ' + (r ? r.name : '街坊们'),
       E_TRANSFER: '路过时看见换了招牌，还是想起那碗粥。—— 一位老顾客',
-      E_SOMEONE: '明天还开吧？我六点来。—— ' + (r ? r.name : '街坊')
+      E_SOMEONE: '明天还开吧？我六点来。—— ' + (r ? r.name : '街坊'),
+      E_TRUTH: '你王婶要是在，也会说这粥还是那个味。—— 赵爷爷'
     };
     return lines[ending];
   }
@@ -36,6 +37,8 @@ BSX.define('core/legacy', function (require) {
     L.seenStory = uniq(L.seenStory.concat(s.storySeen));
     L.nodes = uniq(L.nodes.concat(s.nodesDone));
     L.photos = uniq(L.photos.concat(s.photos));
+    L.pages = uniq((L.pages || []).concat(s.pages || [])).sort();
+    if (id === 'E_TRUTH') L.lastPage = true;
     L.letters.push({ ending: id, text: letterFor(id, s), gen: s.generation });
     for (var k in s.stats.cooked) L.cooked[k] = (L.cooked[k] || 0) + s.stats.cooked[k];
     L.unlocked = uniq(L.unlocked.concat(Object.keys(s.unlocked)));

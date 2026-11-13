@@ -34,7 +34,7 @@ BSX.define('core/run', function (require) {
       events: { seen: [], cd: {}, delayed: [], chains: [], lastType: null },
       flags: {}, crisis: { state: 'none', day: null }, rescue: { used: false, choice: null, refused: false },
       negativeDays: 0, early: null, ending: null,
-      history: [], keyChoices: [], photos: [], nodesDone: [], storySeen: [],
+      history: [], keyChoices: [], photos: [], nodesDone: [], storySeen: [], pages: [],
       stats: { tierDays: { oil: [0, 0, 0], material: [0, 0, 0], price: [0, 0, 0] }, goodDays: 0, recycleDays: 0, signature: 0, rushed: 0, lostTotal: 0, noWaitDays: 0, bestStreak: 0, streak: 0, cooked: {}, startRep: C.startRep, startCash: C.startCash, burnStart: 0 },
       weatherPlan: [], today: null, ledger: null, executed: []
     };
@@ -512,6 +512,8 @@ BSX.define('core/run', function (require) {
     var days = Math.max(1, s.stats.tierDays.price.reduce(function (a, b) { return a + b; }, 0));
     if (s.crisis.state === 'hold' && (!s.early || s.early.reason === 'leave')) return { id: 'E_PILLS' };
     if (s.early) return { id: s.rep >= 60 ? 'E_FAREWELL' : 'E_TRANSFER' };
+    // 真结局「最后一页」：对质时把账本摊开（连父亲的错一起认），收齐 6 页，赵爷爷的旧事听完，心里没鬼
+    if (s.flags.truth && (s.pages || []).length >= 6 && s.burn <= 40 && s.rep >= 55 && s.crisis.state !== 'hold') return { id: 'E_TRUTH' };
     if ((s.crisis.state === 'rectify' || s.crisis.state === 'refund') && s.burn < 70 && s.rep >= 55) return { id: 'E_REOPEN' };
     var peopleNodes = R.list.filter(function (r) { return s.regulars[r.id].nodes.length > 0; }).length;
     var highShare = s.stats.tierDays.price[2] / days, lowShare = s.stats.tierDays.price[0] / days;
@@ -540,6 +542,7 @@ BSX.define('core/run', function (require) {
     } else if (item.kind === 'story') {
       var sc = ST.all[item.id];
       if (s.storySeen.indexOf(item.id) < 0) s.storySeen.push(item.id);
+      if (a.dungeon && JSON.stringify(sc.beats).indexOf('"dungeon"') >= 0) applyDungeon(s, a.dungeon, sc);
       if (choiceId) {
         var c2 = findStoryChoice(sc, choiceId, s);
         if (!c2) return false;
@@ -575,8 +578,39 @@ BSX.define('core/run', function (require) {
       if (choiceId === 'refuse') s.rescue.refused = true;
       s.keyChoices.push({ day: s.day, src: 'RESCUE', title: '房东通牒', choice: choiceId, label: { sell: '卖掉设备', borrow: '街坊短借', refuse: '不借' }[choiceId], weight: 4 });
     }
+    if ((item.kind === 'story' || item.kind === 'node') && ST.all[item.id]) grantPages(s, ST.all[item.id]);
     s.pending.shift();
     return true;
+  }
+  // 副本结算（凌晨早市）：坏料每样省 15 元、烧心 +3；全挑好料且基本买齐 → 老秦好感、口碑；没买到太多 → 口碑 −1
+  function applyDungeon(s, r, sc) {
+    s.dungeons = s.dungeons || {};
+    if (r.id === 'face') { // 对质：说中 3 句且认了父亲的错 → 真相；说中 ≥2 → 揭穿；否则老金的话先传开
+      var sc2 = Math.max(0, Math.min(3, r.score | 0)), admit = !!r.admit && sc2 === 3;
+      applyEffect(s, admit ? { rep: 3, flag: { exposed: true, truth: true } } : sc2 >= 2 ? { rep: 2, flag: { exposed: true } } : { rep: -1, flag: { jinWon: true } }, sc.id);
+      s.dungeons.face = { score: sc2, admit: admit };
+      s.keyChoices.push({ day: s.day, src: sc.id, title: '对质', choice: 'face', label: admit ? '把账本摊开：我爸有错，你也有' : sc2 >= 2 ? '拿账页揭穿老金' : '没能说过老金', weight: 5 });
+      return;
+    }
+    if (r.id === 'check') { // 后厨自查：找出 ≥7 处 烧心 −10 口碑 +1；4–6 处 烧心 −4；更少 口碑 −1
+      var f = Math.max(0, Math.min(9, r.found | 0));
+      applyEffect(s, f >= 7 ? { burn: -10, rep: 1 } : f >= 4 ? { burn: -4 } : { rep: -1 }, sc.id);
+      s.dungeons.check = { found: f };
+      s.keyChoices.push({ day: s.day, src: sc.id, title: '后厨自查', choice: 'check', label: '找出 ' + f + ' / 9 处隐患', weight: 2 });
+      return;
+    }
+    var good = Math.max(0, Math.min(8, r.good | 0)), bad = Math.max(0, Math.min(8 - good, r.bad | 0)), missed = 8 - good - bad;
+    var e = { cash: bad * 1500, burn: bad * 3 };
+    if (!bad && missed <= 1) { e.rep = 1; e.aff = { qin: 1 }; e.flag = { marketClean: true }; }
+    if (missed >= 4) e.rep = (e.rep || 0) - 1;
+    applyEffect(s, e, sc.id);
+    s.dungeons[r.id || 'market'] = { good: good, bad: bad, missed: missed };
+    s.keyChoices.push({ day: s.day, src: sc.id, title: '凌晨早市', choice: 'market', label: '好料 ' + good + ' · 坏料 ' + bad, weight: bad >= 3 ? 4 : 2 });
+  }
+  // 账本缺页：剧本里的 { page: n } 指令（不放在条件分支里），结算时记入 s.pages
+  function grantPages(s, sc) {
+    if (!s.pages) s.pages = [];
+    sc.beats.forEach(function (b) { if (b.page && s.pages.indexOf(b.page) < 0) { s.pages.push(b.page); s.pages.sort(); } });
   }
   function storyHasChoice(sc) { return JSON.stringify(sc.beats).indexOf('"choice"') >= 0 || JSON.stringify(sc.beats).indexOf('eventChoice') >= 0; }
   function findStoryChoice(sc, id, s) {

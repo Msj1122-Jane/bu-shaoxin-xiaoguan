@@ -61,10 +61,15 @@ BSX.define('game/audio', function () {
     Au.active++; setTimeout(function () { Au.active--; }, 120);
     try { LIB[name](); } catch (e) {}
   };
-  // 配乐：预渲染的江南五声音轨（tools/compose_music.py），循环播放，换场景时 1.2 秒交叉淡入
+  // 配乐：Lovart 制作的 10 首（用户 11-13，BGM01–BGM10），循环播放，换场景时交叉淡入；解码后的音频很占内存，只缓存最近 2 首
   var TRACK_OF = { morning: 'bgm_dawn', noon: 'bgm_dawn', dawn: 'bgm_dawn', story: 'bgm_dawn', dusk: 'bgm_night', night: 'bgm_night', rain: 'bgm_night' };
   Au.bufs = {}; Au.loading = {};
   Au.music = function (name) { Au.want = name; Au.startMusic(); };
+  // 临时换曲（回忆、老金登场、对质），结束后回到原来那首
+  Au.stack = [];
+  Au.pushMusic = function (name) { Au.stack.push(Au.want); Au.music(name); };
+  Au.popMusic = function () { if (Au.stack.length) Au.music(Au.stack.pop()); };
+  Au.popAllMusic = function () { if (Au.stack.length) { var n = Au.stack[0]; Au.stack = []; Au.music(n); } };
   Au.startMusic = function () {
     var name = Au.want; if (!Au.ctx || !name || (Au.cur && Au.cur.name === name)) return;
     if (!Au.bufs[name]) {
@@ -77,11 +82,34 @@ BSX.define('game/audio', function () {
       return;
     }
     var c = Au.ctx, now = c.currentTime;
-    if (Au.cur) { var old = Au.cur; old.g.gain.setTargetAtTime(0, now, 0.4); setTimeout(function () { try { old.s.stop(); } catch (e) {} }, 2000); }
-    var s = c.createBufferSource(), g = c.createGain(); s.buffer = Au.bufs[name]; s.loop = true;
-    g.gain.value = 0; g.gain.setTargetAtTime(1, now, 0.4); s.connect(g); g.connect(Au.musBus); s.start();
-    Au.cur = { name: name, s: s, g: g };
+    if (Au.cur) { var old = Au.cur; old.g.gain.setTargetAtTime(0, now, 0.4); clearTimeout(old.timer); setTimeout(function () { try { old.s.stop(); } catch (e) {} }, 2000); }
+    Au.cur = playLoop(name, 0.4);
+    Au.recent = (Au.recent || []).filter(function (n) { return n !== name; }); Au.recent.unshift(name);
+    Au.recent.slice(2).forEach(function (n) { delete Au.bufs[n]; Au.loading[n] = false; }); Au.recent = Au.recent.slice(0, 2);
   };
+  // 曲尾都是 5 秒左右的淡出：在淡出开始前 2.5 秒起下一遍，两遍交叉淡入淡出，听不出“歌放完了”
+  function loopEnd(buf) {
+    if (buf.__end) return buf.__end;
+    var d = buf.getChannelData(0), sr = buf.sampleRate, w = Math.floor(sr / 4), n = Math.floor(d.length / w), rms = [];
+    for (var i = 0; i < n; i++) { var acc = 0; for (var j = i * w; j < (i + 1) * w; j += 8) acc += d[j] * d[j]; rms.push(Math.sqrt(acc / (w / 8))); }
+    var sorted = rms.slice().sort(function (a, b) { return a - b; }), med = sorted[Math.floor(sorted.length / 2)] || 0, k = n - 1;
+    while (k > n * 0.6 && rms[k] < med * 0.5) k--;
+    buf.__end = Math.max(10, (k + 1) * w / sr); return buf.__end;
+  }
+  function playLoop(name, fadeIn) {
+    var c = Au.ctx, buf = Au.bufs[name], now = c.currentTime, XF = 2.5;
+    var s = c.createBufferSource(), g = c.createGain(); s.buffer = buf;
+    g.gain.value = 0; g.gain.setTargetAtTime(1, now, fadeIn); s.connect(g); g.connect(Au.musBus); s.start();
+    var cur = { name: name, s: s, g: g }, end = loopEnd(buf);
+    cur.timer = setTimeout(function () {
+      if (Au.cur !== cur || !Au.bufs[name]) return;
+      var t = c.currentTime; cur.g.gain.cancelScheduledValues(t); cur.g.gain.setValueAtTime(cur.g.gain.value, t); cur.g.gain.linearRampToValueAtTime(0, t + XF);
+      setTimeout(function () { try { cur.s.stop(); } catch (e) {} }, (XF + 0.5) * 1000);
+      Au.cur = playLoop(name, XF / 3);
+    }, Math.max(1, end - XF) * 1000);
+    return cur;
+  }
+  Au.loopEnd = loopEnd;
   Au.setAmbience = function (mood, rain) { Au.mood = mood; Au.rain = !!rain; Au.applyAmbience(); if (TRACK_OF[mood] && !Au.lockTrack) Au.music(TRACK_OF[mood]); };
   Au.applyAmbience = function () {
     if (!Au.ctx) return;

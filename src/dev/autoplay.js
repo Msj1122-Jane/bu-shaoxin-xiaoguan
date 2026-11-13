@@ -9,9 +9,9 @@ BSX.define('dev/autoplay', function (require) {
   var POL = {
     average: { tiers: { oil: 1, material: 1, price: 1 }, prefer: { S26: 'renew' }, skill: 'good' },
     canteen: { tiers: { oil: 1, material: 1, price: 0 }, prefer: { E07: 'ask', E12: 'help', E29: 'take', E20: 'free', E03: 'more', E05: 'refuse', E14: 'refuse', S12: 'paper', S18: 'cook', S26: 'renew', E22: 'hire' }, skill: 'good' },
-    honest: { buy: ['board', 'tables', 'sign', 'helper'], tiers: { oil: 2, material: 2, price: 1 }, prefer: { E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'post', S26: 'buy', E08: 'public', E04: 'show', E22: 'hire', E11: 'some' }, skill: 'great', menu: ['pidan', 'shengjian', 'congee', 'soy'] },
+    honest: { buy: ['board', 'tables', 'sign', 'helper'], tiers: { oil: 2, material: 2, price: 1 }, admit: true, prefer: { S02: 'refuse', S24: 'confront', E05: 'refuse', E14: 'papers', S12: 'paper', S18: 'post', S26: 'buy', E08: 'public', E04: 'show', E22: 'hire', E11: 'some' }, skill: 'great', menu: ['pidan', 'shengjian', 'congee', 'soy'] },
     pills: { tiers: { oil: 0, material: 0, price: 1 }, prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S12: 'cheap', S26: 'renew', CRISIS: 'hold', E23: 'deny', E18: 'go', E10: 'risk', E04: 'delay', E08: 'silent' }, skill: 'sloppy' },
-    black: { tiers: { oil: 0, material: 0, price: 1 }, prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S12: 'cheap', S04: 'compete', S26: 'renew', CRISIS: 'hold', E23: 'deny', E18: 'go', E04: 'delay', E08: 'silent' }, skill: 'good', cheat: 0.85, greedy: true, buy: ['fire', 'tray'] },
+    black: { tiers: { oil: 0, material: 0, price: 1 }, prefer: { E05: 'hide', E14: 'trial', E06: 'sell', S02: 'take', S24: 'deal', S12: 'cheap', S04: 'compete', S26: 'renew', CRISIS: 'hold', E23: 'deny', E18: 'go', E04: 'delay', E08: 'silent' }, skill: 'good', cheat: 0.85, greedy: true, buy: ['fire', 'tray'] },
     neglect: { tiers: { oil: 1, material: 1, price: 1 }, prefer: { S26: 'renew' }, skill: 'sloppy', idle: 0.12 },
     chef: { tiers: { oil: 2, material: 2, price: 1 }, prefer: { S12: 'paper', S26: 'renew' }, skill: 'great', menu: ['chicken', 'mutton', 'pidan', 'shengjian'] },
     farewell: { tiers: { oil: 1, material: 1, price: 1 }, prefer: { S26: 'leave', E22: 'no' }, skill: 'good' }
@@ -34,7 +34,7 @@ BSX.define('dev/autoplay', function (require) {
         if (it.kind === 'crisis') c = want || 'rectify'; else if (it.kind === 'rescue') c = want || 'borrow';
         else if (it.kind === 'event') { var ev = E.byId[it.id]; c = ev.choices.some(function (x) { return x.id === want; }) ? want : ev.choices[0].id; }
         else { var sc = ST.all[it.id]; c = want && Run.findStoryChoice(sc, want, s) ? want : undefined; if (!c) { var m = /"(?:choice)":\[\{"id":"(\w+)"/.exec(JSON.stringify(sc.beats)); if (m && Run.findStoryChoice(sc, m[1], s)) c = m[1]; else if (JSON.stringify(sc.beats).indexOf('eventChoice') >= 0) c = E.byId['E20'].choices[0].id; else if (m) { var all = []; JSON.stringify(sc.beats).replace(/"id":"(\w+)"/g, function (_, id) { all.push(id); }); c = all.filter(function (id) { return Run.findStoryChoice(sc, id, s); })[0]; } } }
-        var n = Run.reduce(s, { t: 'resolve', choice: c }); if (n === s) throw new Error('autoplay stuck ' + JSON.stringify(it)); s = n;
+        var n = Run.reduce(s, { t: 'resolve', choice: c, dungeon: it.id === 'S03' ? { id: 'market', good: 7, bad: 0 } : it.id === 'S15' ? { id: 'check', found: 7 } : it.id === 'S24' && c === 'confront' ? { id: 'face', score: 2 } : undefined }); if (n === s) throw new Error('autoplay stuck ' + JSON.stringify(it)); s = n;
       } else if (s.phase === 'prep') {
         ['oil', 'material', 'price'].forEach(function (k) { s = Run.reduce(s, { t: 'tier', key: k, v: pol.tiers[k] }); });
         s = Run.reduce(s, { t: 'confirmPrep' });
@@ -105,6 +105,25 @@ BSX.define('dev/autoplay', function (require) {
   };
   B.story = function (scr, s) {
     var d = scr.dir; if (!d) { this.wait = 0.2; return; }
+    if (d.mini && d.mini.describe().face) {
+      var fm = d.mini.describe();
+      if (fm.over) { this.tapHit('face_done'); this.wait = 0.8; return; }
+      if (fm.state === 'claim') { var adm = this.pol.admit; var c = fm.cards.filter(function (x) { return fm.ok.indexOf(x) >= 0 && (x !== 'admit' || adm); })[0]; if (c == null) c = fm.cards.filter(function (x) { return x !== 'admit'; })[0] || fm.cards[0]; this.g('face_pick'); this.tapHit('face_' + c, 0.7); this.wait = 1.2; return; }
+      this.tapHit('face_next', 0.6); this.wait = 0.8; return;
+    }
+    if (d.mini && d.mini.describe().todo) {
+      var cm = d.mini.describe(), lazy = this.pol.cheat || this.pol.greedy;
+      if (cm.over) { this.tapHit('ck_done'); this.wait = 0.8; return; }
+      if (cm.todo.length && !(lazy && 9 - cm.todo.length >= 3)) { this.g('check_find'); this.tap(cm.todo[0].x, cm.todo[0].y, 0.1); this.wait = 0.6; return; }
+      this.wait = 0.5; return;
+    }
+    if (d.mini) {
+      var mm = d.mini.describe(), greedy = this.pol.cheat || this.pol.greedy;
+      if (mm.over) { this.tapHit('mk_done'); this.wait = 0.8; return; }
+      var tgt = mm.slots.filter(function (x) { return x && x.ready && (greedy || !x.bad); })[0];
+      if (tgt) { this.g('market_pick'); this.tapHit('mk_slot' + tgt.i, 0.15); this.wait = 0.35; return; }
+      this.wait = 0.2; return;
+    }
     if (d.act) {
       var a = d.describe().act; this.g('story_' + a.kind);
       if (a.kind === 'tap') this.tap(a.x, a.y, 0.2);
@@ -117,7 +136,7 @@ BSX.define('dev/autoplay', function (require) {
       if (this.tapHit('choice_' + pick.id, 0.3)) this.stats.choices.push((item.id || item.kind) + ':' + pick.id);
       this.wait = 0.5; return;
     }
-    if (d.line) { this.tap(640, 400, this.o.fast ? 0.05 : 0.35); this.wait = 0.1; return; }
+    if (d.line || d.ov) { this.tap(640, 400, this.o.fast ? 0.05 : 0.35); this.wait = d.ov ? 0.6 : 0.1; return; }
     this.wait = 0.2;
   };
   B.service = function (scr, s) {
