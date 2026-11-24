@@ -2,7 +2,7 @@
 // storage 由平台层注入：{ get(key)→string|null, set(key, str), remove(key) }
 BSX.define('core/save', function (require) {
   var Run = require('core/run');
-  var KEYS = { run: 'bsx.run.v3', runBak: 'bsx.run.v3.bak', legacy: 'bsx.legacy.v1', legacyBak: 'bsx.legacy.v1.bak', settings: 'bsx.settings.v1', old: ['bsx-seven-day-v1', 'bsx-seven-day-v1-backup', 'bsx.run.v2'] };
+  var KEYS = { run: 'bsx.run.v4', runBak: 'bsx.run.v4.bak', legacy: 'bsx.legacy.v2', legacyBak: 'bsx.legacy.v2.bak', settings: 'bsx.settings.v2', old: ['bsx-seven-day-v1', 'bsx-seven-day-v1-backup', 'bsx.run.v2', 'bsx.run.v3'] };
   function checksum(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
   function wrap(obj) { var body = JSON.stringify(obj); return JSON.stringify({ c: checksum(body), b: body, at: Date.now() }); }
   function unwrap(str) {
@@ -12,18 +12,14 @@ BSX.define('core/save', function (require) {
   }
   function validRun(s) {
     return !!s && s.schema === Run.SCHEMA && Number.isInteger(s.day) && s.day >= 1 && s.day <= s.days &&
-      ['dawn', 'prep', 'open', 'service', 'dusk', 'ledger', 'ended'].indexOf(s.phase) >= 0 &&
+      ['prep', 'service', 'close', 'town', 'night', 'ended'].indexOf(s.phase) >= 0 &&
       ['cash', 'rep', 'burn', 'rng'].every(function (k) { return typeof s[k] === 'number' && isFinite(s[k]); }) &&
-      Array.isArray(s.menu) && s.menu.length > 0 && Array.isArray(s.pending) && s.today && Array.isArray(s.history);
+      !!s.plan && Array.isArray(s.plan.menu) && s.plan.menu.length > 0 && !!s.today && Array.isArray(s.hist) && !!s.reg && !!s.stats;
   }
-  function migrate(s) {
-    // v2 → v3：仅文档设计过，没有发布数据；若遇到则补字段
-    if (s && s.schema === 2) { s.schema = 3; s.executed = s.executed || []; s.photos = s.photos || []; }
-    return s;
-  }
+  function migrate(s) { return s; }
   function Store(storage) { this.st = storage; this.notice = null; }
   Store.prototype.saveRun = function (s) {
-    // 营业中不落盘（D015）：中途退出回到当日晨备。存的是进入营业前的快照。
+    // 早市进行中不落盘：中途退出，回来从当天开门重新来（进货钱不会重复扣）。
     var str = wrap(s);
     var prev = this.st.get(KEYS.run);
     try { if (prev) this.st.set(KEYS.runBak, prev); this.st.set(KEYS.run, str); return true; }
@@ -35,7 +31,7 @@ BSX.define('core/save', function (require) {
     var b = unwrap(this.st.get(KEYS.runBak));
     if (b.ok) { var s2 = migrate(b.data); if (validRun(s2)) { this.notice = '主存档损坏，已从备份恢复（' + a.reason + '）'; return { state: s2, from: 'backup' }; } }
     var hadOld = KEYS.old.some(function (k) { return !!this.st.get(k); }, this);
-    if (hadOld) this.notice = '检测到旧版本试玩存档，规则已大改，无法沿用。旧档已保留，不会删除。';
+    if (hadOld) this.notice = '检测到旧版本的存档。小馆重新装修过，旧档没法沿用（已保留，不会删除）。';
     else if (this.st.get(KEYS.run)) this.notice = '存档损坏且没有可用备份，请开始新的一局。';
     return null;
   };

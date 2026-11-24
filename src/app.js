@@ -1,25 +1,28 @@
-// 总控：平台 → 逻辑画布 1280×720（等比缩放＋扩展背景＋安全区）→ 屏幕路由 → 固定步长更新 → 存档 → 测试接口。
+// 总控：平台 → 逻辑画布 1280×720（等比缩放＋安全区）→ 屏幕路由 → 固定步长更新 → 存档 → 测试接口。
+// 一天的路由：开门前的戏（可无）→ 晨备（第 2 日起）→ 早市 → 收摊戏（可无）→ 晚账 → 下一天 / 结局。
 BSX.define('app', function (require) {
   var Run = require('core/run');
   var Save = require('core/save');
-  var Legacy = require('core/legacy');
   var A = require('game/assets');
   var Au = require('game/audio');
-  var Sc = require('game/scene');
+  var Fx = require('game/fx');
+  var Shop = require('game/shop');
   var U = require('ui/ui');
+  var Story = require('content/story');
+  var D = require('content/dishes');
   var Screens = require('ui/screens');
   var STEP = 1 / 60;
 
   function App(P, manifest) {
     var app = this;
-    this.P = P; this.ctx = P.ctx; this.t = 0; this.acc = 0; this.frames = 0; this.fps = 60; this.fpsT = 0; this.fpsN = 0; this.errors = []; this.manual = false;
+    this.P = P; this.ctx = P.ctx; this.t = 0; this.acc = 0; this.fps = 60; this.fpsT = 0; this.fpsN = 0; this.errors = []; this.manual = false;
     this.store = new Save.Store(P.storage);
-    this.settings = Object.assign({ music: 0.5, sfx: 0.8, vibrate: true, textScale: 1, reduceMotion: false, assistCook: false, autoPlay: false, skipSeen: true, lowFx: false, seenTutorial: false }, this.store.loadSettings() || {});
-    this.legacy = this.store.loadLegacy() || Legacy.create();
-    this.state = null; this.screen = null; this.overlay = null; this.storyLog = []; this.seenCs = {}; this.lastSave = null; this.dev = !!P.devMode; this.paused = false;
+    this.settings = Object.assign({ music: 0.5, sfx: 0.8, vibrate: true, textScale: 1, reduceMotion: false, autoPlay: false, lowFx: false, hints: true }, this.store.loadSettings() || {});
+    this.legacy = this.store.loadLegacy() || Run.newLegacy();
+    if (!this.legacy.v || this.legacy.v < 2) this.legacy = Run.newLegacy();
+    this.state = null; this.screen = null; this.overlay = null; this.lastSave = null; this.dev = !!P.devMode; this.paused = false; this.cards = []; this.fade = 0; this.fadeDir = 0; this.pid = null;
     A.init(P, manifest);
     Au.init(P, this.settings);
-    if (P.onGesture) P.onGesture(function () { Au.unlock(); });
     this.applySettings();
     P.onInput(function (type, px, py, id) { app.input(type, px, py, id); });
     P.onKey(function (key, e) { app.key(key, e); });
@@ -34,101 +37,89 @@ BSX.define('app', function (require) {
     this.installTestApi();
   }
   var Ap = App.prototype;
-  Ap.applySettings = function () {
-    var s = this.settings; U.textScale = s.textScale; Sc.reduceMotion = s.reduceMotion; Sc.lowFx = s.lowFx || s.reduceMotion; Au.setVolumes(s);
-    this.store.saveSettings(s);
-  };
-  // 视口：逻辑 1280×720 放进安全区内，四周用扩展背景填充，不拉伸人物
+  Ap.applySettings = function () { var s = this.settings; U.textScale = s.textScale; Fx.lowFx = Shop.lowFx = !!(s.lowFx || s.reduceMotion); Au.setVolumes(s); this.store.saveSettings(s); };
   Ap.layout = function () {
     var P = this.P, W = P.canvas.width, H = P.canvas.height, ins = P.safeInsets();
-    var aw = W - ins.l - ins.r, ah = H - ins.t - ins.b;
-    var s = Math.min(aw / 1280, ah / 720);
+    var aw = W - ins.l - ins.r, ah = H - ins.t - ins.b, s = Math.min(aw / 1280, ah / 720);
     this.view = { s: s, ox: ins.l + (aw - 1280 * s) / 2, oy: ins.t + (ah - 720 * s) / 2, W: W, H: H };
     var cap = P.capsule();
     this.capsule = cap ? { x: (cap.x - this.view.ox) / s, y: (cap.y - this.view.oy) / s, w: cap.w / s, h: cap.h / s } : null;
-    // 右上角为微信胶囊让位
-    this.rightInset = this.capsule ? Math.max(0, 1280 - this.capsule.x + 12) : 0;
+    this.rightInset = this.capsule && this.capsule.y + this.capsule.h > 0 ? Math.max(0, 1280 - this.capsule.x + 12) : 0;
   };
   Ap.toLogical = function (px, py) { return { x: (px - this.view.ox) / this.view.s, y: (py - this.view.oy) / this.view.s }; };
-  Ap.go = function (Scr, params) {
-    if (this.screen && this.screen.exit) this.screen.exit();
-    this.screen = new Scr(this, params || {});
-    this.overlay = null; U.pressed = null; this.capture = null;
+  Ap.go = function (Scr, params, fade) {
+    var app = this;
+    function sw() { if (app.screen && app.screen.exit) app.screen.exit(); app.screen = new Scr(app, params || {}); app.overlay = null; app.paused = false; U.pressed = null; app.capture = null; }
+    if (fade && this.screen && !this.manualFast) { this.fadeDir = 1; this.fadeTo = function () { sw(); if (app.fadeTo) { app.fadeDir = 1; app.fade = 1; } else app.fadeDir = -1; }; } else { if (this.fadeTo) { this.fadeTo = null; this.fadeDir = -1; } sw(); }
   };
-  Ap.openOverlay = function (Scr, params) { this.overlay = new Scr(this, params || {}); this.capture = null; U.pressed = null; };
-  Ap.closeOverlay = function () { this.overlay = null; this.paused = false; this.capture = null; };
-  Ap.pause = function (fromSystem) {
-    if (this.overlay || !this.screen || !this.screen.pausable) return;
-    this.paused = true; this.openOverlay(Screens.Pause, { system: fromSystem });
-  };
+  Ap.openOverlay = function (Scr, params) { this.overlay = new Scr(this, params || {}); this.capture = null; U.pressed = null; Au.play('ui_open'); };
+  Ap.closeOverlay = function () { this.overlay = null; this.paused = false; this.capture = null; Au.play('ui_close'); };
+  Ap.pause = function (fromSystem) { if (this.overlay || !this.screen || !this.screen.pausable) return; this.paused = true; this.openOverlay(Screens.Pause, { system: fromSystem }); };
   // ───────── 局状态
   Ap.newRun = function (opts) {
-    this.store.clearRun();
-    this.state = Run.create(opts);
-    this.storyLog = [];
-    this.save();
-    this.route();
-  };
-  Ap.dispatch = function (a) {
-    var before = this.state, after = Run.reduce(before, a);
-    if (after === before) return false;
-    this.state = after;
-    this.save();
-    if (after.phase === 'ended' && before.phase !== 'ended') this.onEnded();
-    return true;
+    opts = opts || {}; opts.gen = (this.legacy.runs || 0) + 1;
+    if (opts.seed == null) opts.seed = (Date.now() ^ (this.legacy.runs * 7919)) >>> 0;
+    this.store.clearRun(); this.state = Run.create(opts); this.save(); this.route(true);
   };
   Ap.save = function () {
     if (!this.state) return;
     var ok = this.store.saveRun(this.state);
     this.lastSave = { ok: ok, day: this.state.day, phase: this.state.phase, t: this.t };
-    this.stamp = ok ? 1 : 0;
-    if (!ok) this.errors.push(this.store.notice);
+    this.stamp = ok ? 1 : 0; if (!ok) this.errors.push(this.store.notice);
+    this.store.saveLegacy(this.legacy);
   };
-  Ap.onEnded = function () {
-    var s = this.state;
-    if (s.mode === 'story' && s.ending) { this.legacy = Legacy.recordEnding(this.legacy, s); this.store.saveLegacy(this.legacy); }
-    else if (s.mode === 'week') { var W = require('core/week'), m = W.summary(s), th = Run.theme(s), g = th.goals.filter(function (x) { return x.id === s.goal; })[0] || th.goals[0]; this.weekResult = { summary: m, goal: g, done: W.check(g.check, m) }; this.legacy = Legacy.recordWeek(this.legacy, s, this.weekResult.done, Object.assign({ goal: g.label }, m)); this.store.saveLegacy(this.legacy); }
-  };
-  Ap.continueRun = function () { var r = this.store.loadRun(); if (!r) return false; this.state = r.state; this.route(); return true; };
-  Ap.route = function () {
-    var s = this.state;
-    if (!s) return this.go(Screens.Title);
+  Ap.continueRun = function () { var r = this.store.loadRun(); if (!r) return false; this.state = r.state; if (this.store.notice) this.notice(this.store.notice); this.route(true); return true; };
+  Ap.route = function (fade) {
+    var s = this.state, app = this;
+    if (!s) return this.go(Screens.Title, {}, fade);
+    var t = s.today;
     switch (s.phase) {
-      case 'dawn': case 'open': case 'dusk': return this.go(Screens.Story);
-      case 'prep': return this.go(Screens.Prep);
-      case 'service': return this.go(Screens.Service);
-      case 'ledger': return this.go(Screens.Ledger);
-      case 'ended': return this.go(s.mode === 'week' ? Screens.WeekResult : Screens.Ending);
+      case 'prep':
+        if (t.closed) { return this.go(Screens.Prep, { closed: true }, fade); }
+        if (t.open && !t.openDone && Story.scenes[t.open]) return this.go(Screens.Scene, { ids: [t.open], when: 'open', done: function () { t.openDone = true; app.save(); app.route(true); } }, fade);
+        if (s.day === 1) { Run.openShop(s); this.save(); return this.go(Screens.Shift, {}, false); }
+        return this.go(Screens.Prep, {}, fade);
+      case 'service': return this.go(Screens.Shift, {}, fade);
+      case 'close':
+        if (!(t.closeList || []).some(function (id) { return s.seen[id] !== s.day && Story.scenes[id]; }) && !(t.found || []).some(function (f) { return !f.shown; })) { Run.toTown(s); this.save(); return this.route(fade); }
+        return this.go(Screens.Scene, { ids: (t.closeList || []).filter(function (id) { return s.seen[id] !== s.day; }), when: 'close', found: (t.found || []).filter(function (f) { return !f.shown; }), done: function () { Run.toTown(s); app.save(); app.route(true); } }, fade);
+      case 'town': return this.go(Screens.Town, {}, fade);
+      case 'night': return this.go(Screens.Night, {}, fade);
+      case 'ended': return this.go(Screens.Ending, {}, fade);
     }
   };
-  // ───────── 输入
-  Ap.input = function (type, px, py) {
+  Ap.endRun = function () { this.legacy = Run.record(this.legacy, this.state); this.legacy.scenes = this.legacy.scenes || {}; this.store.saveLegacy(this.legacy); this.save(); };
+  // 小卡片：学会新菜、留下纪念物、小本子记下一条
+  Ap.news = function (n) {
+    var c = null;
+    if (n.type === 'dish') { var d = D.byId[n.id]; if (d) c = { dish: n.id, title: '学会了 ' + d.name, text: '明早可以写上菜单牌。' }; }
+    else if (n.type === 'memento') { var m = Story.memento(n.id); c = { memento: m.kind, title: '留下了 ' + m.name, text: m.text }; }
+    else if (n.type === 'fact') { var who = String(n.id).split('/')[0]; c = { book: true, title: '小本子 · ' + Story.who(who), text: Story.facts[n.id] || '记下一条。' }; }
+    if (c) { c.t = 0; this.cards.push(c); }
+  };
+  // ───────── 输入（单指：其余手指忽略）
+  Ap.input = function (type, px, py, id) {
     Au.unlock();
+    if (type === 'down') { if (this.pid != null && id !== this.pid) return; this.pid = id; }
+    else if (type !== 'hover' && this.pid != null && id != null && id !== this.pid) return;
+    if (type === 'up' || type === 'cancel') this.pid = null;
     var p = this.toLogical(px, py), x = p.x, y = p.y;
     this.lastPointer = { type: type, x: x, y: y, t: this.t };
     U.keyboard = false;
     if (type === 'hover') { var h0 = U.find(x, y); U.hover = h0 ? h0.id : null; return; }
-    var scr = this.overlay || this.screen;
-    if (!scr) return;
-    if (this.capture) { // 拖拽/画圈/按住期间由捕获者处理
-      var c = this.capture; c(type, x, y);
-      if (type === 'up' || type === 'cancel') { this.capture = null; U.pressed = null; }
-      return;
-    }
+    if (this.fadeDir) return;
+    var scr = this.overlay || this.screen; if (!scr) return;
+    if (this.capture) { var c = this.capture; c(type, x, y); if (type === 'up' || type === 'cancel') { this.capture = null; U.pressed = null; } return; }
     if (type === 'down') {
       var h = U.find(x, y);
-      if (scr.pointerFirst) { var pf = scr.pointerFirst(type, x, y, h); if (pf) { if (typeof pf === 'function') this.capture = pf; return; } }
-      if (h && !h.disabled) {
-        U.pressed = h.id; this.pressHit = h; Au.play(h.kind === 'button' ? 'tap' : 'tap');
-        if (h.onDown) { var cap = h.onDown(x, y); if (typeof cap === 'function') this.capture = cap; }
-        return;
-      }
+      if (h && !h.disabled) { U.pressed = h.id; this.pressHit = h; if (h.onDown) { var cap = h.onDown(x, y); if (typeof cap === 'function') this.capture = cap; } return; }
+      if (h && h.disabled) return;
       if (scr.pointer) { var cap2 = scr.pointer(type, x, y); if (typeof cap2 === 'function') this.capture = cap2; }
       return;
     }
     if (type === 'up') {
       var ph = this.pressHit; this.pressHit = null; U.pressed = null;
-      if (ph) { var h2 = U.find(x, y); if (h2 && h2.id === ph.id && ph.onTap) ph.onTap(); return; }
+      if (ph) { var h2 = U.find(x, y); if (h2 && h2.id === ph.id && ph.onTap) { if (!ph.quiet) Au.play('tap'); ph.onTap(); } return; }
       if (scr.pointer) scr.pointer(type, x, y);
       return;
     }
@@ -139,117 +130,92 @@ BSX.define('app', function (require) {
     var list = U.focusable();
     if (key === 'Tab') { U.keyboard = true; U.focusIdx = list.length ? (U.focusIdx + 1) % list.length : -1; return; }
     if ((key === 'Enter' || key === ' ') && U.keyboard && list[U.focusIdx]) { list[U.focusIdx].onTap(); return; }
-    if (key === 'Escape' || key === 'p') { if (this.overlay && this.overlay.closeable !== false) this.closeOverlay(); else this.pause(); return; }
+    if (key === 'Escape' || key === 'p') { if (this.overlay) { if (this.overlay.closeable !== false) this.closeOverlay(); } else this.pause(); return; }
     if (key === 'f') this.P.fullscreen();
-    if (this.screen && this.screen.key) this.screen.key(key);
+    var scr = this.overlay || this.screen; if (scr && scr.key) scr.key(key);
   };
   // ───────── 主循环
   Ap.frame = function () {
     var now = this.P.now(), dt = Math.min(0.1, (now - this.lastNow) / 1000); this.lastNow = now;
     if (!this.manual && !this.hidden) { this.acc += dt; var n = 0; while (this.acc >= STEP && n < 6) { this.step(STEP); this.acc -= STEP; n++; } if (n === 6) this.acc = 0; }
-    this.fpsN++; this.fpsT += dt; if (this.fpsT >= 0.5) { this.fps = Math.round(this.fpsN / this.fpsT); this.fpsN = 0; this.fpsT = 0; this.autoLowFx(); }
+    this.fpsN++; this.fpsT += dt; if (this.fpsT >= 0.5) { this.fps = Math.round(this.fpsN / this.fpsT); this.fpsN = 0; this.fpsT = 0; if (!this.manual) { this.lowCount = this.fps < 40 ? (this.lowCount || 0) + 1 : 0; if (this.lowCount >= 6 && !Fx.lowFx) { Fx.lowFx = Shop.lowFx = true; this.notice('已切换到省电画面'); } } }
     this.render();
-  };
-  Ap.autoLowFx = function () {
-    // 低性能降级：持续低于 40fps 自动开启轻特效（判定不依赖帧率：逻辑固定步长）
-    if (this.manual) return;
-    this.lowCount = this.fps < 40 ? (this.lowCount || 0) + 1 : 0;
-    if (this.lowCount >= 6 && !Sc.lowFx) { Sc.lowFx = true; this.notice('已切换到省电画面'); }
   };
   Ap.step = function (dt) {
     this.t += dt; U.time = this.t;
     if (this.stamp > 0) this.stamp = Math.max(0, this.stamp - dt);
-    if (this.toast) { this.toast.t += dt; if (this.toast.t > 2.4) this.toast = null; }
+    if (this.toast) { this.toast.t += dt; if (this.toast.t > 2.6) this.toast = null; }
+    if (this.cards.length) { this.cards[0].t += dt; if (this.cards[0].t > 3.1) this.cards.shift(); }
+    if (this.fadeDir) { this.fade += this.fadeDir * dt * 3.4; if (this.fadeDir > 0 && this.fade >= 1) { this.fade = 1; var f = this.fadeTo; this.fadeTo = null; if (f) f(); } else if (this.fadeDir < 0 && this.fade <= 0) { this.fade = 0; this.fadeDir = 0; } }
+    Au.update(dt);
     if (this.overlay && this.overlay.update) this.overlay.update(dt);
     if (this.paused) return;
-    if (this.state) Sc.conscience = 1 - this.state.burn / 100;
-    if (!this.screen || this.screen.name !== 'service') Sc.queue = 0;
-    Sc.update(dt); Au.update(dt);
+    Shop.update(dt); Fx.update(dt);
     if (this.screen && this.screen.update) this.screen.update(dt);
   };
   Ap.notice = function (text) { this.toast = { text: text, t: 0 }; };
   Ap.render = function () {
     var ctx = this.ctx, v = this.view;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#1d1712'; ctx.fillRect(0, 0, v.W, v.H);
+    ctx.fillStyle = '#17120e'; ctx.fillRect(0, 0, v.W, v.H);
     ctx.setTransform(v.s, 0, 0, v.s, v.ox, v.oy);
-    ctx.imageSmoothingEnabled = v.s < 1;
+    ctx.imageSmoothingEnabled = true;
     U.begin();
-    // 扩展背景：把场景边缘拉伸填满留边（不拉伸人物）
     ctx.save();
     try {
+      ctx.beginPath(); ctx.rect(0, 0, 1280, 720); ctx.clip();
       if (this.screen && this.screen.draw) this.screen.draw(ctx);
-      if (this.overlay && this.overlay.draw) { U.hit('overlay_block', 0, 0, 1280, 720, { minSize: 0, kind: 'blocker', label: '弹层遮罩' }); this.overlay.draw(ctx); }
+      if (this.overlay && this.overlay.draw) this.overlay.draw(ctx);
     } catch (e) { this.reportError(e); for (var r = 0; r < 64; r++) ctx.restore(); ctx.save(); }
     ctx.restore();
     ctx.setTransform(v.s, 0, 0, v.s, v.ox, v.oy);
     this.drawChrome(ctx);
-    // 扩展背景：逻辑画布外的留边用当前场景放大铺满并压暗（不拉伸人物，只延展环境）
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    var rx = v.ox + 1280 * v.s, by = v.oy + 720 * v.s;
-    if (v.ox > 0.5 || v.oy > 0.5 || rx < v.W - 0.5 || by < v.H - 0.5) {
-      var bg = A.img(Sc.bgId()), bars = [];
-      if (v.ox > 0.5) bars.push([0, 0, Math.ceil(v.ox), v.H]);
-      if (rx < v.W - 0.5) bars.push([Math.floor(rx), 0, v.W, v.H]);
-      if (v.oy > 0.5) bars.push([0, 0, v.W, Math.ceil(v.oy)]);
-      if (by < v.H - 0.5) bars.push([0, Math.floor(by), v.W, v.H]);
-      ctx.save(); ctx.beginPath(); bars.forEach(function (b) { ctx.rect(b[0], b[1], b[2] - b[0], b[3] - b[1]); }); ctx.clip();
-      ctx.fillStyle = '#1d1712'; ctx.fillRect(0, 0, v.W, v.H);
-      if (bg) { var cs = Math.max(v.W / 1280, v.H / 720) * 1.08; ctx.globalAlpha = 0.55; ctx.drawImage(bg, (v.W - 1280 * cs) / 2, (v.H - 720 * cs) / 2, 1280 * cs, 720 * cs); ctx.globalAlpha = 1; }
-      ctx.fillStyle = 'rgba(20,12,6,.45)'; ctx.fillRect(0, 0, v.W, v.H);
-      ctx.restore();
-      ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 6 * v.s; ctx.strokeRect(v.ox, v.oy, 1280 * v.s, 720 * v.s);
-    }
-    if (this.P.portrait && this.P.portrait()) { ctx.fillStyle = 'rgba(20,14,8,.92)'; ctx.fillRect(0, 0, v.W, v.H); ctx.fillStyle = '#fff3d6'; ctx.font = 'bold ' + Math.round(v.W / 16) + 'px ' + U.FONT; ctx.textAlign = 'center'; ctx.fillText('请横过手机', v.W / 2, v.H / 2); ctx.font = Math.round(v.W / 26) + 'px ' + U.FONT; ctx.fillText('小馆需要横屏营业', v.W / 2, v.H / 2 + v.W / 12); }
+    if (this.P.portrait && this.P.portrait()) { ctx.fillStyle = 'rgba(20,14,8,.94)'; ctx.fillRect(0, 0, v.W, v.H); ctx.fillStyle = '#fff3d6'; ctx.font = 'bold ' + Math.round(v.W / 16) + 'px ' + U.FONT; ctx.textAlign = 'center'; ctx.fillText('请横过手机', v.W / 2, v.H / 2); ctx.font = Math.round(v.W / 26) + 'px ' + U.FONT; ctx.fillText('小馆需要横屏营业', v.W / 2, v.H / 2 + v.W / 12); }
   };
   Ap.drawChrome = function (ctx) {
-    if (this.stamp > 0 && this.lastSave && this.lastSave.ok) { ctx.save(); ctx.globalAlpha = Math.min(1, this.stamp * 2); ctx.translate(1226, 104); ctx.rotate(-0.15); ctx.strokeStyle = '#b8432f'; ctx.lineWidth = 3; ctx.strokeRect(-26, -16, 52, 32); U.text(ctx, '已存', 0, 8, { size: 18, color: '#b8432f', align: 'center', bold: true }); ctx.restore(); }
-    if (this.toast) { var k = Math.min(1, this.toast.t * 4) * Math.min(1, (2.4 - this.toast.t) * 3); ctx.save(); ctx.globalAlpha = k; U.panel(ctx, 380, 300, 520, 70, 'dark'); U.text(ctx, this.toast.text, 640, 344, { size: 24, align: 'center', color: '#fff3d6' }); ctx.restore(); }
-    if (this.dev) { U.text(ctx, this.fps + 'fps ' + (this.state ? 'd' + this.state.day + ' ' + this.state.phase + ' 烧' + Math.round(this.state.burn) : ''), 8, 712, { size: 14, color: '#0f0', stroke: '#000' }); }
-    if (this.capsule && this.dev) { ctx.save(); ctx.strokeStyle = 'rgba(255,0,0,.6)'; ctx.strokeRect(this.capsule.x, this.capsule.y, this.capsule.w, this.capsule.h); ctx.restore(); }
+    if (this.cards.length) {
+      var c = this.cards[0], k = c.t < 0.3 ? Fx.ease.back(c.t / 0.3) : c.t > 2.8 ? Math.max(0, (3.1 - c.t) / 0.3) : 1, w = 400, x = 640 - w / 2, y = -96 + k * 104;
+      ctx.save(); ctx.fillStyle = 'rgba(30,18,8,.35)'; U.rr(ctx, x + 3, y + 6, w, 84, 12); ctx.fill();
+      ctx.fillStyle = '#fbf5e4'; U.rr(ctx, x, y, w, 84, 12); ctx.fill(); ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = 3; ctx.stroke();
+      if (c.dish) A.food(ctx, c.dish, x + 12, y + 10, 64, {}); else if (c.memento) { ctx.save(); ctx.translate(x + 44, y + 58); ctx.scale(1.5, 1.5); Shop.drawMemento(ctx, c.memento, 0, 0, 2); ctx.restore(); } else { ctx.fillStyle = '#2f6f66'; U.rr(ctx, x + 22, y + 20, 40, 48, 4); ctx.fill(); ctx.fillStyle = '#fbf5e4'; ctx.fillRect(x + 28, y + 28, 22, 8); }
+      U.text(ctx, c.title, x + 92, y + 36, { size: 23, bold: true, color: '#3b2a1a', maxW: w - 108 });
+      U.text(ctx, c.text || '', x + 92, y + 64, { size: 17, color: '#8a6a3a', maxW: w - 108 });
+      ctx.restore();
+    }
+    if (this.stamp > 0 && this.lastSave && this.lastSave.ok) { ctx.save(); ctx.globalAlpha = Math.min(1, this.stamp * 2) * 0.8; ctx.translate(40, 690); ctx.rotate(-0.12); ctx.strokeStyle = '#b8432f'; ctx.lineWidth = 2.5; ctx.strokeRect(-24, -14, 48, 28); U.text(ctx, '已存', 0, 7, { size: 16, color: '#b8432f', align: 'center', bold: true }); ctx.restore(); }
+    if (this.toast) { var k2 = Math.min(1, this.toast.t * 4) * Math.min(1, (2.6 - this.toast.t) * 3); ctx.save(); ctx.globalAlpha = k2; ctx.font = U.font(22, 'bold'); var tw = Math.min(900, ctx.measureText(this.toast.text).width + 60); ctx.fillStyle = 'rgba(28,22,16,.86)'; U.rr(ctx, 640 - tw / 2, 316, tw, 60, 14); ctx.fill(); U.text(ctx, this.toast.text, 640, 354, { size: 22, bold: true, align: 'center', color: '#fff3d6', maxW: tw - 30 }); ctx.restore(); }
+    if (this.fade > 0) { ctx.fillStyle = 'rgba(16,12,10,' + Math.min(1, this.fade).toFixed(3) + ')'; ctx.fillRect(-2, -2, 1284, 724); }
+    if (this.dev) U.text(ctx, this.fps + 'fps ' + (this.state ? 'd' + this.state.day + ' ' + this.state.phase + ' 烧' + Math.round(this.state.burn) + ' 口' + Math.round(this.state.rep) : ''), 70, 712, { size: 13, color: '#0f0', stroke: '#000' });
   };
-  Ap.reportError = function (e) {
-    var msg = String(e && e.stack || e);
-    if (this.errors.indexOf(msg) < 0) this.errors.push(msg);
-    if (typeof console !== 'undefined') console.error(e);
-    if (this.errors.length > 20) this.errors.shift();
-  };
+  Ap.reportError = function (e) { var msg = String(e && e.stack || e); if (this.errors.indexOf(msg) < 0) this.errors.push(msg); if (typeof console !== 'undefined') console.error(e); if (this.errors.length > 20) this.errors.shift(); };
   // ───────── 测试接口
   Ap.installTestApi = function () {
     var app = this, g = typeof window !== 'undefined' ? window : (typeof GameGlobal !== 'undefined' ? GameGlobal : {});
-    g.advanceTime = function (ms) { app.manual = true; var n = Math.max(1, Math.round(ms / (STEP * 1000))); for (var i = 0; i < n; i++) { app.step(STEP); if (i % 4 === 3) app.render(); } app.render(); return app.t; };
+    g.advanceTime = function (ms) { app.manual = true; var n = Math.max(1, Math.round(ms / (STEP * 1000))); for (var i = 0; i < n; i++) app.step(STEP); app.render(); return app.t; };
     g.render_game_to_text = function () { return JSON.stringify(app.describe()); };
     g.__bsx = {
       app: app, Run: Run,
-      inject: function (type, x, y) { var v = app.view; app.input(type, x * v.s + v.ox, y * v.s + v.oy); },
+      inject: function (type, x, y) { var v = app.view; app.input(type, x * v.s + v.ox, y * v.s + v.oy, 1); },
       tap: function (x, y) { this.inject('down', x, y); this.inject('up', x, y); },
-      tapId: function (id) { var h = U.hits.filter(function (z) { return z.id === id; })[0]; if (!h) return false; this.tap(h.x + h.w / 2, h.y + h.h / 2); return true; },
+      tapId: function (id) { var h = U.hits.filter(function (z) { return z.id === id; })[0]; if (!h || h.disabled) return false; this.tap(h.x + h.w / 2, h.y + h.h / 2); return true; },
       hits: function () { return U.hits.map(function (h) { return { id: h.id, x: Math.round(h.x + h.w / 2), y: Math.round(h.y + h.h / 2), disabled: h.disabled }; }); },
       newRun: function (o) { app.newRun(o || {}); },
-      setSeed: function (seed) { app.newRun({ seed: seed }); },
-      jumpDay: function (d) { // 开发：以默认选择快速推进到第 d 日晨备
-        var sim = BSX.require('dev/autoplay'); sim.fastForward(app, d);
-      },
-      trigger: function (eventId) { var s = JSON.parse(JSON.stringify(app.state)); s.pending.unshift({ kind: 'event', id: eventId }); if (['dawn', 'open', 'dusk'].indexOf(s.phase) < 0) s.phase = 'dusk'; app.state = s; app.route(); },
-      set: function (k, v) { var s = JSON.parse(JSON.stringify(app.state)); s[k] = v; app.state = s; },
-      overlay: function (mod, exp, p) { app.openOverlay(BSX.require(mod)[exp], p || {}); },
-      toEnding: function (policy) { BSX.require('dev/autoplay').toEnding(app, policy || 'average'); },
+      bot: function (o) { return BSX.require('dev/bot').start(app, o || {}); },
+      jump: function (day, policy) { BSX.require('dev/bot').jump(app, day, policy); },
       errors: function () { return app.errors.concat(A.errors.map(function (e) { return '资源 ' + e.id + ' ' + e.msg; })); }
     };
   };
   Ap.describe = function () {
     var s = this.state, scr = this.overlay || this.screen;
-    var out = {
+    return {
       coords: 'logical 1280x720, origin top-left, y down',
-      screen: this.screen ? this.screen.name : null, overlay: this.overlay ? this.overlay.name : null, paused: this.paused,
-      fps: this.fps, t: Math.round(this.t * 100) / 100,
-      scene: { view: Sc.view, time: Sc.time, weather: Sc.weather, cam: { x: Math.round(Sc.cam.x), y: Math.round(Sc.cam.y), z: Math.round(Sc.cam.z * 100) / 100 } },
-      run: s ? { mode: s.mode, day: s.day, days: s.days, phase: s.phase, cash: s.cash, cashYuan: Math.round(s.cash) / 100, rep: s.rep, burn: this.dev ? s.burn : undefined, oil: s.oil, material: s.material, price: s.price, menu: s.menu, helper: s.helper, pending: s.pending.map(function (p) { return p.kind + ':' + (p.id || ''); }), ending: s.ending, crisis: s.crisis.state } : null,
-      save: this.lastSave, interactive: U.hits.filter(function (h) { return !h.disabled; }).slice(-40).map(function (h) { return { id: h.id, label: h.label, x: Math.round(h.x + h.w / 2), y: Math.round(h.y + h.h / 2), w: Math.round(h.w), h: Math.round(h.h) }; }),
-      detail: scr && scr.describe ? scr.describe() : null,
-      errors: this.errors.length, assetErrors: A.errors.length
+      screen: this.screen ? this.screen.name : null, overlay: this.overlay ? this.overlay.name : null, paused: this.paused, fps: this.fps, t: Math.round(this.t * 100) / 100,
+      run: s ? { day: s.day, phase: s.phase, cash: Math.round(s.cash) / 100, rep: Math.round(s.rep * 10) / 10, burn: Math.round(s.burn * 10) / 10, plan: s.plan, oilAge: s.oil.age, weather: s.today && s.today.weather, upg: Object.keys(s.upg), helper: s.helper, ending: s.ending, flags: Object.keys(s.flags), aff: Object.keys(s.reg).map(function (k) { return k + ':' + Math.round(s.reg[k].aff * 10) / 10; }).join(' ') } : null,
+      save: this.lastSave,
+      interactive: U.hits.filter(function (h) { return !h.disabled; }).slice(-50).map(function (h) { return { id: h.id, label: h.label, x: Math.round(h.x + h.w / 2), y: Math.round(h.y + h.h / 2) }; }),
+      detail: scr && scr.describe ? scr.describe() : null, errors: this.errors.length, assetErrors: A.errors.length
     };
-    return out;
   };
   return { App: App };
 });

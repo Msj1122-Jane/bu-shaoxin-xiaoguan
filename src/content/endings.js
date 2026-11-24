@@ -1,37 +1,125 @@
-// 8 结局（GDD §10）＋ 6 套七日常营业主题 ＋ 传承物（GDD §10.4–10.6）
+// 8 个结局 ＋ 28 条回声。格式见 docs/CONTENT_SPEC.md §8，腔调见 docs/VOICE.md。
+// sign：第 28 日写在空招牌上的字（≤ 6 字；转让 / 送行留空）。text 段落 ≤ 70 字，letter ≤ 50 字，last ≤ 16 字。
+// echoes：结局页自上而下取满足条件的前 4 条——越少见、越具体的排越前。只陈述，不评判。
 BSX.define('content/endings', function () {
-  var endings = [
-    { id: 'E_HONEST', order: 6, name: '贵是贵点，吃了不烧心', mood: '小店成了街坊放心的选择，利润不是最高，但稳。', cond: '存活·口碑≥80·烧心≤30·透明好料日≥60%' },
-    { id: 'E_PRIVATE', order: 4, name: '只做熟客的私房小馆', mood: '客人少了，熟客会提前打招呼。老周按自己的节奏做。', cond: '存活·口碑≥65·完成常客节点≥5人·劝退价日≥45%' },
-    { id: 'E_CANTEEN', order: 5, name: '街坊食堂', mood: '店里总是坐满，利润很薄，街坊会搭把手。', cond: '存活·口碑≥65·小满好感≥5·亲民价日≥45%' },
-    { id: 'E_REOPEN', order: 3, name: '整改之后，重新开张', mood: '承认了错，也把信任一点点捡了回来。', cond: '经历危机·整改或退款·烧心<70·口碑≥55' },
-    { id: 'E_PILLS', order: 2, name: '胃药和账单堆在收银台', mood: '钱或许还在，店和人都已经没了余地。', cond: '烧心满后硬撑并活到月底' },
-    { id: 'E_FAREWELL', order: 1, name: '搬走那天，常客来送行', mood: '生意没撑住，人情留下了。', cond: '提前结束经营·口碑≥60' },
-    { id: 'E_TRANSFER', order: 1, name: '转让', mood: '店铺转了手，账本停在那一天。', cond: '提前结束经营·口碑<60' },
-    { id: 'E_TRUTH', order: 8, name: '最后一页', mood: '父亲没写完的那页账，老周替他写上了。', cond: '对质时连父亲的错一起认·收齐 6 页账本·烧心≤40·口碑≥55' },
-    { id: 'E_SOMEONE', order: 7, name: '月底那天，还是有人来了', mood: '普通而不完美的一个月。', cond: '其他存活状态', tiers: ['门口冷清，但还有人推门。', '熟悉的几张脸，照常来吃早饭。', '门口排着队，老周笑着招呼。'] }
+  var list = [
+    { id: 'E_HONEST', title: '贵是贵点，吃了不烧心', sign: '不烧心小馆',
+      mood: '贵五毛。街上的人认了这五毛。',
+      text: [
+        '招牌是收了摊写的。五个字，写到“心”那一点，我手抖了，落得重。价牌比街口贵五毛，后来没人再提。',
+        '天不亮，三轮车照旧停在门口。葱上带着泥，筐底压着一张单子，日期写的是今天。',
+        '油还是三天一换，换下来那桶搁在后门等回收站的车。兜里那板胃药，过了期我才想起来扔。'
+      ],
+      letter: { from: 'best', text: '贵五毛我认了。吃完一上午，胃里是平的。明早，老样子。' },
+      last: '水开了。我去下米。' },
+
+    { id: 'E_CANTEEN', title: '街坊食堂', sign: '柳河街坊食堂',
+      mood: '挣得薄。凳子不够坐。',
+      text: [
+        '招牌是粉笔写的，好几个人的笔迹。“堂”字少的那一横，是我踩着凳子添的。落一场雨，要描一回。',
+        '凳子是各家拎来的，高矮不齐，吃完就留在店里。零钱盒老是满的，满的是毛票和钢镚。',
+        '收摊的时候有人帮着摞碗。门帘一掀，带进来一阵河风，还有隔壁缝纫机的声音。'
+      ],
+      letter: { from: 'best', text: '明早我早点来摆凳子。莫给我免单，该收好多收好多。' },
+      last: '隔壁的缝纫机还在响。' },
+
+    { id: 'E_PRIVATE', title: '只做熟客的私房小馆', sign: '周记·熟客',
+      mood: '人少了。名字我都叫得出。',
+      text: [
+        '门口不排队了。价牌没再往下改，来的人也不看价牌，坐下只说三个字：老样子。',
+        '小本子写到了最后一页。谁的油条要炸老，谁的粥要晾一下，谁礼拜三来，我都记着。',
+        '七点过后街上就静了。架子上一排碗倒扣着，各人用各人的。夜里我泡米，泡六个人的。'
+      ],
+      letter: { from: 'best', text: '礼拜三给我留个位子。不用问我吃啥子，你记得的。' },
+      last: '小本子合上了。' },
+
+    { id: 'E_REOPEN', title: '整改之后，重新开张', sign: '不烧心小馆',
+      mood: '关过一回门。又拉起来了。',
+      text: [
+        '整改单我没撕，还贴在门里侧。新油桶上拿记号笔写着开封的日子，一桶一个。',
+        '招牌是重开前一晚刷的，漆还发亮，凑近闻得到味。出事那天的日子，我写在何姨那张条子底下。',
+        '头一个钟头只来了三个人。第四个在门口站了一阵，抬头看了看招牌，伸手推门。'
+      ],
+      letter: { from: 'best', text: '重新开张那天我来了。粥跟头几天一个味。往后我还来。' },
+      last: '门上的铃响了一下。' },
+
+    { id: 'E_PILLS', title: '胃药和账单', sign: '周记早点',
+      mood: '钱还在。门口没人等。',
+      text: [
+        '收银台上，胃药压着一沓账单。药三盒，空了一盒。最上头那张是油钱，数目小得很。',
+        '零钱盒换成了带锁的铁皮箱。招牌写的“周记早点”，字很正，挂到哪家门头上都行。',
+        '六点整，门口没有人。头班车进站，停了一停，开走了。锅里的油还在响，响得发闷。'
+      ],
+      letter: { from: 'song', text: '周叔，护士站小黑板上你家的电话，我擦了。哪天换了油，你说一声，我再写上。' },
+      last: '药盒没合上，搁在手边。' },
+
+    { id: 'E_FAREWELL', title: '搬走那天，常客来送行', sign: '',
+      mood: '店没留住。板子背面写满了。',
+      text: [
+        '招牌正面到底没写字。翻过来，背面签满了名字，圆珠笔的、蜡笔的，最底下是茶缸底印的一个圈。',
+        '煎锅拿旧报纸包好，粥谱夹在里头。灶台擦了两遍。何姨那张条子我没揭，留给下一个人。',
+        '东西不多，一辆三轮拉了两趟。拐过桥头，我回头看了一眼，门上的铃还在晃。'
+      ],
+      letter: { from: 'best', text: '板子你带走。哪天在别处开张了，翻过来接着签。' },
+      last: '白板背面朝里，捆在车上。' },
+
+    { id: 'E_TRANSFER', title: '转让', sign: '',
+      mood: '账本停在那一页。',
+      text: [
+        '钥匙在兜里揣了一上午，交出去的时候是温的。汪姐数了一遍，一把不少，又数了一遍。',
+        '账本停在那天，后头全是空页。招牌一个字没写，接手的人不用铲。汪姐说，倒省了一桩事。',
+        '煎锅没带走，扣在灶台底下，还包着那张旧报纸。卷帘门拉下来，锁舌“咔哒”一声。'
+      ],
+      letter: { from: 'qin', text: '锅我看见了，还在灶台底下。新来的要是不会养，我教他。' },
+      last: '招牌还是白的。' },
+
+    { id: 'E_SOMEONE', title: '月底那天，还是有人来了', sign: '小馆',
+      mood: '平常的一个月。月底那天也平常。',
+      text: [
+        '月底那天和别的日子差不多。粥熬稠了一点，油条炸到第三锅才顺手。',
+        '招牌上先写了“小馆”两个字，前头空着一截。有人问空的写啥子，我说再想想。',
+        '六点四十，门口有脚步声，停住了。布钱包的搭扣，“嗒”地响了一下。'
+      ],
+      letter: { from: 'best', text: '也没啥子特别的。就是早上走到这儿，脚自己就拐进来了。' },
+      last: '“老样子。”' }
   ];
-  var byId = {};
-  endings.forEach(function (e) { byId[e.id] = e; });
-  var themes = [
-    { id: 'T_RAIN', name: '连雨周', desc: '七天都下雨，骑手单多，堂食少。', mods: { weather: 'rain', flow: 0.95, regular: { ali: 2 } },
-      goals: [{ id: 'g1', label: '零退单', check: 'noLost' }, { id: 'g2', label: '让阿力坐下一次', check: 'aliVisits3' }, { id: 'g3', label: '净赚 600', check: 'profit60000' }] },
-    { id: 'T_EXAM', name: '学生考试周', desc: '学生赶早，必须快。', mods: { flow: 1.1, patience: 0.8, regular: { zheng: 2 } },
-      goals: [{ id: 'g1', label: '不让学生迟到', check: 'noLost' }, { id: 'g2', label: '招牌出餐 10 份', check: 'signature10' }, { id: 'g3', label: '口碑 +5', check: 'rep5' }] },
-    { id: 'T_FRESHUP', name: '鲜货涨价周', desc: '鲜货和可追溯食材成本上涨四成。', mods: { materialCost: [1, 1.4, 1.4] },
-      goals: [{ id: 'g1', label: '用有限鲜货守住口碑', check: 'rep0' }, { id: 'g2', label: '净赚 400', check: 'profit40000' }, { id: 'g3', label: '烧心不增加', check: 'burn0' }] },
-    { id: 'T_COLD', name: '寒潮周', desc: '天冷，热粥热汤卖得好。', mods: { weather: 'cloud', dishBoost: ['congee', 'pidan', 'pumpkin', 'mutton', 'noodle'] },
-      goals: [{ id: 'g1', label: '卖出 120 碗粥', check: 'congee120' }, { id: 'g2', label: '给赵爷爷留七天座', check: 'zhaoDaily' }, { id: 'g3', label: '净赚 800', check: 'profit80000' }] },
-    { id: 'T_FAIR', name: '老街庙会周', desc: '游客多，熟客反而挤不进来。', mods: { flow: 1.3, regular: {}, capacity: 6 },
-      goals: [{ id: 'g1', label: '净赚 1000', check: 'profit100000' }, { id: 'g2', label: '常客七天都来过', check: 'regulars5' }, { id: 'g3', label: '零退单', check: 'noLost' }] },
-    { id: 'T_GAS', name: '设备检修周', desc: '油锅检修三天，只能做不用油的菜。', mods: { noOilDays: 3 },
-      goals: [{ id: 'g1', label: '口碑不降', check: 'rep0' }, { id: 'g2', label: '净赚 300', check: 'profit30000' }, { id: 'g3', label: '招牌出餐 8 份', check: 'signature8' }] }
+
+  var echoes = [
+    // —— 那一晚
+    { need: { flags: ['crisis_hold'] }, text: '那一晚过后，第二天你照样五点半拉起了门。' },
+    { need: { flags: ['crisis_rectify'] }, text: '门上贴过一天“停业一天，换油”。字是小宋写的。' },
+    { need: { flags: ['crisis_refund'] }, text: '你挨家退过钱。有两家没要，又推了回来。' },
+    // —— 锅里的东西
+    { need: { flags: ['powder_hidden'] }, text: '有人问过粥咋个变香了。你说是东北的新米。' },
+    { need: { flags: ['powder_used'], not: ['powder_hidden'] }, text: '那包没字的粉，你用过。后来它不在围裙兜里了。' },
+    { need: { flags: ['cheap_mutton'] }, text: '那锅羊肉汤卖得好。票，老胡到月底也没补。' },
+    // —— 钱
+    { need: { flags: ['kept_extra'] }, text: '赵爷爷多给过一回钱。那几个硬币，还单放在零钱盒一格里。' },
+    { need: { flags: ['s_sold'] }, text: '收旧货的来拉过一趟。墙上留下一块比别处白的印子。' },
+    { need: { flags: ['s_borrow'] }, text: '小满借过你一笔钱，没打条子。她说她记性比尺子准。' },
+    { need: { flags: ['rent_late'] }, text: '有一个礼拜的房租，你分两回才交齐。' },
+    { need: { flags: ['chipin'] }, text: '押金里有一沓是零钱。信封里记着十几个名字，口子缝死了。' },
+    { need: { flags: ['left'], cash: [1200] }, text: '押金的数，零钱盒里是够的。你没签。' },
+    // —— 那条视频
+    { need: { flags: ['viral_bad'] }, text: '那条视频里的油，颜色比你记得的深。' },
+    { need: { flags: ['viral_good'] }, text: '那条视频拍到了灶台边何姨的条子。字凶，看得清。' },
+    { need: { flags: ['s_curtain_open'] }, text: '后厨的帘子拉开过一回，后来就没再拉上。' },
+    // —— 街上的人
+    { need: { flags: ['man_curtain'] }, text: '门口那幅帘子是小满缝的，针脚比买的密。' },
+    { need: { flags: ['ge_books'] }, text: '账本从月中起换了笔迹。一笔一笔，对得上。' },
+    { need: { flags: ['e_leftover_give'] }, text: '头几天剩的粥挂在门把上。第二天，袋子总是空的。' },
+    { need: { flags: ['hood'] }, text: '排烟罩装上以后，隔壁的后窗又开了。' },
+    { need: { flags: ['returned_extra'] }, text: '赵爷爷多给的钱，你追出去还了。是豆豆伸手接的。' },
+    { need: { credit: [1] }, text: '赊账那页，老葛的名字底下还有几行没划掉。' },
+    { need: { flags: ['helper'] }, text: '围裙钩上多挂了一条，是桂芬自己带来的。' },
+    { need: { flags: ['slip_ever'], rep: [70] }, text: '进货单在门口贴到卷了边。后来没人再凑近看。' },
+    { need: { flags: ['viral_plain'] }, text: '那条视频有人看，没人转。底下说：还行，实在。' },
+    { need: { flags: ['renewed'] }, text: '押金是你一张一张数给汪姐的。她说不点，又点了一遍。' },
+    // —— 兜底的几条（按数字）
+    { need: { priceAvg: [1.4] }, text: '价牌改过。往上改的那一回，你用的是铅笔。' },
+    { need: { affSum: [40] }, text: '小本子上记了八个人的老样子。有几条划了重写。' },
+    { need: { burn: [0, 45] }, text: '何姨的条子还贴在灶台边。油，大体是照它换的。' }
   ];
-  var heirlooms = [
-    { id: 'H_BASKET', name: '老秦的菜筐', desc: '前 3 日鲜货成本降低两成', from: 'qin' },
-    { id: 'H_NOTEBOOK', name: '小郑的配方本', desc: '开局解锁蛋炒饭', from: 'zheng' },
-    { id: 'H_TEACUP', name: '龚师傅的旧茶杯', desc: '清晨客流稳定 +4%', from: 'gong' },
-    { id: 'H_APRON', name: '小满补过的围裙', desc: '每道菜起始熟练度 +1 次', from: 'man' }
-  ];
-  return { list: endings, byId: byId, themes: themes, heirlooms: heirlooms };
+
+  return { list: list, echoes: echoes };
 });

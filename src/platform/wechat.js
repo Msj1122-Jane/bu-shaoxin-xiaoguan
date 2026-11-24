@@ -16,9 +16,6 @@ BSX.define('platform/wechat', function () {
     if (wx.onAudioInterruptionBegin) wx.onAudioInterruptionBegin(function () { hideFns.forEach(function (f) { f(); }); });
     if (wx.onAudioInterruptionEnd) wx.onAudioInterruptionEnd(function () { showFns.forEach(function (f) { f(); }); });
     var actx = null;
-    // 兼容：旧基础库 Canvas 若无 ellipse，用 arc+缩放补齐
-    var proto = Object.getPrototypeOf(canvas.getContext('2d'));
-    if (proto && !proto.ellipse) proto.ellipse = function (x, y, rx, ry, rot, a0, a1, ccw) { this.save(); this.translate(x, y); this.rotate(rot); this.scale(rx, ry); this.arc(0, 0, 1, a0, a1, ccw); this.restore(); };
     var safe = info.safeArea || { left: 0, top: 0, right: info.windowWidth, bottom: info.windowHeight };
     var P = {
       name: 'wechat', canvas: canvas, ctx: canvas.getContext('2d'), params: { get: function () { return null; }, has: function () { return false; } }, dpr: dpr, cssW: info.windowWidth, cssH: info.windowHeight, devMode: false,
@@ -29,7 +26,6 @@ BSX.define('platform/wechat', function () {
         set: function (k, v) { wx.setStorageSync(k, v); },
         remove: function (k) { try { wx.removeStorageSync(k); } catch (e) {} }
       },
-      loadBytes: function (path, cb) { try { wx.getFileSystemManager().readFile({ filePath: path, success: function (r) { cb(null, r.data); }, fail: function (e) { cb(e); } }); } catch (e) { cb(e); } },
       loadImage: function (path, cb) { var img = wx.createImage(); img.onload = function () { cb(null, img); }; img.onerror = function () { cb(new Error('加载失败 ' + path)); }; img.src = path; },
       createCanvas: function (w, h) { var c = wx.createCanvas(); c.width = w; c.height = h; return c; },
       onInput: function (f) { inputFns.push(f); }, onKey: function () {},

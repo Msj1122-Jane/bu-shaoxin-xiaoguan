@@ -1,251 +1,182 @@
-// 晨备：油壶、食材篮、价牌三件实物（点按或左右滑切档，咔哒吸附）＋ 菜单托盘 ＋ 用图标表达的预计成本/客流/风险。
+// 晨备：卷帘门还没拉。定今天的菜单和每样备多少份（黑板）、油换不换、料买谁的、价钱（三张小卡）、看一眼进货小票，然后按住把门拉起来。
+// 功能按天逐步开放：第 2 天只有备料和油，第 3 天能换菜单，第 4 天选用料，第 5 天定价，第 8 天可以把进货单贴出去。
 BSX.define('ui/s_prep', function (require) {
-  var U = require('ui/ui');
   var A = require('game/assets');
-  var Sc = require('game/scene');
+  var U = require('ui/ui');
+  var K = require('ui/kit');
+  var Fx = require('game/fx');
   var Au = require('game/audio');
-  var Act = require('game/actors');
-  var Hud = require('ui/hud');
+  var Shop = require('game/shop');
   var Run = require('core/run');
-  var D = require('content/dishes');
   var C = require('content/config');
-  var TIERS = {
-    oil: { names: ['循环用油', '日常换油', '勤换新油'], icon: 8, short: ['旧油', '常油', '新油'] },
-    material: { names: ['标准冻储', '当日鲜货', '小批可追溯'], icon: 9, short: ['冻储', '鲜货', '可追溯'] },
-    price: { names: ['亲民', '合理', '劝退'], icon: 10, short: ['亲民', '合理', '劝退'] }
-  };
-  function Prep(app) {
-    this.name = 'prep'; this.app = app; this.t = 0; this.pausable = true; this.anim = { oil: 0, material: 0, price: 0 }; this.fq = null;
+  var D = require('content/dishes');
+  var Story = require('content/story');
+  var Cond = require('core/cond');
+  var CHALK = '#f4f0e0', CHALK2 = '#f2d27a';
+  var STN_COL = { pot: '#e8dcc0', fryer: '#e8b84a', griddle: '#8a8078', boil: '#6f9a96', soy: '#3b8076', side: '#b8823a' };
+
+  function Prep(app, p) {
     var s = app.state;
-    Sc.set({ view: 'room', time: 'dawn', weather: s.today.weather, crowd: 0 }); Sc.moveCam(640, 360, 1, 0);
-    Au.setAmbience(s.today.weather === 'rain' ? 'rain' : 'morning', s.today.weather === 'rain');
-    // 第 1 日：先做饭，不展示完整晨备（GDD §4.2）
-    if (s.mode === 'story' && s.day === 1) { this.skipFirst = true; }
-    this.tutorial = s.mode === 'story' && s.day === 2 ? 0 : -1;
+    this.app = app; this.name = 'prep'; this.pausable = true; this.s = s; this.t = 0; this.closed = !!p.closed; this.hold = 0; this.holding = false; this.opened = false;
+    Fx.reset(); require('game/stations').silence();
+    Shop.reset('night', s.today.weather); Shop.setShutter(1, true); Shop.crowd = 0.15;
+    Au.setScene({ place: 'shop', rain: s.today.weather === 'rain' ? 0.8 : 0, crowd: 0, dawn: 0, music: 'dawn' });
+    this.f = Run.features(s);
+    this.notes = this.buildNotes();
+    (s.today.news || []).forEach(function (n) { if (!n.shown) { n.shown = true; } });
   }
   var P = Prep.prototype;
-  P.update = function (dt) { if (this.skipFirst) { this.skipFirst = false; this.app.dispatch({ t: 'confirmPrep' }); this.app.route(); return; } this.t += dt; for (var k in this.anim) this.anim[k] = Math.max(0, this.anim[k] - dt * 3); };
-  P.setTier = function (key, v) {
-    if (this.app.dispatch({ t: 'tier', key: key, v: v })) { this.anim[key] = 1; Au.play('knob'); this.app.P.vibrate('light'); if (this.tutorial >= 0 && ['oil', 'material', 'price'][this.tutorial] === key) this.tutorial++; }
+  P.buildNotes = function () {
+    var s = this.s, t = s.today, out = [], y = s.hist[s.hist.length - 1];
+    (t.notes || []).forEach(function (n) { out.push({ text: n.text, col: n.kind === 'order' ? '#fff3b8' : '#f6ecd6', from: n.from }); });
+    t.newDishes.forEach(function (id) { out.push({ text: '新学会：' + D.byId[id].name + '。可以写上菜单了。', col: '#d8f0d0' }); });
+    var toRent = 7 - (s.day % 7); if (s.day % 7 === 0) toRent = 0;
+    if (s.day < 28 && toRent <= 1 && s.day % 7 !== 1) out.push({ text: (toRent === 0 ? '今晚' : '明晚') + '交房租 ' + K.yuan(C.rentWeekly) + '。', col: '#ffd9c8' });
+    if (s.day >= 8 && s.day <= 26 && !s.depositPaid && (s.day % 3 === 0 || s.day >= 24)) out.push({ text: '续租押金 ' + K.yuan(s.deposit) + '，第 26 天给话。', col: '#ffd9c8' });
+    var tips = { 2: '油每用一天就老一点：熟得快、容易焦。何姨说三天一换。', 3: '灶台底下那口老煎锅能用了。菜单最多写四样，三口灶。', 4: '今天起可以挑用料。便宜的省钱，好的出品更香。', 5: '今天起可以自己定价。薄利人多，提价人少。', 8: '可以把进货单贴在门口——油和料都摆在明面上。' };
+    if (tips[s.day]) out.push({ text: tips[s.day], col: '#e0ecf4' });
+    if (Run.costUpNow(s) && (s.day === C.costUp.from || s.day === C.costUp.from + 1)) out.push({ text: '鲜货和好料这几天涨价一成半。', col: '#ffd9c8' });
+    return out.slice(0, 4);
   };
+  P.update = function (dt) {
+    var s = this.s, app = this.app;
+    this.t += dt;
+    if (this.opened) return;
+    if (this.holding) {
+      this.hold = Math.min(1, this.hold + dt / 0.9); var tk = Math.floor(this.hold * 8); if (tk !== this.tick) { this.tick = tk; Au.play('shutter_tick'); }
+      if (this.hold >= 1) { this.opened = true; this.holding = false; app.capture = null; Run.openShop(s); app.save(); app.P.vibrate('heavy'); Au.play('shutter_up'); Shop.setShutter(0); app.go(require('ui/s_play').Shift, {}, false); }
+    } else this.hold = Math.max(0, this.hold - dt * 1.6);
+    Shop.setShutter(1 - this.hold * 0.35, false);
+  };
+  P.canOpen = function () { var s = this.s, c = Run.planCost(s); if (c.total > Math.max(0, s.cash) + 8000) return '钱不够进这么多货'; if (!s.plan.menu.some(function (id) { return (s.plan.stock[id] || 0) > 0; })) return '什么都没备'; return ''; };
   P.draw = function (ctx) {
-    var app = this.app, s = app.state, self = this;
-    if (!s || this.skipFirst) { ctx.fillStyle = '#1d1712'; ctx.fillRect(0, 0, 1280, 720); return; }
-    Sc.drawBack(ctx);
-    // 老周在后厨备料
-    Act.draw(ctx, 'zhou', 250, 520, 300, { t: this.t, pose: Math.floor(this.t / 3) % 3 === 1 ? 'cut' : 'idle' });
-    Sc.drawFront(ctx);
-    ctx.save(); ctx.fillStyle = 'rgba(30,18,8,.25)'; ctx.fillRect(0, 0, 1280, 720); ctx.restore();
-    Hud.draw(ctx, app);
-    // 三件实物
-    var q = Run.quote(s);
-    var keys = ['oil', 'material', 'price'];
-    keys.forEach(function (k, i) {
-      var x = 70 + i * 250, y = 410, w = 220, h = 250;
-      var locked = self.tutorial >= 0 && i > self.tutorial;
-      var hint = self.tutorial === i;
-      U.panel(ctx, x, y, w, h, 'wood', { alpha: locked ? 0.35 : 1 });
-      if (locked) { U.text(ctx, '？', x + w / 2, y + 140, { size: 60, align: 'center', color: '#fff3d6', alpha: 0.6 }); return; }
-      var v = s[k], bounce = self.anim[k];
-      var hit = U.hit('tier_' + k, x, y, w, 170, { label: TIERS[k].names[v], onTap: function () { self.setTier(k, (s[k] + 1) % 3); },
-        onDown: function (x0) { var sx = x0; return function (type, x2) { if (type !== 'up') return; var cur = self.app.state[k]; if (Math.abs(x2 - sx) > 50) self.setTier(k, Math.max(0, Math.min(2, cur + (x2 > sx ? 1 : -1)))); else self.setTier(k, (cur + 1) % 3); }; } });
-      if (hint) { ctx.save(); ctx.globalAlpha = 0.5 + Math.sin(self.t * 5) * 0.4; ctx.strokeStyle = '#ffe28a'; ctx.lineWidth = 6; U.rr(ctx, x - 6, y - 6, w + 12, h + 12, 16); ctx.stroke(); ctx.restore(); }
-      ctx.save(); ctx.translate(x + w / 2, y + 95); var sc = 1 + bounce * 0.12 - (hit.pressed ? 0.06 : 0); ctx.scale(sc, sc); ctx.rotate(Math.sin(bounce * 12) * 0.08 * bounce);
-      drawTierObject(ctx, k, v);
+    var s = this.s, app = this.app, self = this, p = s.plan, f = this.f, t = this.t;
+    Shop.drawBack(ctx, s, { curtain: !!s.flags.man_curtain }); Shop.drawCounter(ctx); Shop.drawLight(ctx); Shop.drawShutter(ctx);
+    K.dim(ctx, 0.28);
+    K.dayChip(ctx, s, 14, 12, t);
+    U.text(ctx, '清晨 · 备料', 198, 48, { size: 26, bold: true, color: '#fbeed0', stroke: 'rgba(30,18,8,.85)' });
+    K.iconBtn(ctx, 'pause', 1280 - 62 - (app.rightInset || 0), 10, 48, 'pause', function () { app.pause(); }, { label: '暂停' });
+    K.iconBtn(ctx, 'book', 1280 - 122 - (app.rightInset || 0), 10, 48, 'book', function () { app.openOverlay(require('ui/s_book').Book, {}); }, { label: '小本子' });
+    K.tin(ctx, 1010, 34, s.cash, 0);
+    if (this.closed) {
+      K.paper(ctx, 340, 220, 600, 280, { pin: K.col.red });
+      U.text(ctx, '停业整改', 640, 290, { size: 40, bold: true, align: 'center', color: K.col.ink });
+      U.para(ctx, '今天不开门。把油锅刷了，台面、地漏、抹布，一样一样过。', 400, 340, 480, { size: 22, color: K.col.ink });
+      K.tag(ctx, 'prep_closed', 500, 420, 280, 58, '干到天黑', { kind: 'teal', onTap: function () { Run.closedDay(s); app.save(); app.route(true); } });
+      return;
+    }
+    // ── 菜单牌（黑板）：今日菜单 + 每样备多少
+    var bx = 22, by = 78, bw = 420, bh = 624;
+    K.board(ctx, bx, by, bw, bh);
+    var hot = Run.hotCount(p.menu), maxM = C.menuMax(s), burners = C.burners(s);
+    U.text(ctx, '今日菜单', bx + 28, by + 52, { size: 28, bold: true, color: CHALK });
+    if (f.menu) U.text(ctx, p.menu.length + '/' + maxM + ' 样 · 灶 ' + hot + '/' + burners, bx + bw - 28, by + 50, { size: 18, align: 'right', color: hot >= burners || p.menu.length >= maxM ? CHALK2 : 'rgba(244,240,224,.7)' });
+    ctx.strokeStyle = 'rgba(244,240,224,.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx + 24, by + 66); ctx.lineTo(bx + bw - 24, by + 66); ctx.stroke();
+    var rh = p.menu.length > 5 ? 58 : 64, y0 = by + 76, yst = s.hist[s.hist.length - 1];
+    p.menu.forEach(function (id, i) {
+      var d = D.byId[id], y = y0 + i * rh, n = p.stock[id] || 0;
+      ctx.fillStyle = STN_COL[d.st]; ctx.fillRect(bx + 20, y + 6, 5, rh - 14);
+      A.food(ctx, id, bx + 30, y + 2, rh - 8, {});
+      U.text(ctx, d.name, bx + 32 + rh, y + 28, { size: 22, bold: true, color: CHALK, maxW: 128 });
+      U.text(ctx, K.yuan(Run.price(s, id)), bx + 32 + rh, y + 50, { size: 17, color: CHALK2 });
+      if (yst && yst.want && yst.want[id] != null) U.text(ctx, '昨天要 ' + yst.want[id], bx + 96 + rh, y + 50, { size: 14, color: 'rgba(244,240,224,.6)' });
+      if (f.stock) {
+        var sx = bx + bw - (f.menu ? 190 : 150);
+        K.tag(ctx, 'dec_' + id, sx, y + 10, 42, 42, '−', { kind: 'dark', size: 24, disabled: n <= 0, onTap: function () { Run.setStock(s, id, n - 2); Au.play('chalk'); } });
+        U.text(ctx, String(n), sx + 68, y + 41, { size: 28, bold: true, align: 'center', color: n === 0 ? '#ffb0a0' : CHALK });
+        K.tag(ctx, 'inc_' + id, sx + 94, y + 10, 42, 42, '+', { kind: 'dark', size: 24, onTap: function () { Run.setStock(s, id, n + 2); Au.play('chalk'); } });
+        if (f.menu && p.menu.length > 1) K.tag(ctx, 'rm_' + id, bx + bw - 54, y + 12, 36, 38, '×', { kind: 'dark', size: 20, onTap: function () { Run.setMenu(s, id, false); Au.play('soldout'); } });
+      } else U.text(ctx, '备 ' + n + ' 份', bx + bw - 30, y + 38, { size: 22, align: 'right', color: CHALK });
+    });
+    var yy = y0 + p.menu.length * rh + 6;
+    if (f.stock && yst) K.tag(ctx, 'suggest', bx + 24, yy, 176, 40, '照昨天卖的备', { kind: 'dark', size: 17, onTap: function () { p.menu.forEach(function (id) { Run.setStock(s, id, Run.suggest(s, id)); }); Au.play('chalk'); } });
+    var sets = Run.setsOn(s); if (sets.length) U.text(ctx, '搭着卖：' + sets.map(function (id) { return D.byId[id].name + ' ' + K.yuan(Run.price(s, id)); }).join('、'), bx + (f.stock && yst ? 212 : 28), yy + 27, { size: 15, color: CHALK2, maxW: 200 });
+    if (f.menu) {
+      var rest = Run.menuChoices(s).filter(function (d) { return p.menu.indexOf(d.id) < 0; });
+      yy += 52;
+      if (rest.length) {
+        U.text(ctx, '还能写上去的', bx + 28, yy + 14, { size: 16, color: 'rgba(244,240,224,.7)' });
+        var cols = 6, cs = 62, rowsLeft = Math.max(1, Math.floor((by + bh - 18 - (yy + 22)) / (cs + 4)));
+        rest.slice(0, cols * rowsLeft).forEach(function (d, i) {
+          var cx = bx + 24 + (i % cols) * (cs + 2), cy = yy + 22 + Math.floor(i / cols) * (cs + 4), why = Run.whyNot(s, d.id), isNew = s.today.newDishes.indexOf(d.id) >= 0;
+          var st = U.hit('add_' + d.id, cx, cy, cs, cs, { label: '加 ' + d.name, onTap: function () { if (!Run.setMenu(s, d.id, true)) { app.notice(Run.whyNot(s, d.id) || '加不上'); Au.play('wrong'); } else Au.play('chalk'); } });
+          ctx.fillStyle = st.hover ? 'rgba(244,240,224,.2)' : 'rgba(244,240,224,.08)'; U.rr(ctx, cx, cy, cs - 2, cs, 8); ctx.fill();
+          ctx.save(); if (why) ctx.globalAlpha = 0.45; A.food(ctx, d.id, cx + 6, cy + 1, cs - 16, {}); ctx.restore();
+          U.text(ctx, d.name.length > 3 ? d.name.slice(0, 3) : d.name, cx + cs / 2 - 1, cy + cs - 5, { size: 13, align: 'center', color: CHALK });
+          ctx.fillStyle = STN_COL[d.st]; ctx.fillRect(cx + 3, cy + 4, 4, 12);
+          if (isNew) { ctx.fillStyle = '#d8432f'; ctx.beginPath(); ctx.arc(cx + cs - 10, cy + 9, 6, 0, 7); ctx.fill(); }
+        });
+      }
+    }
+    // ── 三张小卡：油 / 料 / 价
+    var cx0 = 462, cw = 420, cy0 = 78;
+    function card(y, h, title, sub) { K.paper(ctx, cx0, y, cw, h, {}); U.text(ctx, title, cx0 + 20, y + 34, { size: 23, bold: true, color: K.col.ink }); if (sub) U.text(ctx, sub, cx0 + 60, y + 33, { size: 15, color: K.col.mute, maxW: cw - 80 }); }
+    function opts(y, list, cur, set) { var w = (cw - 32 - (list.length - 1) * 8) / list.length; list.forEach(function (o, i) { K.tag(ctx, o.id, cx0 + 16 + i * (w + 8), y, w, 54, o.label, { kind: 'paper', selected: cur === o.v, sub: o.sub, size: 19, onTap: function () { set(o.v); Au.play('page'); } }); }); }
+    var y = cy0;
+    if (f.oil && Run.usesOil(s)) {
+      var age = s.oil.age, rate = s.oil.bulk ? C.oil.bulkRate : 1, will = p.oil === 'new' ? 0 : p.oil === 'bulk' ? C.oil.bulkAge : age + (p.oil === 'filter' ? 0.5 : 1) * rate;
+      card(y, 128, '油', '用下来今天算第 ' + (Math.round(will * 10) / 10 + 1).toFixed(will % 1 ? 1 : 0) + ' 天' + (will >= 3 ? '：熟得快，窗口窄，会冒烟' : will >= 2 ? '：有点老了' : will < 1 ? '：清亮' : ''));
+      var kk = Math.min(1, will / 5); ctx.fillStyle = 'rgb(' + Math.round(236 - 132 * kk) + ',' + Math.round(184 - 120 * kk) + ',' + Math.round(74 - 50 * kk) + ')'; U.rr(ctx, cx0 + cw - 54, y + 12, 34, 34, 6); ctx.fill(); ctx.strokeStyle = '#5a3418'; ctx.lineWidth = 2; ctx.stroke();
+      var ol = [{ id: 'oil_keep', v: 'keep', label: '接着用', sub: '不花钱' }, { id: 'oil_filter', v: 'filter', label: '滤一滤', sub: K.yuan(C.oil.filter) }, { id: 'oil_new', v: 'new', label: '换新油', sub: K.yuan(C.oil.fresh) }];
+      if (s.day >= 8) ol.push({ id: 'oil_bulk', v: 'bulk', label: '散装油', sub: K.yuan(C.oil.bulk) + ' · 老得快' });
+      opts(y + 58, ol, p.oil, function (v) { p.oil = v; });
+      y += 140;
+    }
+    if (f.mat) {
+      card(y, 128, '料', ['便宜两成，出品差一点', '老秦天不亮送来的', '贵三成，有票可查，出品更香'][p.mat]);
+      var ml = [{ id: 'mat0', v: 0, label: '批发冻品', sub: '省' }, { id: 'mat1', v: 1, label: '老秦的鲜货', sub: '平' }];
+      if (f.mat2) ml.push({ id: 'mat2', v: 2, label: '有票的好料', sub: '贵' });
+      opts(y + 58, ml, p.mat, function (v) { Run.setMat(s, v); });
+      y += 140;
+    }
+    if (f.price) {
+      card(y, 128, '价', ['来的人多，每份赚得少', '街坊都认的价', '来的人少些，每份多赚'][p.price]);
+      opts(y + 58, [{ id: 'price0', v: 0, label: '薄利', sub: '八五折' }, { id: 'price1', v: 1, label: '公道', sub: '原价' }, { id: 'price2', v: 2, label: '提价', sub: '加两成半' }], p.price, function (v) { p.price = v; });
+      y += 140;
+    }
+    if (f.post) { K.tag(ctx, 'post', cx0, y, cw, 50, p.post ? '进货单：贴在门口了' : '进货单：收在抽屉里', { kind: p.post ? 'teal' : 'paper', size: 20, sub: p.post ? '油第几天、料哪来的，谁都看得见' : '点一下，贴出去', onTap: function () { p.post = !p.post; Au.play('page'); } }); y += 62; }
+    // 便条
+    var ny = Math.max(y + 4, 300);
+    this.notes.forEach(function (n, i) {
+      var nyy = ny + i * 62; if (nyy > 640) return;
+      ctx.save(); ctx.translate(cx0 + cw / 2, nyy + 27); ctx.rotate((i % 2 ? 1 : -1) * 0.008); ctx.translate(-(cx0 + cw / 2), -(nyy + 27));
+      ctx.fillStyle = 'rgba(30,18,8,.3)'; ctx.fillRect(cx0 + 3, nyy + 5, cw, 54); ctx.fillStyle = n.col; ctx.fillRect(cx0, nyy, cw, 54);
+      var ls = U.wrap(ctx, n.text, cw - 28, 17); ls.slice(0, 2).forEach(function (l, j) { U.text(ctx, l, cx0 + 14, nyy + (ls.length > 1 ? 23 : 33) + j * 22, { size: 17, color: K.col.ink }); });
       ctx.restore();
-      // 三段吸附刻度
-      for (var j = 0; j < 3; j++) {
-        var px = x + 50 + j * 60;
-        U.hit('tier_' + k + '_' + j, px - 26, y + 180, 52, 44, { label: TIERS[k].names[j], onTap: (function (jj) { return function () { self.setTier(k, jj); }; })(j), minSize: 48 });
-        ctx.fillStyle = j === v ? '#ffd45a' : 'rgba(255,248,232,.35)'; ctx.beginPath(); ctx.arc(px, y + 196, j === v ? 11 : 8, 0, 7); ctx.fill();
-      }
-      U.text(ctx, TIERS[k].names[v], x + w / 2, y + 238, { size: 24, bold: true, align: 'center', color: '#fff8e8', stroke: '#4a2a12' });
     });
-    // 价位与菜品错配提示
-    // 菜单托盘
-    var avail = Run.availableDishes(s), size = Run.menuSize(s);
-    U.panel(ctx, 820, 96, 440, 380, 'paper');
-    U.text(ctx, '今日菜单 ' + s.menu.length + '/' + size, 846, 136, { size: 24, bold: true });
-    for (var m = 0; m < size; m++) {
-      var mx = 846 + m * (size === 5 ? 78 : 96), my = 150, id = s.menu[m];
-      ctx.fillStyle = 'rgba(122,90,53,.15)'; U.rr(ctx, mx, my, size === 5 ? 72 : 88, 100, 10); ctx.fill();
-      if (id) {
-        var d = D.byId[id];
-        U.hit('menu_' + id, mx, my, size === 5 ? 72 : 88, 100, { label: '撤下' + d.name, onTap: (function (dd) { return function () { if (self.app.dispatch({ t: 'dish', id: dd })) Au.play('tap'); }; })(id) });
-        A.food(ctx, id, mx + 6, my + 2, size === 5 ? 60 : 76);
-        var price = Math.round(d.price * C.price.mult[s.price]);
-        U.text(ctx, price + '元', mx + (size === 5 ? 36 : 44), my + 94, { size: 20, bold: true, align: 'center', color: '#b8432f' });
-        if (d.fit[s.material] < 0.9) { ctx.fillStyle = '#b8432f'; ctx.beginPath(); ctx.arc(mx + 10, my + 10, 9, 0, 7); ctx.fill(); U.text(ctx, '!', mx + 10, my + 16, { size: 16, bold: true, align: 'center', color: '#fff' }); }
-      }
-    }
-    // 可选菜
-    var cols = 6, tw = 64;
-    avail.forEach(function (d, i) {
-      var tx = 846 + (i % cols) * (tw + 4), ty = 268 + Math.floor(i / cols) * (tw + 6), on = s.menu.indexOf(d.id) >= 0;
-      var st = U.hit('dish_' + d.id, tx, ty, tw, tw, { label: d.name, onTap: function () { if (self.app.dispatch({ t: 'dish', id: d.id })) Au.play(on ? 'tap' : 'pickup'); else Au.play('wrong'); }, minSize: 56 });
-      ctx.save(); ctx.fillStyle = on ? 'rgba(232,181,74,.6)' : st.pressed ? 'rgba(122,90,53,.3)' : 'rgba(255,255,255,.5)'; U.rr(ctx, tx, ty, tw, tw, 8); ctx.fill(); ctx.restore();
-      A.food(ctx, d.id, tx + 4, ty + 2, tw - 8, { alpha: on ? 0.45 : 1 });
-      if (!s.prof[d.id].n) { ctx.fillStyle = '#2f6f66'; ctx.beginPath(); ctx.arc(tx + tw - 8, ty + 8, 7, 0, 7); ctx.fill(); }
-    });
-    U.text(ctx, '点菜上牌 · 绿点为新菜', 846, 462, { size: 16, color: '#8d7a60' });
-    // 预计：图标为主
-    U.panel(ctx, 820, 486, 440, 150, 'cream');
-    // 客流：小人剪影数量
-    var people = Math.round((q.flowLow + q.flowHigh) / 2 / 8);
-    for (var p = 0; p < Math.min(10, people); p++) { ctx.fillStyle = '#5b6e8c'; ctx.beginPath(); ctx.arc(850 + p * 22, 512, 7, 0, 7); ctx.fill(); ctx.fillRect(844 + p * 22, 520, 12, 18); }
-    U.text(ctx, q.flowLow + '–' + q.flowHigh + '人', 1240, 534, { size: 20, align: 'right', bold: true });
-    // 单份毛利：钱袋
-    A.cell(ctx, 'atlas_ui', 12, 840, 548, 36, 36, { trim: true, fit: true, anchor: 'center' });
-    U.text(ctx, '每份约赚 ' + (Math.round(q.margin * 10) / 10) + ' 元', 884, 574, { size: 20, bold: true, color: q.margin < 2 ? '#b8432f' : '#3b2a1a' });
-    U.text(ctx, '最多做 ' + q.cap + ' 份', 1240, 574, { size: 18, align: 'right', color: '#7d5a35' });
-    var hs = s.stats.honestStreak || 0; if (hs >= 1 && !q.risk) { ctx.fillStyle = '#2f6f66'; U.rr(ctx, 1080, 590, 160, 30, 8); ctx.fill(); U.text(ctx, '放心 ' + hs + ' 天 · 客流 +' + Math.round(Math.min(C.honesty.streakFlowMax, hs * C.honesty.streakFlow) * 100) + '%', 1160, 611, { size: 15, bold: true, align: 'center', color: '#fff' }); }
-    // 风险倾向（不显示精确烧心）
-    if (q.risk) { A.cell(ctx, 'atlas_ui', 14, 840, 590, 36, 36, { trim: true, fit: true, anchor: 'center' }); U.text(ctx, q.risk > 1 ? '油已用了好几天' : '油会越用越旧', 884, 616, { size: 18, color: '#b8432f' }); }
-    else { var likely = Run.likelyVisitors(s); U.text(ctx, '可能来：', 840, 616, { size: 18, color: '#7d5a35' }); likely.forEach(function (id, i) { ctx.save(); ctx.beginPath(); ctx.arc(940 + i * 46, 608, 20, 0, 7); ctx.clip(); Act.portrait(ctx, id, 920 + i * 46, 588, 40); ctx.restore(); }); }
-    // 开门 / 沿用昨日
-    if (s.history.length && s.day >= 7) U.button(ctx, 'prep_yesterday', 820, 650, 170, 58, '沿用昨日', { kind: 'paper', size: 22, onTap: function () { self.app.dispatch({ t: 'yesterday' }); Au.play('knob'); } });
-    if (s.day >= 2 || s.mode === 'week') U.button(ctx, 'prep_shop', 70, 664 - 0, 230, 48, '升级小馆 ' + s.upgrades.length + '/' + C.upgrades.length, { kind: 'wood', size: 20, onTap: function () { self.app.openOverlay(Shop); } });
-    U.button(ctx, 'prep_open', 1010, 650, 250, 60, '开门营业', { size: 28, disabled: !s.menu.length || this.tutorial >= 0 && this.tutorial < 3, onTap: function () { Au.play('open'); self.app.dispatch({ t: 'confirmPrep' }); self.app.route(); } });
-    // 今日小目标 + 盘店基金（D042/D041）
-    drawGoals(ctx, s, 430, 104);
-    // 验货（D040）
-    var dv = s.today.delivery;
-    if (dv && dv.state === 'pending' && this.tutorial < 0) {
-      if (!this.dlvShown) { this.dlvShown = true; self.app.openOverlay(Delivery); }
-      U.button(ctx, 'prep_delivery', 310, 664, 200, 48, '送货待验', { kind: 'primary', size: 20, onTap: function () { self.app.openOverlay(Delivery); } });
-    }
-    if (this.tutorial >= 0 && this.tutorial < 3) U.text(ctx, ['先看看油壶', '再看看食材篮', '最后定价牌'][this.tutorial], 70 + this.tutorial * 250 + 110, 396, { size: 22, bold: true, align: 'center', color: '#ffe28a', stroke: '#4a2a12' });
-  };
-  function drawGoals(ctx, s, x, y) {
-    var goals = s.today.goals || [], buy = s.mode === 'story' && !s.flags.owner && s.day <= C.buyout.day;
-    if (!goals.length && !buy) return;
-    var h = 36 + goals.length * 30 + (buy ? 46 : 0);
-    U.panel(ctx, x, y, 370, h, 'paper', { alpha: 0.95 });
-    U.text(ctx, goals.length ? '今日小目标' : '盘店基金', x + 18, y + 30, { size: 20, bold: true });
-    if (goals.length) U.text(ctx, '每个 +' + C.goals.reward / 100 + ' 元，全中再 +' + C.goals.allBonus / 100, x + 352, y + 30, { size: 15, align: 'right', color: '#7d5a35' });
-    goals.forEach(function (g, i) {
-      var gy = y + 60 + i * 30;
-      ctx.strokeStyle = g.id === 'nocheat' ? '#2f6f66' : '#7d5a35'; ctx.lineWidth = 2; ctx.strokeRect(x + 20, gy - 15, 16, 16);
-      if (g.done) U.text(ctx, '✓', x + 28, gy, { size: 18, bold: true, align: 'center', color: '#2f6f66' });
-      U.text(ctx, g.label, x + 46, gy, { size: 18, color: g.id === 'nocheat' ? '#2f6f66' : '#3b2a1a', maxW: 310 });
-    });
-    if (buy) {
-      var by = y + h - 26, k = Math.max(0, Math.min(1, s.cash / C.buyout.price));
-      if (goals.length) U.text(ctx, '盘店基金', x + 20, by + 6, { size: 16, bold: true, color: '#7d5a35' });
-      ctx.fillStyle = 'rgba(122,90,53,.2)'; U.rr(ctx, x + 96, by - 8, 190, 16, 8); ctx.fill();
-      ctx.fillStyle = k >= 1 ? '#2f6f66' : '#e8b54a'; U.rr(ctx, x + 96, by - 8, Math.max(16, 190 * k), 16, 8); ctx.fill();
-      U.text(ctx, Math.round(s.cash / 100) + '/' + C.buyout.price / 100, x + 352, by + 6, { size: 15, align: 'right', color: '#7d5a35' });
-    }
-  }
-  // 验货：把试纸拖到货上，假货会变色（参考深空当铺色卡鉴定）
-  function Delivery(app) { this.name = 'delivery'; this.app = app; this.t = 0; this.strip = { x: 300, y: 470, drag: false }; this.tested = false; this.done = null; }
-  var DP = Delivery.prototype;
-  DP.update = function (dt) { this.t += dt; if (this.done && (this.t - this.done.t > 1.8)) this.app.closeOverlay(); };
-  DP.draw = function (ctx) {
-    var app = this.app, s = app.state, self = this, dv = s.today.delivery;
-    if (!dv) { app.closeOverlay(); return; }
-    var it = C.delivery.items.filter(function (x) { return x.id === dv.item; })[0];
-    ctx.fillStyle = 'rgba(20,14,8,.72)'; ctx.fillRect(0, 0, 1280, 720);
-    U.panel(ctx, 160, 60, 960, 600, 'paper');
-    U.text(ctx, '送货上门', 640, 112, { size: 32, bold: true, align: 'center' });
-    Act.draw(ctx, 'supplier', 300, 380, 230, { t: this.t, noShadow: true });
-    ctx.fillStyle = '#fff'; U.rr(ctx, 390, 150, 420, 64, 14); ctx.fill();
-    U.text(ctx, '“' + it.name + '，老板，这批便宜点。”', 410, 190, { size: 22, maxW: 390 });
-    // 货
-    var gx = 700, gy = 340;
-    ctx.save(); ctx.translate(gx, gy); drawGoods(ctx, dv.item, dv.fake && this.tested); ctx.restore();
-    // 试纸
-    var tint = !this.tested ? '#e8e0a0' : dv.fake ? '#8a2a5a' : '#c8d880';
-    var sx = this.strip.x, sy = this.strip.y;
-    if (!this.done) {
-      U.hit('strip', sx - 30, sy - 70, 60, 140, { label: '试纸', minSize: 56, onDown: function (x0, y0) {
-        self.strip.drag = true; Au.play('pickup');
-        return function (type, x2, y2) {
-          self.strip.x = x2; self.strip.y = y2;
-          if (type === 'up') { self.strip.drag = false; if (Math.hypot(x2 - gx, y2 - gy) < 140) { self.tested = true; Au.play(dv.fake ? 'wrong' : 'perfect'); app.P.vibrate(dv.fake ? 'heavy' : 'light'); } self.strip.x = 300; self.strip.y = 470; }
-        };
-      } });
-    }
-    ctx.save(); ctx.translate(sx, sy); ctx.rotate(this.strip.drag ? 0.15 : 0);
-    ctx.fillStyle = '#f6efe0'; ctx.fillRect(-18, -64, 36, 128); ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = 2; ctx.strokeRect(-18, -64, 36, 128);
-    ctx.fillStyle = tint; ctx.fillRect(-14, 10, 28, 46); ctx.restore();
-    if (!this.tested && !this.done) U.text(ctx, '把试纸拖到货上验一验', 300, 590, { size: 20, align: 'center', color: '#7d5a35' });
-    if (this.tested) U.text(ctx, dv.fake ? '试纸变紫了——有问题！' : '颜色正常，是好货', gx, 540, { size: 26, bold: true, align: 'center', color: dv.fake ? '#b8432f' : '#2f6f66' });
-    if (this.done) { U.para(ctx, this.done.text, 640, 590, 760, { size: 22, align: 'center', color: '#3b2a1a' }); return; }
-    var save = it.save / 100;
-    U.button(ctx, 'dlv_accept', 520, 580, 220, 58, '收下', { kind: 'paper', size: 24, onTap: function () { self.finish(true); } });
-    U.button(ctx, 'dlv_reject', 760, 580, 220, 58, '退货', { kind: 'primary', size: 24, onTap: function () { self.finish(false); } });
-    if (!this.tested) U.text(ctx, '收下能省 ' + save + ' 元', 630, 656, { size: 16, align: 'center', color: '#8d7a60' });
-  };
-  DP.finish = function (accept) {
-    var app = this.app, dv = app.state.today.delivery, fake = dv.fake;
-    if (!app.dispatch({ t: 'delivery', accept: accept, tested: this.tested })) { app.closeOverlay(); return; }
-    Au.play(accept ? 'coin' : 'page');
-    var it = C.delivery.items.filter(function (x) { return x.id === dv.item; })[0];
-    var text = accept && fake ? (this.tested ? '省了 ' + it.save / 100 + ' 元。门口的灯笼，暗了一点。' : '收下了。没人知道这批货有问题——至少现在没人知道。') : !accept && fake ? '假货当场退回。街坊听说了，都说老周眼尖。' : accept ? '好货，收下。' : '货其实没问题，白搭了 3 元运费。';
-    this.done = { t: this.t, text: text };
-  };
-  DP.describe = function () { var dv = this.app.state.today.delivery; return { item: dv && dv.item, tested: this.tested, fake: this.tested ? dv.fake : undefined, done: !!this.done, strip: { x: 300, y: 470 }, target: { x: 700, y: 340 } }; };
-  function drawGoods(ctx, id, bad) {
-    if (id === 'oil') { A.cell(ctx, 'atlas_ui', 8, -90, -100, 180, 180, { trim: true, fit: true, anchor: 'center' }); if (bad) { ctx.fillStyle = 'rgba(90,40,10,.45)'; U.rr(ctx, -40, -20, 80, 90, 10); ctx.fill(); } }
-    else if (id === 'egg') {
-      ctx.fillStyle = '#c8a070'; ctx.fillRect(-110, -10, 220, 90); ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = 4; ctx.strokeRect(-110, -10, 220, 90);
-      for (var i = 0; i < 6; i++) { ctx.fillStyle = bad ? '#e8dcc8' : '#f4e2c4'; ctx.beginPath(); ctx.ellipse(-80 + i * 32, -16, 14, 18, 0, 0, 7); ctx.fill(); ctx.strokeStyle = '#b89a70'; ctx.lineWidth = 2; ctx.stroke(); }
-      ctx.fillStyle = '#b8432f'; ctx.fillRect(-60, 20, 120, 34); U.text(ctx, '土鸡蛋', 0, 46, { size: 22, bold: true, align: 'center', color: '#fff3d6' });
-    } else {
-      ctx.fillStyle = '#efe6d2'; U.rr(ctx, -80, -90, 160, 180, 24); ctx.fill(); ctx.strokeStyle = '#a89070'; ctx.lineWidth = 4; ctx.stroke();
-      ctx.fillStyle = '#2f6f66'; ctx.fillRect(-50, -20, 100, 40); U.text(ctx, '面粉', 0, 10, { size: 24, bold: true, align: 'center', color: '#fff' });
-      if (bad) { ctx.fillStyle = 'rgba(120,120,60,.35)'; ctx.beginPath(); ctx.arc(30, 50, 18, 0, 7); ctx.fill(); }
-    }
-  }
-  function drawTierObject(ctx, k, v) {
-    if (k === 'oil') {
-      if (v === 0) { A.cell(ctx, 'atlas_ui', 8, -70, -80, 140, 140, { trim: true, fit: true, anchor: 'center' }); ctx.fillStyle = 'rgba(70,40,10,.55)'; U.rr(ctx, -34, -22, 68, 78, 10); ctx.fill(); ctx.fillStyle = '#d8c8a0'; ctx.save(); ctx.rotate(-0.12); ctx.fillRect(-30, -6, 60, 20); ctx.restore(); U.text(ctx, '回收', 0, 10, { size: 16, bold: true, align: 'center', color: '#5a3418' }); }
-      else if (v === 1) A.cell(ctx, 'atlas_ui', 8, -70, -80, 140, 140, { trim: true, fit: true, anchor: 'center' });
-      else { A.cell(ctx, 'atlas_ui', 8, -70, -80, 140, 140, { trim: true, fit: true, anchor: 'center' }); ctx.fillStyle = '#fff8e8'; ctx.fillRect(-26, -4, 52, 22); ctx.fillStyle = '#2f6f66'; ctx.fillRect(-22, 0, 44, 4); ctx.fillRect(-22, 8, 30, 4); }
-    } else if (k === 'material') {
-      if (v === 0) { ctx.fillStyle = '#cfe6f2'; U.rr(ctx, -60, -46, 120, 90, 10); ctx.fill(); ctx.strokeStyle = '#7aa6c0'; ctx.lineWidth = 4; ctx.stroke(); ctx.fillStyle = '#fff'; for (var i = 0; i < 4; i++) { ctx.fillRect(-40 + i * 24, -24, 4, 4); } }
-      else A.cell(ctx, 'atlas_ui', 9, -72, -76, 144, 144, { trim: true, fit: true, anchor: 'center' });
-      if (v === 2) { ctx.fillStyle = '#fff8e8'; ctx.save(); ctx.rotate(0.2); ctx.fillRect(14, -60, 42, 52); ctx.fillStyle = '#7d5a35'; for (var j = 0; j < 4; j++) ctx.fillRect(18, -52 + j * 10, 32, 3); ctx.restore(); }
-    } else {
-      ctx.save(); ctx.rotate(-0.1); A.cell(ctx, 'atlas_ui', 10, -80, -70, 160, 130, { trim: true, fit: true, anchor: 'center' }); ctx.restore();
-      U.text(ctx, ['×0.85', '×1', '×1.25'][v], 0, 2, { size: 26, bold: true, align: 'center', color: ['#2f6f66', '#3b2a1a', '#b8432f'][v] });
-    }
-  }
-  P.describe = function () {
-    var s = this.app.state, q = Run.quote(s);
-    return { tiers: { oil: s.oil, material: s.material, price: s.price }, menu: s.menu, menuSize: Run.menuSize(s), available: Run.availableDishes(s).map(function (d) { return d.id; }), quote: { flow: [q.flowLow, q.flowHigh], cap: q.cap, margin: Math.round(q.margin * 10) / 10, risk: q.risk }, tutorial: this.tutorial };
-  };
-  // 升级商店：钱花在看得见的地方
-  function Shop(app) { this.name = 'shop'; this.app = app; }
-  Shop.prototype.draw = function (ctx) {
-    var app = this.app, s = app.state, self = this;
-    ctx.fillStyle = 'rgba(20,14,8,.72)'; ctx.fillRect(0, 0, 1280, 720);
-    U.panel(ctx, 90, 30, 1100, 660, 'paper');
-    U.text(ctx, '升级小馆', 640, 80, { size: 32, bold: true, align: 'center' });
-    U.text(ctx, '钱匣 ' + Math.round(s.cash / 100) + ' 元', 1160, 80, { size: 22, bold: true, align: 'right', color: '#2f6f66' });
-    C.upgrades.forEach(function (u, i) {
-      var cw = 200, ch = 262, x = 120 + (i % 5) * 210, y = 100 + Math.floor(i / 5) * 272, own = s.upgrades.indexOf(u.id) >= 0, can = !own && s.cash >= u.cost;
-      ctx.save(); ctx.fillStyle = own ? '#e6f4ea' : '#fff8e8'; U.rr(ctx, x, y, cw, ch, 12); ctx.fill(); ctx.strokeStyle = own ? '#2f6f66' : '#c8a878'; ctx.lineWidth = own ? 4 : 2; ctx.stroke(); ctx.restore();
-      ctx.save(); ctx.translate(x + cw / 2, y + 54); ctx.scale(0.8, 0.8); upIcon(ctx, u.id, 0, 0); ctx.restore();
-      if (u.passive) { ctx.fillStyle = '#2f6f66'; U.rr(ctx, x + 8, y + 8, 64, 24, 8); ctx.fill(); U.text(ctx, '夜间进账', x + 40, y + 26, { size: 13, bold: true, align: 'center', color: '#fff' }); }
-      U.text(ctx, u.name, x + cw / 2, y + 122, { size: 22, bold: true, align: 'center', maxW: cw - 16 });
-      U.para(ctx, u.desc, x + 12, y + 146, cw - 24, { size: 15, color: '#7d5a35', lh: 19, maxLines: 4 });
-      if (own) U.text(ctx, '已添置', x + cw / 2, y + 246, { size: 20, bold: true, align: 'center', color: '#2f6f66' });
-      else U.button(ctx, 'buy_' + u.id, x + 30, y + 216, cw - 60, 38, u.cost / 100 + ' 元', { kind: can ? 'primary' : 'paper', size: 20, disabled: !can, minSize: 44, onTap: function () { if (app.dispatch({ t: 'buy', id: u.id })) { Au.play('coin'); Au.play('perfect'); app.notice('添置了 ' + u.name); } } });
-    });
-    U.button(ctx, 'shop_close', 1010, 40, 160, 48, '好了', { onTap: function () { app.closeOverlay(); } });
-  };
-  Shop.prototype.describe = function () { return { owned: this.app.state.upgrades, cash: this.app.state.cash }; };
-  function upIcon(ctx, id, x, y) {
-    ctx.save(); ctx.translate(x, y);
-    var I = { fire: [2, 'equipment'], tray: [7, 'equipment'], pot2: [1, 'equipment'], counter: [5, 'equipment'], sign: [10, 'ui'], board: [11, 'ui'], soymaker: [3, 'equipment'] }[id];
-    if (I && I[0] != null) A.cell(ctx, I[1] === 'ui' ? 'atlas_ui' : 'atlas_equipment', I[0], -50, -46, 100, 92, { trim: true, fit: true, anchor: 'center' });
-    else if (id === 'tables') { ctx.fillStyle = '#8a5a2a'; ctx.fillRect(-46, -14, 92, 12); ctx.fillStyle = '#6a4220'; ctx.fillRect(-40, -2, 8, 44); ctx.fillRect(32, -2, 8, 44); ctx.fillStyle = '#a87040'; ctx.fillRect(-46, -18, 92, 6); ctx.fillStyle = '#7a4a22'; ctx.fillRect(-62, 14, 22, 8); ctx.fillRect(40, 14, 22, 8); ctx.fillRect(-58, 22, 4, 20); ctx.fillRect(54, 22, 4, 20); }
-    else if (id === 'preorder') { ctx.fillStyle = '#2a3a32'; ctx.fillRect(-48, -40, 96, 72); ctx.strokeStyle = '#a87040'; ctx.lineWidth = 6; ctx.strokeRect(-48, -40, 96, 72); ctx.fillStyle = '#f0f0e8'; for (var i = 0; i < 4; i++) ctx.fillRect(-36, -28 + i * 15, 50 + (i % 2) * 18, 4); }
-    else Act.draw(ctx, 'helper', 0, 46, 100, { noShadow: true });
-    if (id === 'fire') { ctx.fillStyle = 'rgba(255,120,30,.8)'; ctx.beginPath(); ctx.ellipse(0, 40, 30, 8, 0, 0, 7); ctx.fill(); }
+    // ── 进货小票 + 开门
+    var rx = 902, rw = 356, cost = Run.planCost(s), ry = 78;
+    K.paper(ctx, rx, ry, rw, 420, { r: 4 });
+    U.text(ctx, '进货小票', rx + rw / 2, ry + 40, { size: 24, bold: true, align: 'center', color: K.col.ink });
+    ctx.setLineDash([5, 5]); ctx.strokeStyle = '#a88a5a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(rx + 16, ry + 54); ctx.lineTo(rx + rw - 16, ry + 54); ctx.stroke(); ctx.setLineDash([]);
+    var ly = ry + 82, lh = cost.lines.length > 5 ? 28 : 32;
+    cost.lines.forEach(function (l) { U.text(ctx, D.byId[l.id].name + ' ×' + l.n, rx + 22, ly, { size: 18, color: K.col.ink, maxW: 210 }); U.text(ctx, K.yuan(l.sum), rx + rw - 22, ly, { size: 18, align: 'right', color: K.col.ink }); ly += lh; });
+    if (cost.oil) { U.text(ctx, p.oil === 'new' ? '新油一锅' : p.oil === 'bulk' ? '散装油' : '滤油', rx + 22, ly, { size: 18, color: K.col.ink }); U.text(ctx, K.yuan(cost.oil), rx + rw - 22, ly, { size: 18, align: 'right', color: K.col.ink }); ly += lh; }
+    if (cost.pantry) { U.text(ctx, '昨天市场收的货抵', rx + 22, ly, { size: 18, color: K.col.teal }); U.text(ctx, '−' + K.yuan(cost.pantry), rx + rw - 22, ly, { size: 18, align: 'right', color: K.col.teal }); ly += lh; }
+    ctx.strokeStyle = '#a88a5a'; ctx.beginPath(); ctx.moveTo(rx + 16, ly - 14); ctx.lineTo(rx + rw - 16, ly - 14); ctx.stroke();
+    U.text(ctx, '合计', rx + 22, ly + 14, { size: 21, bold: true, color: K.col.ink }); U.text(ctx, K.yuan(cost.total), rx + rw - 22, ly + 14, { size: 24, bold: true, align: 'right', color: K.col.red });
+    var after = s.cash - cost.total;
+    U.text(ctx, '付完手头剩', rx + 22, ly + 46, { size: 17, color: K.col.mute }); U.text(ctx, K.yuan(after), rx + rw - 22, ly + 46, { size: 19, bold: true, align: 'right', color: after < 0 ? K.col.red : K.col.ink });
+    var gross = 0; p.menu.forEach(function (id) { gross += (p.stock[id] || 0) * Run.price(s, id); });
+    U.text(ctx, '全卖完能收', rx + 22, ly + 74, { size: 17, color: K.col.mute }); U.text(ctx, K.yuan(gross), rx + rw - 22, ly + 74, { size: 19, align: 'right', color: K.col.ink });
+    var guess = yst ? Math.round((yst.served + yst.walked + yst.balked) * (s.today.flow || 1)) : (s.day === 2 ? 11 : 12);
+    U.text(ctx, (s.today.weather === 'rain' ? '下雨，人会少些。' : '') + '今天大概来 ' + Math.max(4, guess - 2) + '–' + (guess + 3) + ' 位。', rx + rw / 2, ry + 400, { size: 16, align: 'center', color: K.col.mute, maxW: rw - 30 });
+    var why = this.canOpen(), hx = rx, hy = 520, hw = rw, hh = 150;
+    var st = U.hit('open', hx, hy, hw, hh, { label: '按住拉起卷帘门', disabled: !!why, onDown: function () { self.holding = true; return function (type) { if (type === 'up' || type === 'cancel') self.holding = false; }; } });
+    ctx.save(); if (why) ctx.globalAlpha = 0.5;
+    ctx.fillStyle = 'rgba(30,18,8,.4)'; U.rr(ctx, hx + 3, hy + 7, hw, hh, 14); ctx.fill();
+    ctx.fillStyle = '#6f7a80'; U.rr(ctx, hx, hy, hw, hh, 14); ctx.fill(); ctx.strokeStyle = '#3c4448'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.save(); U.rr(ctx, hx, hy, hw, hh, 14); ctx.clip();
+    var off = this.hold * hh * 0.9;
+    for (var sy = hy - 16 - off; sy < hy + hh; sy += 16) { ctx.fillStyle = '#8c979c'; ctx.fillRect(hx, sy, hw, 5); ctx.fillStyle = '#4c555a'; ctx.fillRect(hx, sy + 13, hw, 3); }
+    if (this.hold > 0) { var g = ctx.createLinearGradient(0, hy + hh - off - 30, 0, hy + hh); g.addColorStop(0, 'rgba(255,224,150,0)'); g.addColorStop(0.3, 'rgba(255,224,150,.95)'); g.addColorStop(1, 'rgba(255,236,190,1)'); ctx.fillStyle = g; ctx.fillRect(hx, hy + hh - off - 30, hw, off + 30); }
     ctx.restore();
-  }
-  return { Prep: Prep, TIERS: TIERS, Shop: Shop, Delivery: Delivery, drawGoals: drawGoals };
+    U.text(ctx, why || '按住 · 拉起卷帘门', hx + hw / 2, hy + 70 - this.hold * 20, { size: why ? 22 : 28, bold: true, align: 'center', color: '#fff8e8', stroke: 'rgba(30,24,20,.9)', strokeW: 6 });
+    if (!why) U.text(ctx, '开门就不能改了', hx + hw / 2, hy + 104 - this.hold * 20, { size: 16, align: 'center', color: '#e8e0d0', stroke: 'rgba(30,24,20,.8)' });
+    ctx.restore();
+    if (st.focus) { ctx.strokeStyle = '#ffe28a'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]); U.rr(ctx, hx - 4, hy - 4, hw + 8, hh + 8, 16); ctx.stroke(); ctx.setLineDash([]); }
+  };
+  P.key = function (k) { if (k === 'o' && !this.canOpen()) { this.hold = 1; this.holding = true; } };
+  P.describe = function () { var s = this.s; return { features: this.f, plan: s.plan, cost: Run.planCost(s).total / 100, canOpen: !this.canOpen(), why: this.canOpen(), notes: this.notes.map(function (n) { return n.text; }), choices: Run.menuChoices(s).map(function (d) { return d.id; }) }; };
+  return { Prep: Prep };
 });

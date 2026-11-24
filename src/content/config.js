@@ -1,109 +1,57 @@
-// 数值配置（GDD V1.1 §5、§6、§7）。金额单位：分。设计意图见 docs/BALANCE.md。
+// 数值配置（重制版 V2）。金额单位：分。设计意图见 docs/DESIGN.md。
+// 核心变化：收入 = 亲手卖出去的每一份；不再有"抽象客流 × 均价"。
 BSX.define('content/config', function () {
   return {
-    contentVersion: '1.0.0',
+    contentVersion: '2.0.0',
     days: 28,
-    startCash: 300000,          // 3000 元
+    startCash: 70000,            // 700 元：盘店之后剩下的
     startRep: 50,
-    baseCapacity: 70,           // 份/日（D030 上调）
-    baseFlow: 54,               // 基础客流（D030 上调）
-    fixedCost: 10000,           // 房租 60 + 水电杂费 40
-    helper: { capacity: 24, wage: 3000 },
-    starCapacity: { per: 6, add: 2, max: 10 },  // 每累计 6 星 +2 份，上限 +10
-    // 三项晨备决策：0/1/2 档
-    price: { mult: [0.85, 1.0, 1.25], flow: [1.30, 1.0, 0.65], rep: [0.2, 0, -0.7] },
-    material: { cost: [0.8, 1.0, 1.26], rep: [-0.05, 0, 0.15] },
-    oil: { daily: [800, 3000, 5000], rep: [0, 0, 0.1] }, // 当日用油成本（含油炸菜时全额，否则三成）
-    burnOil: { streak2: 3, streak3: 5, step: 1, cap: 10, newOilRelief: 3 },
-    flowRandom: [0.90, 1.10],
-    repFlow: { base: 0.45, div: 80 },
-    regularFlowCap: 0.20,
-    lostPer: 12, lostRep: 0.3,
-    quality: { signature: 0.88, home: 0.60 },  // 招牌 / 家常 / 匆忙
-    qualityRep: { signature: 0.6, home: 0.1, rushed: -0.6 },
-    qualityEff: { signature: 0.05, rushed: -0.05 },
-    tipSignature: 100,          // 招牌小费 1 元/份
-    burnFeedback: [30, 60, 80, 100],
-    crisis: { rep: -15, cash: -30000 },
-    crisisChoices: {
-      rectify: { cash: -60000, burnTo: 60, rep: 8, closeNext: true },
-      refund: { cash: -40000, rep: -20, burn: -60, delayedRep: 6, delayDays: 3 },
-      hold: {}
-    },
-    rescue: { borrow: 30000, repay: 36000, sell: 50000 },
-    renewal: { day: 26, deposit: 120000 },     // 续租押金 1200 元：月底抉择时可承担才可续租
-    profThresholds: [3, 8, 15, 24, 35],
-    starWindowBonus: 0.035,     // 每星判定窗口扩大
-    patience: { normal: [24, 34], regular: 42, leaveGrace: 4, tutorialBonus: 20 },
-    service: { maxWaiting: 3, ordersByDay: function (day) { return day <= 1 ? 4 : day <= 2 ? 6 : day <= 5 ? 8 : day <= 14 ? 10 : 12; } },
-    // 诚信与黑心（D031）：捷径即时收益在 dishes.stations.cheat.save
-    honesty: { cheatBurn: 0.7, cheatRep: 0.03, sickBurn: 1, sickRep: 0.5, sickBase: 0.06, sickPer: 0.03, sickBurnDiv: 350, streakFlow: 0.03, streakFlowMax: 0.15, raidFine: 20000 },
-    combo: { tipPer: 50, max: 10 },
-    // 对手黑心店“快好早点”：第 4 日开张抢客，第 15 日被曝光查封，客人回流三天（D033）
-    rival: { open: 4, closed: 15, steal: 0.85, back: 1.3 },
-    // 良心灯笼分级（参考燕云“恶名”，D034）：档位越低，检查员越勤；到底即封条停业
-    lanternTiers: [
-      { min: 80, name: '明亮', raid: 0 },
-      { min: 60, name: '微暗', raid: 0 },
-      { min: 40, name: '发红', raid: 0.2 },
-      { min: 20, name: '冒烟', raid: 0.35 },
-      { min: 0, name: '封条', raid: 0.5 }
-    ],
-    // 节令日（D036）：当天客流、偏好菜和店内装饰不同
-    festivals: [
-      { day: 10, id: 'laba', name: '腊八', flow: 1.15, dishes: ['congee', 'pidan', 'pumpkin'], boost: 1.6, deco: 'redpaper', line: '腊八到，一碗热粥暖一冬' },
-      { day: 17, id: 'xiaonian', name: '小年', flow: 1.25, dishes: ['tangyuan', 'scallion', 'shengjian'], boost: 1.4, deco: 'lanterns', line: '小年了，街坊都出来吃早饭' },
-      { day: 22, id: 'jiaozi', name: '饺子日', flow: 1.1, dishes: ['dumpling', 'tangyuan'], boost: 1.6, deco: 'lanterns', line: '街坊饺子日' }
-    ],
-    encounterChance: 0.55,
-    // 小馆升级（D032）：买了立刻生效、店面可见
-    upgrades: [
-      { id: 'fire', name: '快火灶', cost: 30000, desc: '后台加热快三成，产能 +8' },
-      { id: 'tray', name: '大托盘', cost: 20000, desc: '托盘能放 6 份' },
-      { id: 'tables', name: '新桌椅', cost: 35000, desc: '顾客多等 25%' },
-      { id: 'sign', name: '招牌匾', cost: 50000, desc: '路过的人多一成' },
-      { id: 'board', name: '良心公示板', cost: 30000, desc: '良心灯笼亮时口碑每天 +0.3' },
-      { id: 'pot2', name: '第二口锅', cost: 40000, desc: '最忙的器具多一口，产能 +12' },
-      { id: 'helper', name: '请帮工', cost: 10000, desc: '帮你把托盘上的菜端给客人；日薪 30，产能 +24' },
-      { id: 'counter', name: '加宽操作台', cost: 40000, desc: '菜单多一个位置' },
-      { id: 'soymaker', name: '自助豆浆机', cost: 30000, desc: '夜里也有人来打豆浆：每晚进账约 15 元（灯笼暗了没人敢买）', passive: true },
-      { id: 'preorder', name: '预订小黑板', cost: 20000, desc: '熟客（好感 ≥3）睡前下单：每位每晚 +3 元', passive: true }
-    ],
-    // 深空当铺参考（D039–D044）
-    origins: [
-      { id: 'heir', name: '接手老店', desc: '老周接下父亲的早餐铺。一切按部就班。', cash: 0, rep: 0, prof: 0 },
-      { id: 'stall', name: '夜市转行', desc: '摆了十年夜市，手艺熟，钱不多。基础菜一开始就有一星。', cash: -100000, rep: 0, prof: 4 },
-      { id: 'debt', name: '欠债开张', desc: '借钱盘下铺面，月底要还 1000 元。口碑从零做起。', cash: 0, rep: -10, prof: 0, debt: 100000 }
-    ],
-    perks: {
-      plus: [
-        { id: 'savings', name: '存款', desc: '启动资金 +600 元' },
-        { id: 'neighbors', name: '老街坊', desc: '开局口碑 +8，常客好感 +0.5' },
-        { id: 'quickhands', name: '手快', desc: '开局就有快火灶' }
-      ],
-      minus: [
-        { id: 'rent', name: '高房租', desc: '每天房租多 20 元' },
-        { id: 'oldstove', name: '老灶台', desc: '产能 −10' },
-        { id: 'picky', name: '挑剔街区', desc: '没等到的客人掉口碑翻倍' }
-      ]
-    },
-    chores: [
-      { id: 'hood', name: '洗油烟机', cost: 800, desc: '两天不洗：油烟呛人，口碑 −1，良心 −2' },
-      { id: 'waste', name: '泔水交正规回收', cost: 600, desc: '两天不交：泔水被人收走炼油，良心 −4' },
-      { id: 'sanitize', name: '消毒碗筷', cost: 500, desc: '两天不做：第二天客人更容易吃坏' }
-    ],
-    delivery: { chance: 0.25, fakeChance: 0.45, items: [
-      { id: 'oil', name: '散装菜籽油', save: 1500, burn: 6 },
-      { id: 'egg', name: '一箱“土鸡蛋”', save: 1000, burn: 4 },
-      { id: 'flour', name: '一袋面粉', save: 800, burn: 4 }
-    ] },
-    buyout: { price: 400000, day: 26 },
-    goals: { reward: 500, rewardRep: 0, allBonus: 1000 },
-    eventChance: 0.6,
-    menuSize: 4, menuSizeUpgraded: 5,
+    rentWeekly: 24000,           // 每七天交一次房租
+    deposit: 120000,             // 第 26 日的续租押金
+    utilities: 800,             // 每天水电煤
+    helperWage: 3000,
+    // 晨备三项
+    priceMul: [0.85, 1.0, 1.25],
+    priceFlow: [1.18, 1.0, 0.84],
+    priceItems: [0.15, 0, -0.18],        // 每单件数的偏移
+    matCost: [0.8, 1.0, 1.28],
+    matQ: [-0.06, 0, 0.07],
+    matName: ['批发冻品', '老秦的鲜货', '有票的好料'],
+    priceName: ['薄利', '公道', '提价'],
+    oil: { fresh: 2000, filter: 400, bulk: 1000, bulkAge: 1, bulkRate: 1.5 },
+    // 油龄 a（天）对做饭的影响：熟得更快、最佳窗口更窄、出品扣分、冒烟
+    oilSpeed: function (a) { return 1 + Math.min(0.45, 0.07 * a); },
+    oilWindow: function (a) { return Math.max(0.55, 1 - 0.09 * a); },
+    oilQ: function (a) { return a <= 2 ? 0 : -Math.min(0.2, 0.05 * (a - 2)); },
+    oilBurn: function (a, bulk) { return Math.max(0, a - 2) * 0.22 + (bulk ? 0.15 : 0); }, // 每卖出一份油炸/油煎
+    burnDecay: 1.2,              // 新油或无油的日子每天回落
+    hoodBurn: 0.6,               // 排烟罩：烧心累积打六折
+    // 客流
+    baseFlow: function (day) { return 5.5 + Math.min(day, 21) * 0.72; },
+    repFlow: function (rep) { return 0.6 + rep / 100 * 0.8; },
     weatherOdds: { sun: 0.5, cloud: 0.3, rain: 0.2 },
-    weatherFlow: { sun: 1.0, cloud: 0.97, rain: 0.9 },
-    seasonDays: { warm: 12, dumpling: 22, origin: 27 },
-    legacyFlowBonus: 0.04
+    weatherFlow: { sun: 1.0, cloud: 0.97, rain: 0.84 },
+    fixedWeather: { 1: 'sun', 2: 'sun', 3: 'cloud', 4: 'rain', 12: 'rain', 18: 'sun', 22: 'cloud', 27: 'sun', 28: 'sun' },
+    shiftLen: function (day) { return day <= 1 ? 92 : day === 2 ? 118 : day === 3 ? 136 : day <= 7 ? 150 : day <= 14 ? 162 : 174; },
+    slots: function (day) { return day >= 6 ? 4 : 3; },
+    patience: { walk: [30, 40], regular: 46, queue: [34, 46], tutorial: 30 },
+    menuMax: function (s) { return 4 + (s.day >= 8 ? 1 : 0) + (s.upg.board ? 1 : 0); },
+    burners: function (s) { return 3 + (s.upg.burner ? 1 : 0); },
+    shelf: function (s) { return 4 + (s.upg.shelf ? 2 : 0); },
+    potCap: function (s) { return s.upg.bigpot ? 14 : 8; },
+    fryerSlots: function (s) { return s.upg.fryer ? 6 : 4; },
+    // 满意度与口碑
+    delight: 0.86, fine: 0.62,
+    repDelta: { delight: 0.05, fine: 0.012, meh: -0.07, walk: -0.22, balk: -0.09, soldout: -0.04 },
+    repDayCap: 2.4,
+    tip: { delight: 50 },        // 5 毛
+    aff: { delight: 0.2, fine: 0.09, meh: -0.2, walk: -0.5, chat: 0.12, remember: 0.1, ask: -0.1, returned: 0.4, beat: 0.4 },
+    // 熟练：按灶台累计出品数升级，窗口变宽，另有一个窍门
+    skill: [12, 40, 90],
+    skillWindow: 0.035,
+    costUp: { from: 9, to: 16, mul: 1.15 },
+    crisis: { rectify: { cash: -40000, burnTo: 35, rep: 6 }, refund: { cash: -26000, rep: -8, burn: -55, laterRep: 5 }, hold: { rep: -3 } },
+    rescue: { sell: 30000, borrow: 25000, repay: 30000 },
+    viralFlow: { good: 1.6, plain: 1.25, bad: 1.15 }
   };
 });

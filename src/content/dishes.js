@@ -1,69 +1,51 @@
-// 20 道菜（GDD §5.3）。售价/成本单位：元（合理价、鲜货＋日常换油）。
-// steps：五类基础手势组合。g = circle 画圈 | drag 拖拽 | hold 按住倾倒 | swipe 滑动拉伸翻面 | timing 时机火候
-// timing.bg=true 表示进入后台持续加热，可离开近景去做别的（并行状态）。
-// fit：[冻储, 鲜货, 可追溯] 的口感适配，影响需求与口碑。
+// 20 道菜。每道菜属于一个灶台（st）。价格、成本单位：元（公道价、老秦的鲜货）。
+// 灶台两种原型：
+//   桶/锅（vat）：pot 粥锅、soy 豆浆桶、side 小炉——整批备好，盛出即成；
+//   火候格（slots）：fryer 油锅、griddle 煎锅、boil 面锅——下锅后随时间变熟，翻面（flips）并在正好时出锅。
+// tags 是口味标签：客人说不清要什么时按标签点（"来点带汤的"）。
 BSX.define('content/dishes', function () {
-  var S = {
-    drag: function (key, item, n) { return { g: 'drag', key: key, item: item, n: n || 1, w: 0.6 }; },
-    circle: function (key, turns) { return { g: 'circle', key: key, turns: turns, w: 1.2 }; },
-    hold: function (key, band) { return { g: 'hold', key: key, band: band || [0.78, 0.92], rate: 0.55, w: 1.2 }; },
-    swipe: function (key, dir, n) { return { g: 'swipe', key: key, dir: dir, n: n, w: 1 }; },
-    timing: function (key, dur, win, bg) { return { g: 'timing', key: key, dur: dur, win: win || [0.70, 0.88], bg: !!bg, w: 1.4 }; }
-  };
   var list = [
-    { id: 'soy', name: '现磨豆浆', price: 4, cost: 1, station: 'soy', icon: { art: ['food_b', 0], cell: 10 }, unlock: { type: 'start' }, fit: [1, 1, 1.05], pop: 1.2,
-      steps: [S.circle('grind', 1), S.hold('pour', [0.74, 0.92])] },
-    { id: 'congee', name: '熬白粥', price: 4, cost: 1, station: 'pot', icon: { cell: 0 }, unlock: { type: 'start' }, fit: [1, 1, 1.05], pop: 1.2,
-      steps: [S.drag('rice', 'rice'), S.circle('stir', 1.2)] },
-    { id: 'youtiao', name: '油条', price: 3, cost: 1, station: 'fryer', oil: true, icon: { art: ['food_a', 0], cell: 7 }, unlock: { type: 'start' }, fit: [0.95, 1, 1.05], pop: 1.25,
-      steps: [S.swipe('pull', 'h', 1), S.timing('fry', 2.6, [0.62, 0.88], true)] },
-    { id: 'scallion', name: '葱油饼', price: 6, cost: 2, station: 'pan', oil: true, icon: { art: ['food_a', 8], cell: 8 }, unlock: { type: 'start' }, fit: [0.95, 1, 1.05], pop: 0.9,
-      steps: [S.swipe('roll', 'h', 2), S.timing('fry', 2.8, [0.62, 0.88], true)] },
-    { id: 'egg', name: '煎蛋', price: 3, cost: 1, station: 'pan', oil: true, icon: { proc: 'egg' }, unlock: { type: 'start' }, fit: [1, 1, 1.05], pop: 0.9,
-      steps: [S.drag('crack', 'egg'), S.timing('set', 2.2, [0.6, 0.9])] },
-    { id: 'noodle', name: '挑面小面', price: 9, cost: 4, station: 'noodle', icon: { cell: 14 }, unlock: { type: 'start' }, fit: [0.85, 1, 1.1], pop: 1,
-      steps: [S.drag('drop', 'noodle'), S.timing('boil', 2.4, [0.6, 0.9], true)] },
-    { id: 'friedrice', name: '蛋炒饭', price: 10, cost: 4, station: 'wok', oil: true, icon: { proc: 'rice' }, unlock: { type: 'day', day: 7 }, fit: [1, 1, 1.05], pop: 1,
-      steps: [S.drag('rice', 'rice'), S.swipe('toss', 'v', 3)] },
-    { id: 'soyyt', name: '豆浆泡油条', price: 7, cost: 2, station: 'soy', oil: true, icon: { art: ['food_b', 0], cell: 10, overlay: 7 }, unlock: { type: 'aff', who: 'zhao', aff: 3 }, fit: [1, 1, 1.05], pop: 1.1,
-      steps: [S.hold('pour', [0.7, 0.9]), S.drag('dip', 'youtiao')] },
-    { id: 'pidan', name: '皮蛋瘦肉粥', price: 9, cost: 4, station: 'pot', icon: { art: ['food_b', 2], cell: 3 }, unlock: { type: 'material', min: 1 }, fit: [0.7, 1, 1.12], pop: 1,
-      steps: [S.drag('rice', 'rice'), S.circle('stir', 1.2)] },
-    { id: 'shengjian', name: '生煎包', price: 8, cost: 3, station: 'pan', oil: true, icon: { art: ['food_a', 2], cell: 6 }, unlock: { type: 'material', min: 1 }, fit: [0.8, 1, 1.1], pop: 1.05,
-      steps: [S.drag('place', 'bun', 2), S.timing('sear', 2.8, [0.62, 0.88], true)] },
-    { id: 'chicken', name: '骨汤鸡汤面', price: 16, cost: 8, station: 'noodle', icon: { cell: 14, tint: '#f2c04a' }, unlock: { type: 'dayMaterial', day: 12, min: 2 }, fit: [0.6, 0.9, 1.2], pop: 0.85,
-      steps: [S.drag('drop', 'noodle'), S.timing('boil', 2.4, [0.6, 0.9], true)] },
-    { id: 'mixian', name: '米线', price: 12, cost: 5, station: 'noodle', icon: { cell: 14, tint: '#ffffff' }, unlock: { type: 'day', day: 14 }, fit: [0.85, 1, 1.1], pop: 0.95,
-      steps: [S.drag('drop', 'mixian'), S.hold('broth', [0.7, 0.9])] },
-    { id: 'pumpkin', name: '南瓜粥', price: 7, cost: 2, station: 'pot', icon: { art: ['food_b', 6], cell: 2 }, unlock: { type: 'aff', who: 'qin', aff: 5 }, fit: [0.9, 1, 1.1], pop: 1,
-      steps: [S.drag('add', 'pumpkin'), S.circle('stir', 1.2)] },
-    { id: 'teaegg', name: '茶叶蛋', price: 3, cost: 1, station: 'stew', icon: { art: ['food_b', 5], cell: 9 }, unlock: { type: 'aff', who: 'gong', aff: 5 }, fit: [1, 1, 1.05], pop: 1.1,
-      steps: [S.drag('eggs', 'egg'), S.timing('stew', 4.0, [0.5, 0.95], true)] },
-    { id: 'tangyou', name: '糖油果子', price: 6, cost: 2, station: 'fryer', oil: true, icon: { art: ['food_a', 7], proc: 'balls' }, unlock: { type: 'aff', who: 'man', aff: 3 }, fit: [1, 1, 1.05], pop: 0.95,
-      steps: [S.drag('drop', 'ball', 2), S.timing('fry', 2.6, [0.62, 0.88], true)] },
-    { id: 'yeerba', name: '叶儿粑', price: 6, cost: 2, station: 'steamer', icon: { proc: 'leaf' }, unlock: { type: 'aff', who: 'man', aff: 7 }, fit: [0.9, 1, 1.1], pop: 0.9,
-      steps: [S.swipe('wrap', 'h', 1), S.timing('steam', 3.0, [0.6, 0.9], true)] },
-    { id: 'poachnoodle', name: '荷包蛋面', price: 12, cost: 5, station: 'noodle', icon: { cell: 14, overlay: 'egg' }, unlock: { type: 'aff', who: 'ali', aff: 5 }, fit: [0.9, 1, 1.1], pop: 1,
-      steps: [S.drag('egg', 'egg'), S.timing('poach', 2.4, [0.6, 0.9], true)] },
-    { id: 'tangyuan', name: '醪糟汤圆', price: 10, cost: 3, station: 'pot', icon: { art: ['food_b', 3], cell: 12 }, unlock: { type: 'day', day: 22 }, fit: [1, 1, 1.05], pop: 1.05,
-      steps: [S.drag('drop', 'ball', 2), S.circle('stir', 1.2)] },
-    { id: 'dumpling', name: '饺子', price: 12, cost: 4, station: 'noodle', icon: { art: ['food_b', 4], cell: 13 }, unlock: { type: 'day', day: 22 }, fit: [1.05, 1, 1.05], pop: 1.1,
-      steps: [S.swipe('pleat', 'h', 2), S.timing('boil', 2.6, [0.6, 0.9], true)] },
-    { id: 'mutton', name: '羊肉汤', price: 18, cost: 10, station: 'noodle', icon: { cell: 11, tint: '#e9d2a8' }, unlock: { type: 'day', day: 12 }, fit: [0.8, 1, 1.15], pop: 0.8,
-      steps: [S.circle('season', 1), S.hold('broth', [0.74, 0.92])] }
+    { id: 'congee', name: '白粥', st: 'pot', price: 3, cost: 0.7, tags: ['汤水', '清淡', '快'], pop: 1.25, day: 1, icon: { cell: 0 }, hold: 55, temp: true },
+    { id: 'youtiao', name: '油条', st: 'fryer', price: 2.5, cost: 0.6, tags: ['油香', '快'], pop: 1.3, day: 1, icon: { cell: 7 }, cook: { t: 7.5, flips: 1 }, oil: true, pref: true, hold: 32 },
+    { id: 'soy', name: '现磨豆浆', st: 'soy', price: 3, cost: 0.8, tags: ['汤水', '清淡', '甜', '快'], pop: 1.2, day: 1, icon: { cell: 10 }, hold: 70, temp: true },
+    { id: 'scallion', name: '葱油饼', st: 'griddle', price: 6, cost: 1.6, tags: ['油香', '顶饱'], pop: 1.0, day: 3, icon: { cell: 8 }, cook: { t: 9, flips: 1 }, oil: true, pref: true, hold: 40 },
+    { id: 'egg', name: '煎蛋', st: 'griddle', price: 3, cost: 1.1, tags: ['油香', '快'], pop: 0.85, day: 3, icon: { proc: 'egg' }, cook: { t: 5.5, flips: 1 }, oil: true, pref: true, hold: 40 },
+    { id: 'pidan', name: '皮蛋瘦肉粥', st: 'pot', top: true, price: 7, cost: 2.6, tags: ['汤水', '肉', '顶饱'], pop: 1.0, day: 7, minMat: 1, icon: { cell: 3 }, hold: 55, temp: true },
+    { id: 'teaegg', name: '茶叶蛋', st: 'side', price: 2, cost: 0.8, tags: ['快', '清淡'], pop: 1.0, day: 8, icon: { cell: 9 }, hold: 999 },
+    { id: 'noodle', name: '小面', st: 'boil', price: 9, cost: 3.0, tags: ['汤水', '顶饱'], pop: 1.1, day: 8, icon: { cell: 14 }, cook: { t: 6.5, flips: 0 }, hold: 35, temp: true },
+    { id: 'friedrice', name: '蛋炒饭', st: 'griddle', price: 9, cost: 3.2, tags: ['顶饱', '油香'], pop: 0.95, day: 9, icon: { proc: 'rice' }, cook: { t: 8, flips: 2, verb: '翻炒' }, oil: true, hold: 45 },
+    { id: 'shengjian', name: '生煎包', st: 'griddle', price: 7, cost: 2.6, tags: ['油香', '肉', '顶饱'], pop: 1.05, day: 10, minMat: 1, icon: { cell: 6 }, cook: { t: 11, flips: 1, verb: '加水' }, oil: true, pref: true, hold: 45 },
+    { id: 'soyyt', name: '豆浆泡油条', set: ['soy', 'youtiao'], price: 5, cost: 1.4, tags: ['汤水', '油香'], pop: 0.9, day: 10, icon: { cell: 10, overlay: 7 }, oil: true },
+    { id: 'mutton', name: '羊肉汤', st: 'boil', price: 16, cost: 7.5, tags: ['汤水', '肉', '顶饱'], pop: 0.8, day: 12, icon: { cell: 11 }, cook: { t: 6, flips: 0 }, hold: 45, temp: true },
+    { id: 'chicken', name: '鸡汤面', st: 'boil', price: 14, cost: 6.0, tags: ['汤水', '肉', '顶饱'], pop: 0.85, day: 13, minMat: 2, icon: { cell: 14, tint: '#f6e2a0' }, cook: { t: 7.5, flips: 0 }, hold: 35, temp: true },
+    { id: 'mixian', name: '米线', st: 'boil', price: 10, cost: 3.8, tags: ['汤水', '顶饱'], pop: 0.95, day: 14, icon: { cell: 14, tint: '#ffffff' }, cook: { t: 7, flips: 0 }, hold: 35, temp: true },
+    { id: 'tangyou', name: '糖油果子', st: 'fryer', price: 4, cost: 1.2, tags: ['甜', '油香'], pop: 0.9, day: 15, icon: { proc: 'balls' }, cook: { t: 9.5, flips: 1 }, oil: true, pref: true, hold: 50 },
+    { id: 'poachnoodle', name: '荷包蛋面', st: 'boil', price: 10, cost: 4.0, tags: ['汤水', '顶饱'], pop: 1.0, day: 16, icon: { cell: 14, overlay: 'egg' }, cook: { t: 8, flips: 0 }, hold: 35, temp: true },
+    { id: 'pumpkin', name: '南瓜粥', st: 'pot', top: true, price: 5, cost: 1.6, tags: ['汤水', '甜', '清淡'], pop: 1.0, day: 18, icon: { cell: 2 }, hold: 55, temp: true },
+    { id: 'yeerba', name: '叶儿粑', st: 'side', price: 5, cost: 1.8, tags: ['甜', '清淡'], pop: 0.85, day: 20, icon: { proc: 'leaf' }, hold: 999 },
+    { id: 'tangyuan', name: '醪糟汤圆', st: 'boil', price: 7, cost: 2.4, tags: ['甜', '汤水'], pop: 0.95, day: 20, icon: { cell: 12 }, cook: { t: 8.5, flips: 0 }, hold: 45, temp: true },
+    { id: 'dumpling', name: '饺子', st: 'boil', price: 10, cost: 3.8, tags: ['顶饱', '肉'], pop: 1.1, day: 22, icon: { cell: 13 }, cook: { t: 10, flips: 2, verb: '点水' }, hold: 40 }
   ];
-  // cheat：做菜时锅边常驻的“捷径”。用了直接完成当前工序、当场多赚，但黑心值上涨，顾客可能吃坏肚子（D031）
-  var stations = {
-    pot: { name: '粥锅', equip: 1, view: 'pot', cheat: { label: '少放米', save: 250 } },
-    fryer: { name: '油锅', equip: 2, view: 'fryer', cheat: { label: '回锅油', save: 250 } },
-    soy: { name: '豆浆壶', equip: 3, view: 'cup', cheat: { label: '兑水', save: 250 } },
-    pan: { name: '平底锅', equip: 0, view: 'pan', cheat: { label: '回锅油', save: 250 } },
-    wok: { name: '炒锅', equip: 0, view: 'wok', cheat: { label: '隔夜饭', save: 250 } },
-    noodle: { name: '汤面锅', equip: 1, view: 'noodle', cheat: { label: '隔夜汤', save: 250 } },
-    stew: { name: '卤锅', equip: 0, view: 'stew', cheat: { label: '隔夜卤', save: 250 } },
-    steamer: { name: '蒸笼', equip: 0, view: 'steamer', cheat: { label: '过期馅', save: 250 } }
-  };
   var byId = {};
   list.forEach(function (d) { byId[d.id] = d; });
-  return { list: list, byId: byId, stations: stations };
+  var stations = {
+    pot: { name: '粥锅', hot: true, w: 236, skill: ['米油', '锅底不容易糊'] },
+    fryer: { name: '油锅', hot: true, w: 250, skill: ['双手下锅', '点面板一次下两根'] },
+    griddle: { name: '煎锅', hot: true, w: 236, skill: ['听声', '该翻面时锅边会响一声'] },
+    boil: { name: '面锅', hot: true, w: 236, skill: ['宽汤', '煮过头得更慢'] },
+    soy: { name: '豆浆桶', hot: false, w: 168, skill: ['手稳', '快满时水流自己收细'] },
+    side: { name: '小炉', hot: false, w: 150, skill: ['顺手', '小炉上的东西放不凉'] }
+  };
+  var order = ['pot', 'fryer', 'griddle', 'boil', 'soy', 'side'];
+  // 一份菜的做法组成：套餐拆成两样
+  function parts(id) { var d = byId[id]; return d && d.set ? d.set.slice() : [id]; }
+  function stationOf(id) { var d = byId[id]; return d ? d.st : null; }
+  // 菜单需要哪些灶台
+  function stationsFor(menu) {
+    var need = {};
+    menu.forEach(function (id) { parts(id).forEach(function (p) { need[byId[p].st] = true; }); });
+    return order.filter(function (k) { return need[k]; });
+  }
+  var TAGS = ['汤水', '顶饱', '清淡', '油香', '甜', '肉', '快'];
+  return { list: list, byId: byId, stations: stations, order: order, parts: parts, stationOf: stationOf, stationsFor: stationsFor, TAGS: TAGS };
 });

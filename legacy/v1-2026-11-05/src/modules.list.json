@@ -1,0 +1,6 @@
+{
+ "core": ["modules.js","content/config.js","content/dishes.js","content/regulars.js","content/events.js","content/story.js","content/endings.js","core/rng.js","core/cond.js","core/run.js","core/save.js","core/legacy.js","core/week.js","core/validate.js"],
+ "game": ["game/assets.js","game/audio.js","ui/ui.js","game/scene.js","game/actors.js","game/cooking.js","game/cutscene.js","ui/hud.js","ui/s_basic.js","ui/s_prep.js","ui/s_service.js","ui/s_story.js","ui/s_ledger.js","ui/s_ending.js","ui/s_codex.js","ui/screens.js","dev/autoplay.js","app.js"],
+ "web": ["platform/web.js","boot/web.js"],
+ "wechat": ["platform/wechat.js"]
+}

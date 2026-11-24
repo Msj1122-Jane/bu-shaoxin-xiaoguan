@@ -1,42 +1,35 @@
-// 端到端回放：浏览器内机器人用真实指针手势游玩。
-// node tools/e2e.cjs --policy average --days 28 --out output/e2e/full --seed 7 [--assist] [--viewport 1280x720] [--safe] [--shots all|first]
-const { chromium } = require('playwright');
-const fs = require('fs'), path = require('path');
-const args = process.argv.slice(2), opt = (k, d) => { const i = args.indexOf('--' + k); return i < 0 ? d : (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true); };
-const policy = opt('policy', 'average'), days = +opt('days', 1), out = opt('out', 'output/e2e/run'), seed = +opt('seed', 7), vp = opt('viewport', '1280x720').split('x').map(Number);
-const shots = opt('shots', 'first'), assist = !!opt('assist', false), safe = !!opt('safe', false), throttle = +opt('throttle', 0);
+// 端到端回放：机器人用真实指针事件从"开店"玩到结局。
+// node tools/e2e.cjs [--policy average] [--skill good] [--seed 7] [--days 28] [--out output/e2e/xxx] [--shots key|all|none]
+const { chromium } = require('playwright'); const fs = require('fs'), path = require('path');
+const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 (async () => {
+  const policy = arg('policy', 'average'), skill = arg('skill', 'good'), seed = +arg('seed', 7), days = +arg('days', 28), out = arg('out', 'output/e2e/' + policy), shots = arg('shots', 'key');
   fs.mkdirSync(out, { recursive: true });
-  const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: vp[0], height: vp[1] }, hasTouch: !!opt('touch', false) });
-  const errors = []; page.on('pageerror', e => errors.push('pageerror ' + e.message)); page.on('console', m => { if (m.type() === 'error') errors.push('console ' + m.text()); });
-  page.on('response', r => { if (r.status() >= 400) errors.push('http ' + r.status() + ' ' + r.url()); });
-  if (throttle) { const cdp = await page.context().newCDPSession(page); await cdp.send('Emulation.setCPUThrottlingRate', { rate: throttle }); }
-  await page.goto('http://127.0.0.1:4173/?' + (safe ? 'safe=wechat&' : '') + 'dev');
-  await page.waitForFunction(() => window.render_game_to_text && JSON.parse(render_game_to_text()).screen === 'title', null, { timeout: 20000 });
-  const jump = +opt('jump', 0), mode = opt('mode', 'story'), theme = opt('theme', 'T_RAIN'), tryNew = !!opt('tryNew', false);
-  await page.evaluate(([seed, policy, assist, mode, theme, tryNew, jump]) => { localStorage.clear(); const app = __bsx.app; app.settings.assistCook = assist; app.applySettings(); app.newRun(mode === 'week' ? { seed, mode: 'week', theme, goal: 'g1', unlockAll: true } : { seed }); if (jump > 1) BSX.require('dev/autoplay').fastForward(app, jump, policy); BSX.require('dev/autoplay').start(app, { policy, fast: true, tryNewDishes: tryNew }); }, [seed, policy, assist, mode, theme, tryNew, jump]);
-  const seen = {}, log = [];
-  let n = 0, lastKey = '', t0 = Date.now(), stuck = 0, lastT = 0;
-  const shot = async (name) => { const f = path.join(out, String(n++).padStart(3, '0') + '-' + name + '.png'); await page.screenshot({ path: f }); return f; };
-  for (let iter = 0; iter < 20000; iter++) {
-    const st = await page.evaluate(() => { advanceTime(500); const d = JSON.parse(render_game_to_text()); return { screen: d.screen, overlay: d.overlay, day: d.run && d.run.day, phase: d.run && d.run.phase, ending: d.run && d.run.ending, item: d.detail && d.detail.item, botDone: __bsx.app.bot && __bsx.app.bot.done, t: d.t, served: d.detail && d.detail.served, closeup: d.detail && d.detail.kitchen && d.detail.kitchen.closeup }; });
-    const key = st.screen + '|' + st.day + '|' + (st.item ? st.item.kind + st.item.id : '') + '|' + (st.closeup || '');
-    if (key !== lastKey) {
-      lastKey = key; log.push({ at: st.t, ...st });
-      const first = !seen[st.screen + (st.item ? st.item.kind : '') + (st.closeup || '')];
-      seen[st.screen + (st.item ? st.item.kind : '') + (st.closeup || '')] = 1;
-      if (shots === 'all' || first || (st.item && st.item.kind === 'story')) await shot(st.screen + (st.item ? '-' + (st.item.id || st.item.kind) : '') + (st.closeup ? '-' + st.closeup : '') + '-d' + st.day);
+  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
+  const errs = []; p.on('pageerror', e => errs.push(String(e.stack || e))); p.on('console', m => m.type() === 'error' && errs.push(m.text()));
+  await p.goto('http://127.0.0.1:4173/?dev'); await p.waitForFunction(() => window.render_game_to_text, null, { timeout: 8000 });
+  await p.waitForFunction(() => JSON.parse(render_game_to_text()).screen !== 'loading', null, { timeout: 15000 });
+  await p.evaluate(([policy, skill, seed]) => { localStorage.clear(); __bsx.newRun({ seed }); window.__bot = __bsx.bot({ policy, skill, fast: true, seed }); }, [policy, skill, seed]);
+  const log = []; let last = '', n = 0, t0 = Date.now(); const seen = {};
+  for (let i = 0; i < 60000; i++) {
+    const st = await p.evaluate(() => { advanceTime(400); const d = JSON.parse(render_game_to_text()); const a = __bsx.app; return { screen: d.screen, day: d.run && d.run.day, phase: d.run && d.run.phase, cash: d.run && d.run.cash, rep: d.run && d.run.rep, burn: d.run && d.run.burn, ending: d.run && d.run.ending, errors: d.errors, sp: a.screen && a.screen.phase, scene: d.detail && d.detail.director && d.detail.director.scene, t: d.detail && d.detail.t }; });
+    const key = st.screen + '/' + st.day + '/' + (st.scene || st.sp || '');
+    if (key !== last) {
+      last = key;
+      const tag = st.screen + (st.scene ? '-' + st.scene : '') + (st.sp ? '-' + st.sp : '');
+      const want = shots === 'all' || (shots === 'key' && (!seen[tag] || (st.screen === 'shift' && st.sp === 'open' && [1, 3, 8, 12, 18, 22, 27, 28].includes(st.day)) || (st.screen === 'night' && [1, 7, 14, 21, 26, 28].includes(st.day)) || (st.screen === 'prep' && [2, 3, 5, 8, 15].includes(st.day))));
+      seen[tag] = 1;
+      if (want && shots !== 'none') { if (st.screen === 'shift' && st.sp === 'open') await p.evaluate(() => advanceTime(45000)); else await p.evaluate(() => advanceTime(700)); await p.screenshot({ path: path.join(out, String(++n).padStart(3, '0') + '-d' + st.day + '-' + tag + '.png') }); }
+      if (st.screen === 'night') { const d = await p.evaluate(() => JSON.parse(render_game_to_text()).detail); log.push({ day: st.day, cash: st.cash, rep: st.rep, burn: st.burn, net: d.net, rev: d.rev, served: d.served, stamp: d.stamp }); console.log('day', st.day, 'rev', d.rev, 'net', d.net, 'served', d.served, 'cash', st.cash, 'rep', st.rep, 'burn', st.burn, d.stamp); }
     }
-    if (st.screen === 'service' && st.served === 1 && !seen['svc-mid-' + st.day] && st.day <= 2) { seen['svc-mid-' + st.day] = 1; await shot('service-mid-d' + st.day); }
-    if (st.t === lastT) stuck++; else stuck = 0; lastT = st.t;
-    if (st.screen === 'ending' || st.screen === 'weekResult' || st.botDone) { await page.evaluate(() => advanceTime(2000)); await shot('final-' + st.screen); break; }
-    if (mode !== 'week' && (st.day > days || (st.day === days && st.screen === 'ledger' && days < 28))) { await shot('stop-' + st.screen + '-d' + st.day); break; }
-    if (Date.now() - t0 > 1000 * 60 * 25) { errors.push('timeout'); break; }
+    if (st.errors > 0) { console.log('GAME ERROR at', key); break; }
+    if (st.screen === 'ending' || (st.day > days)) break;
   }
-  const final = await page.evaluate(() => ({ text: JSON.parse(render_game_to_text()), bot: __bsx.app.bot && __bsx.app.bot.stats, appErrors: __bsx.errors(), legacy: __bsx.app.legacy, cooked: __bsx.app.state.stats.cooked, history: __bsx.app.state.history.map(h => ({ day: h.day, net: h.cashClose - h.cashOpen, served: h.served, lost: h.lost, grades: h.grades, avgQ: h.avgQ })) }));
-  fs.writeFileSync(path.join(out, 'log.json'), JSON.stringify({ policy, seed, days, errors, final, log }, null, 1));
-  console.log(JSON.stringify({ errors: errors.slice(0, 10), appErrors: final.appErrors.slice(0, 5), screen: final.text.screen, run: final.text.run, bot: final.bot, cooked: final.cooked, days: final.history.length, ms: Date.now() - t0 }, null, 1));
-  await browser.close();
-  process.exit(errors.length || final.appErrors.length ? 1 : 0);
+  const fin = await p.evaluate(() => { const d = JSON.parse(render_game_to_text()); return { run: d.run, detail: d.detail, errors: __bsx.errors(), bot: window.__bot.log, stats: __bsx.app.state.stats, regs: __bsx.app.state.reg, mementos: __bsx.app.state.mementos.map(m => m.id) }; });
+  await p.evaluate(() => advanceTime(4000)); await p.screenshot({ path: path.join(out, 'final.png') });
+  fs.writeFileSync(path.join(out, 'log.json'), JSON.stringify({ policy, skill, seed, days: log, final: fin, pageErrors: errs }, null, 1));
+  console.log('FINAL', JSON.stringify({ day: fin.run.day, ending: fin.run.ending, cash: fin.run.cash, rep: fin.run.rep, burn: fin.run.burn, aff: fin.run.aff, detail: fin.detail && { stage: fin.detail.stage, title: fin.detail.title, sign: fin.detail.sign } }));
+  console.log('choices:', fin.bot.join(' | '));
+  console.log('ERRORS', JSON.stringify(errs.concat(fin.errors)).slice(0, 2500), 'wall', Math.round((Date.now() - t0) / 1000) + 's');
+  await b.close();
 })();

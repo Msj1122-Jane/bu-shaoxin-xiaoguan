@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <title>不烧心小馆</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #1d1712; overflow: hidden; overscroll-behavior: none; }
+    canvas { display: block; touch-action: none; -webkit-user-select: none; user-select: none; outline: none; }
+  </style>
+</head>
+<body>
+  <canvas id="game" tabindex="0" aria-label="不烧心小馆：横屏早餐铺经营与做饭游戏。键盘 Tab 切换焦点，回车确认，P 暂停，F 全屏。"></canvas>
+  <script src="src/modules.js"></script>
+  <script src="src/content/config.js"></script>
+  <script src="src/content/dishes.js"></script>
+  <script src="src/content/regulars.js"></script>
+  <script src="src/content/events.js"></script>
+  <script src="src/content/story.js"></script>
+  <script src="src/content/endings.js"></script>
+  <script src="src/core/rng.js"></script>
+  <script src="src/core/cond.js"></script>
+  <script src="src/core/run.js"></script>
+  <script src="src/core/save.js"></script>
+  <script src="src/core/legacy.js"></script>
+  <script src="src/core/week.js"></script>
+  <script src="src/core/validate.js"></script>
+  <script src="src/game/assets.js"></script>
+  <script src="src/game/audio.js"></script>
+  <script src="src/ui/ui.js"></script>
+  <script src="src/game/scene.js"></script>
+  <script src="src/game/actors.js"></script>
+  <script src="src/game/cooking.js"></script>
+  <script src="src/game/cutscene.js"></script>
+  <script src="src/ui/hud.js"></script>
+  <script src="src/ui/s_basic.js"></script>
+  <script src="src/ui/s_prep.js"></script>
+  <script src="src/ui/s_service.js"></script>
+  <script src="src/ui/s_story.js"></script>
+  <script src="src/ui/s_ledger.js"></script>
+  <script src="src/ui/s_ending.js"></script>
+  <script src="src/ui/s_codex.js"></script>
+  <script src="src/ui/screens.js"></script>
+  <script src="src/dev/autoplay.js"></script>
+  <script src="src/app.js"></script>
+  <script src="src/platform/web.js"></script>
+  <script src="src/boot/web.js"></script>
+</body>
+</html>

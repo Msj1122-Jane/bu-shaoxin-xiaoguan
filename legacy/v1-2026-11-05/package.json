@@ -1,0 +1,13 @@
+{
+ "name": "bu-shaoxin-game",
+ "version": "1.0.0-rc",
+ "private": true,
+ "scripts": {
+  "test": "node --test tests/*.test.js",
+  "start": "node tools/serve.js",
+  "validate": "node tools/validate_content.js",
+  "sim": "node tools/sim.js",
+  "build:wechat": "node tools/build_wechat.js",
+  "e2e": "node tools/e2e.cjs"
+ }
+}

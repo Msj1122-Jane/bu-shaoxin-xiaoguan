@@ -2,6 +2,7 @@
 BSX.define('ui/ui', function (require) {
   var A = require('game/assets');
   var FONT = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",sans-serif';
+  var KAI = '"STKaiti","Kaiti SC","KaiTi","楷体","BiauKai","AR PL UKai CN","Songti SC","STSong","Noto Serif CJK SC","SimSun",serif';
   var COL = { ink: '#3b2a1a', paper: '#f6ecd6', paper2: '#efe0bf', wood: '#a86b3c', woodDark: '#6e4224', teal: '#2f6f66', tealDark: '#1f4d47', cream: '#fff8e8', red: '#b8432f', gold: '#e8b54a', shadow: 'rgba(30,18,8,.35)', mute: '#8d7a60', green: '#4f8a4b' };
   var U = { hits: [], pressed: null, hover: null, focusIdx: -1, keyboard: false, textScale: 1, time: 0, FONT: FONT, COL: COL, tips: [] };
   U.begin = function () { U.hits = []; };
@@ -15,57 +16,26 @@ BSX.define('ui/ui', function (require) {
   };
   U.find = function (x, y) { for (var i = U.hits.length - 1; i >= 0; i--) { var h = U.hits[i]; if (x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h) return h; } return null; };
   U.focusable = function () { return U.hits.filter(function (h) { return h.onTap && !h.disabled; }); };
-  U.font = function (size, weight) { return (weight || 'normal') + ' ' + Math.round(size * U.textScale) + 'px ' + FONT; };
+  U.font = function (size, weight, kai) { return (weight || 'normal') + ' ' + Math.round(size * U.textScale) + 'px ' + (kai ? KAI : FONT); };
+  U.KAI = KAI;
   U.text = function (ctx, str, x, y, o) {
     o = o || {}; var size = o.size || 22;
     ctx.save();
-    ctx.font = U.font(size, o.weight || (o.bold ? 'bold' : 'normal'));
+    ctx.font = U.font(size, o.weight || (o.bold ? 'bold' : 'normal'), o.kai);
     ctx.textAlign = o.align || 'left'; ctx.textBaseline = o.base || 'alphabetic';
     if (o.alpha != null) ctx.globalAlpha *= o.alpha;
-    if (o.maxW) { var m = ctx.measureText(str).width; if (m > o.maxW) { ctx.font = U.font(size * o.maxW / m, o.weight || (o.bold ? 'bold' : 'normal')); } }
+    if (o.maxW) { var m = ctx.measureText(str).width; if (m > o.maxW) { ctx.font = U.font(size * o.maxW / m, o.weight || (o.bold ? 'bold' : 'normal'), o.kai); } }
     if (o.stroke) { ctx.lineJoin = 'round'; ctx.lineWidth = o.strokeW || Math.max(3, size * 0.22); ctx.strokeStyle = o.stroke; ctx.strokeText(str, x, y); }
     if (o.shadow) { ctx.shadowColor = o.shadow; ctx.shadowOffsetY = 2; ctx.shadowBlur = 0; }
     ctx.fillStyle = o.color || COL.ink; ctx.fillText(str, x, y);
     ctx.restore();
   };
-  U.wrap = function (ctx, str, maxW, size, weight) {
-    ctx.save(); ctx.font = U.font(size, weight); var lines = [], line = '';
-    // 词元：连续的数字/字母/符号（如 +0.3、25%、+12）不拆行；中文逐字
-    var toks = str.match(/\n|[0-9A-Za-z+\-.%×/]+|[\s\S]/g) || [];
-    for (var i = 0; i < toks.length; i++) { var ch = toks[i]; if (ch === '\n') { lines.push(line); line = ''; continue; } var t = line + ch; if (ctx.measureText(t).width > maxW && line) { if ('，。！？、”：；）'.indexOf(ch) >= 0) { line = t; continue; } lines.push(line); line = ch; } else line = t; }
+  U.wrap = function (ctx, str, maxW, size, weight, kai) {
+    ctx.save(); ctx.font = U.font(size, weight, kai); var lines = [], line = '';
+    for (var i = 0; i < str.length; i++) { var ch = str[i]; if (ch === '\n') { lines.push(line); line = ''; continue; } var t = line + ch; if (ctx.measureText(t).width > maxW && line) { if ('，。！？、”：；）…—》」'.indexOf(ch) >= 0) { line = t; continue; } lines.push(line); line = ch; } else line = t; }
     if (line) lines.push(line); ctx.restore(); return lines;
   };
-  // 像素字：在低分辨率画布上写字→阈值化成硬边→描边→无平滑放大。用于招牌、标签，避免“网页字”。
-  var PX = {};
-  U.pixelText = function (ctx, str, x, y, o) {
-    o = o || {}; var px = o.px || 3, size = o.size || 36, fs = Math.max(8, Math.round(size / px)), key = str + '|' + fs + '|' + (o.color || '') + '|' + (o.outline || '') + '|' + (o.shadow || '');
-    var c = PX[key];
-    if (!c) {
-      var P = BSX.require('game/assets').P, m = P.createCanvas(4, 4).getContext('2d'); m.font = 'bold ' + fs + 'px ' + FONT;
-      var w = Math.ceil(m.measureText(str).width) + 6, h = fs + 8;
-      c = P.createCanvas(w, h); var g = c.getContext('2d'); g.font = 'bold ' + fs + 'px ' + FONT; g.textBaseline = 'top'; g.fillStyle = '#fff'; g.fillText(str, 3, 3);
-      try {
-        var im = g.getImageData(0, 0, w, h), d = im.data, mask = new Uint8Array(w * h), i, j;
-        for (i = 0; i < w * h; i++) mask[i] = d[i * 4 + 3] > 120 ? 1 : 0;
-        var hex = function (s) { var n = parseInt(s.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
-        var fc = hex(o.color || '#fff3d6'), oc = o.outline ? hex(o.outline) : null, sc = o.shadow ? hex(o.shadow) : null;
-        for (j = 0; j < h; j++) for (i = 0; i < w; i++) {
-          var k = j * w + i, q = k * 4, col = null;
-          if (mask[k]) col = fc;
-          else if (oc && ((i > 0 && mask[k - 1]) || (i < w - 1 && mask[k + 1]) || (j > 0 && mask[k - w]) || (j < h - 1 && mask[k + w]))) col = oc;
-          else if (sc && i > 0 && j > 0 && mask[k - w - 1]) col = sc;
-          if (col) { d[q] = col[0]; d[q + 1] = col[1]; d[q + 2] = col[2]; d[q + 3] = 255; } else d[q + 3] = 0;
-        }
-        g.putImageData(im, 0, 0);
-      } catch (e) {}
-      PX[key] = c;
-    }
-    var W = c.width * px, H = c.height * px, ax = o.align === 'center' ? W / 2 : o.align === 'right' ? W : 0;
-    ctx.save(); ctx.imageSmoothingEnabled = false; if (o.alpha != null) ctx.globalAlpha *= o.alpha;
-    ctx.drawImage(c, Math.round(x - ax), Math.round(y - H / 2), W, H); ctx.restore();
-    return { w: W, h: H };
-  };
-  U.para = function (ctx, str, x, y, maxW, o) { o = o || {}; var size = o.size || 22, lh = o.lh || size * 1.5; var lines = U.wrap(ctx, str, maxW, size, o.weight); if (o.maxLines && lines.length > o.maxLines) { lines = lines.slice(0, o.maxLines); lines[o.maxLines - 1] = lines[o.maxLines - 1].slice(0, -1) + '…'; } lines.forEach(function (l, i) { U.text(ctx, l, x, y + i * lh * U.textScale, o); }); return lines.length * lh * U.textScale; };
+  U.para = function (ctx, str, x, y, maxW, o) { o = o || {}; var size = o.size || 22, lh = o.lh || size * 1.5; var lines = U.wrap(ctx, str, maxW, size, o.weight || (o.bold ? 'bold' : undefined), o.kai); lines.forEach(function (l, i) { U.text(ctx, l, x, y + i * lh * U.textScale, o); }); return lines.length * lh * U.textScale; };
   function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath(); }
   U.rr = rr;
   U.panel = function (ctx, x, y, w, h, style, o) {
