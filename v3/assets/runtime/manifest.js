@@ -5,7 +5,7 @@ module.exports = {
   {
    "id": "bg_room_main",
    "path": "bg/bg_room_main.jpg",
-   "bytes": 181576,
+   "bytes": 145340,
    "w": 1280,
    "h": 720,
    "source": "Lovart 2K scene_main",
@@ -18,7 +18,7 @@ module.exports = {
   {
    "id": "bg_room_rain",
    "path": "bg/bg_room_rain.jpg",
-   "bytes": 168219,
+   "bytes": 134645,
    "w": 1280,
    "h": 720,
    "source": "Lovart scene_rain",
@@ -31,7 +31,7 @@ module.exports = {
   {
    "id": "bg_room_night",
    "path": "bg/bg_room_night.jpg",
-   "bytes": 170179,
+   "bytes": 136279,
    "w": 1280,
    "h": 720,
    "source": "Lovart scene_night",
@@ -44,7 +44,7 @@ module.exports = {
   {
    "id": "bg_ext_morning",
    "path": "bg/bg_ext_morning.jpg",
-   "bytes": 260434,
+   "bytes": 201866,
    "w": 1280,
    "h": 720,
    "source": "原始视觉方案 c01",
@@ -57,7 +57,7 @@ module.exports = {
   {
    "id": "bg_ext_rain",
    "path": "bg/bg_ext_rain.jpg",
-   "bytes": 191077,
+   "bytes": 154828,
    "w": 1280,
    "h": 720,
    "source": "原始视觉方案 c08",
@@ -70,7 +70,7 @@ module.exports = {
   {
    "id": "bg_ext_dusk",
    "path": "bg/bg_ext_dusk.jpg",
-   "bytes": 156297,
+   "bytes": 122137,
    "w": 1280,
    "h": 720,
    "source": "原始视觉方案 c09",
@@ -83,7 +83,7 @@ module.exports = {
   {
    "id": "bg_kitchen_closeup",
    "path": "bg/bg_kitchen_closeup.jpg",
-   "bytes": 134682,
+   "bytes": 105083,
    "w": 768,
    "h": 768,
    "source": "原始视觉方案 c07",
@@ -96,7 +96,7 @@ module.exports = {
   {
    "id": "bg_ending_poster",
    "path": "bg/bg_ending_poster.jpg",
-   "bytes": 102597,
+   "bytes": 78098,
    "w": 544,
    "h": 960,
    "source": "原始视觉方案 c05",
@@ -109,7 +109,7 @@ module.exports = {
   {
    "id": "atlas_zhou",
    "path": "atlas/atlas_zhou.png",
-   "bytes": 795073,
+   "bytes": 162679,
    "w": 1024,
    "h": 1024,
    "cols": 4,
@@ -224,7 +224,7 @@ module.exports = {
   {
    "id": "atlas_regulars",
    "path": "atlas/atlas_regulars.png",
-   "bytes": 782452,
+   "bytes": 166572,
    "w": 1024,
    "h": 768,
    "cols": 4,
@@ -291,7 +291,7 @@ module.exports = {
   {
    "id": "atlas_food",
    "path": "atlas/atlas_food.png",
-   "bytes": 1351998,
+   "bytes": 299310,
    "w": 1280,
    "h": 1040,
    "cols": 5,
@@ -430,7 +430,7 @@ module.exports = {
   {
    "id": "atlas_equipment",
    "path": "atlas/atlas_equipment.png",
-   "bytes": 542233,
+   "bytes": 117722,
    "w": 768,
    "h": 768,
    "cols": 3,
@@ -503,7 +503,7 @@ module.exports = {
   {
    "id": "atlas_vfx",
    "path": "atlas/atlas_vfx.png",
-   "bytes": 220873,
+   "bytes": 58913,
    "w": 1024,
    "h": 1024,
    "cols": 4,
@@ -618,7 +618,7 @@ module.exports = {
   {
    "id": "atlas_ui",
    "path": "atlas/atlas_ui.png",
-   "bytes": 717631,
+   "bytes": 138932,
    "w": 1024,
    "h": 1024,
    "cols": 4,
@@ -733,7 +733,7 @@ module.exports = {
   {
    "id": "spr_xiaosong",
    "path": "sprites/spr_xiaosong.png",
-   "bytes": 102540,
+   "bytes": 21283,
    "w": 512,
    "h": 512,
    "source": "原始视觉方案 角色/orig_c13_xiaosong_nurse_sprite.png",
@@ -752,7 +752,7 @@ module.exports = {
   {
    "id": "spr_laoge",
    "path": "sprites/spr_laoge.png",
-   "bytes": 91071,
+   "bytes": 18425,
    "w": 512,
    "h": 512,
    "source": "原始视觉方案 角色/orig_c14_laoge_suit_sprite.png",
@@ -771,7 +771,7 @@ module.exports = {
   {
    "id": "spr_ali",
    "path": "sprites/spr_ali.png",
-   "bytes": 116319,
+   "bytes": 22922,
    "w": 512,
    "h": 512,
    "source": "原始视觉方案 角色/orig_c15_ali_rider_sprite.png",
@@ -790,7 +790,7 @@ module.exports = {
   {
    "id": "spr_gong",
    "path": "sprites/spr_gong.png",
-   "bytes": 100304,
+   "bytes": 18230,
    "w": 512,
    "h": 512,
    "source": "原始视觉方案 角色/orig_c16_gongshifu_driver_sprite.png",
@@ -809,7 +809,7 @@ module.exports = {
   {
    "id": "spr_xiaoman",
    "path": "sprites/spr_xiaoman.png",
-   "bytes": 91432,
+   "bytes": 19083,
    "w": 512,
    "h": 512,
    "source": "原始视觉方案 角色/orig_c17_xiaoman_seamstress_sprite.png",
@@ -828,7 +828,7 @@ module.exports = {
   {
    "id": "spr_xiaozheng",
    "path": "sprites/spr_xiaozheng.png",
-   "bytes": 92353,
+   "bytes": 20862,
    "w": 512,
    "h": 512,
    "source": "原始视觉方案 角色/orig_c18_xiaozheng_student_sprite.png",
@@ -847,7 +847,7 @@ module.exports = {
   {
    "id": "spr_laoqin",
    "path": "sprites/spr_laoqin.png",
-   "bytes": 177331,
+   "bytes": 40368,
    "w": 512,
    "h": 512,
    "source": "原始视觉方案 角色/orig_c19_laoqin_vendor_sprite.png",
@@ -866,7 +866,7 @@ module.exports = {
   {
    "id": "spr_grandpa",
    "path": "sprites/spr_grandpa.png",
-   "bytes": 132975,
+   "bytes": 24456,
    "w": 512,
    "h": 512,
    "source": "原始视觉方案 角色/orig_grandpa_grandson.png",
@@ -885,7 +885,7 @@ module.exports = {
   {
    "id": "spr_zhou_legacy",
    "path": "sprites/spr_zhou_legacy.png",
-   "bytes": 246529,
+   "bytes": 54200,
    "w": 512,
    "h": 512,
    "source": "原始视觉方案 角色/orig_zhou_sprite_sheet.png",
@@ -906,7 +906,7 @@ module.exports = {
   {
    "id": "icons_resource",
    "path": "sprites/icons_resource.png",
-   "bytes": 202127,
+   "bytes": 47519,
    "w": 512,
    "h": 512,
    "source": "原始视觉方案 UI/orig_resource_icons_3x3.png",
@@ -921,7 +921,7 @@ module.exports = {
   {
    "id": "zhou_portraits",
    "path": "sprites/zhou_portraits.png",
-   "bytes": 176603,
+   "bytes": 36880,
    "w": 1280,
    "h": 256,
    "cols": 5,
@@ -938,7 +938,7 @@ module.exports = {
   {
    "id": "food_icons_6",
    "path": "sprites/food_icons_6.png",
-   "bytes": 219821,
+   "bytes": 47342,
    "w": 1086,
    "h": 362,
    "cols": 6,
@@ -953,12 +953,12 @@ module.exports = {
   {
    "id": "bg_title",
    "path": "bg/bg_title.jpg",
-   "bytes": 488580,
+   "bytes": 190230,
    "w": 1280,
    "h": 720,
    "source": "工程目录 assets/shop.png",
    "alpha": false,
-   "group": "boot",
+   "group": "title",
    "use": "标题页主视觉",
    "license": "待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用",
    "placeholder": false
@@ -966,7 +966,7 @@ module.exports = {
   {
    "id": "bg_street",
    "path": "bg/bg_street.jpg",
-   "bytes": 374542,
+   "bytes": 153164,
    "w": 1280,
    "h": 720,
    "source": "原始视觉方案 c10",
