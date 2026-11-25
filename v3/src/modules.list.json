@@ -1,6 +1,0 @@
-{
- "core": ["modules.js","content/config.js","content/dishes.js","content/cast.js","content/arcs_a.js","content/arcs_b.js","content/scenes.js","content/endings.js","content/ambient.js","content/town.js","content/story.js","core/rng.js","core/cond.js","core/run.js","core/save.js","core/sim.js","core/town.js"],
- "game": ["game/assets.js","game/audio.js","ui/ui.js","ui/kit.js","game/fx.js","game/shop.js","game/people.js","game/stations.js","game/service.js","game/director.js","ui/s_title.js","ui/s_basic.js","ui/s_play.js","ui/s_town.js","ui/s_prep.js","ui/s_night.js","ui/s_ending.js","ui/s_book.js","ui/screens.js","dev/bot.js","app.js"],
- "web": ["platform/web.js","boot/web.js"],
- "wechat": ["platform/wechat.js"]
-}
