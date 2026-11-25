@@ -25,6 +25,7 @@ BSX.define('app', function (require) {
     Au.init(P, this.settings);
     this.applySettings();
     P.onInput(function (type, px, py, id) { app.input(type, px, py, id); });
+    if (P.onGesture) P.onGesture(function () { if (P.audioSession) P.audioSession(); Au.unlock(); });
     P.onKey(function (key, e) { app.key(key, e); });
     P.onHide(function () { app.hidden = true; if (app.screen && app.screen.onHide) app.screen.onHide(); app.pause(true); Au.pause(); });
     P.onShow(function () { app.hidden = false; Au.resume(); app.lastNow = P.now(); });
