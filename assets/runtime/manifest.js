@@ -49,7 +49,7 @@ module.exports = {
    "h": 720,
    "source": "原始视觉方案 c01",
    "alpha": false,
-   "group": "boot",
+   "group": "late",
    "use": "标题/序章/店外晨景",
    "license": "待核对（H12/H14）：Lovart/原始视觉方案生成，项目内测使用",
    "placeholder": false
