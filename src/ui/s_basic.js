@@ -11,9 +11,10 @@ BSX.define('ui/s_basic', function (require) {
 
   function Loading(app) {
     var self = this; this.app = app; this.name = 'loading'; this.p = 0; this.t = 0;
-    A.loadGroup('boot', function (p) { self.p = p * 0.6; }, function () { A.loadGroup('chars', function (p) { self.p = 0.6 + p * 0.3; }, function () { self.p = 1; A.loadGroup('late', null, null); }); });
+    // 先只等标题图，标题一出来就能看；其余的图在后台接着下（网络慢时不至于卡在加载页）
+    A.loadGroup('title', function (p) { self.p = p; }, function () { self.p = 1; A.loadGroup('boot', null, function () { A.loadGroup('chars', null, function () { A.loadGroup('late', null, null); }); }); });
   }
-  Loading.prototype.update = function (dt) { this.t += dt; if (this.p >= 1 && this.t > 0.4) this.app.go(Title, {}, false); };
+  Loading.prototype.update = function (dt) { this.t += dt; if (this.p >= 1 && this.t > 0.3) this.app.go(Title, {}, false); };
   Loading.prototype.draw = function (ctx) {
     ctx.fillStyle = '#1f1812'; ctx.fillRect(0, 0, 1280, 720);
     var cx = 640, cy = 330;

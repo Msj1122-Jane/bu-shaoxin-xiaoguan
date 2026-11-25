@@ -31,7 +31,7 @@ BSX.define('game/assets', function (require) {
   // 绘制图集格位：opts.trim 时用 cellTrim 去除透明边；anchor 'bottom' 时以脚底对齐
   A.cell = function (ctx, id, idx, x, y, w, h, opts) {
     var e = A.entries[id], im = A.imgs[id];
-    if (!e || !im) { ctx.fillStyle = 'rgba(255,0,255,.5)'; ctx.fillRect(x, y, w, h); return; }
+    if (!e || !im) { if (e && !A.loaded[id]) return; ctx.fillStyle = 'rgba(255,0,255,.5)'; ctx.fillRect(x, y, w, h); return; }
     var cw = e.cellW, ch = e.cellH, cx = (idx % e.cols) * cw, cy = Math.floor(idx / e.cols) * ch;
     opts = opts || {};
     if (opts.trim && e.cellTrim) { var t = e.cellTrim[idx]; cx += t[0]; cy += t[1]; cw = t[2] - t[0]; ch = t[3] - t[1]; }
@@ -46,6 +46,7 @@ BSX.define('game/assets', function (require) {
   A.sprite = function (ctx, id, cx, footY, h, opts) {
     var e = A.entries[id], im = A.imgs[id];
     opts = opts || {};
+    if (!im && e && !A.loaded[id]) return;
     if (!im) { ctx.fillStyle = 'rgba(255,0,255,.6)'; ctx.fillRect(cx - h * 0.2, footY - h, h * 0.4, h); ctx.fillStyle = '#fff'; ctx.font = '14px sans-serif'; ctx.fillText('缺 ' + id, cx - h * 0.2, footY - h / 2); return; }
     var t = e.trim || [0, 0, im.width, im.height];
     var sh = t[3] - t[1], s = h / sh, sw = im.width * s;

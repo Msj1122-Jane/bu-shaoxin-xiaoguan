@@ -38,7 +38,7 @@ BSX.define('ui/s_title', function (require) {
   T.setMode = function (m) { this.mode = m; this.mt = 0; this.confirm = false; };
   T.update = function (dt) {
     var self = this; this.t += dt; this.mt += dt;
-    if (this.go) { this.lit = Math.min(1, this.lit + dt * 1.2); if (this.lit >= 1 && !this.fired) { this.fired = true; this.go(); } }
+    if (this.go && this.ready()) { this.lit = Math.min(1, this.lit + dt * 1.2); if (this.lit >= 1 && !this.fired) { this.fired = true; this.go(); } }
     if (Math.random() < dt * 0.22) Au.play('sparrow', { vol: 0.35 });
     if (!Fx.lowFx) {
       if (Math.random() < dt * 9) this.steam.push({ x: (Math.random() < 0.55 ? 318 : 386) + (Math.random() - 0.5) * 34, y: Math.random() < 0.55 ? 352 : 388, r: 7 + Math.random() * 6, t: 0, life: 2.2 + Math.random() * 1.4, dx: (Math.random() - 0.3) * 12 });
@@ -48,6 +48,9 @@ BSX.define('ui/s_title', function (require) {
     this.leaves.forEach(function (l, i) { l.x += dt * (l.vx + Math.sin(self.t * 1.3 + l.ph) * 18); l.y += dt * l.vy; l.r += dt * l.vr; if (l.y > 650 || l.x > 760) self.leaves[i] = self.leaf(false); });
     this.birds = this.birds.filter(function (b) { b.t += dt; b.x += dt * 150; b.y += Math.sin(b.t * 2) * dt * 16; return b.x < 1340; });
   };
+  // 开店前要等的图：早市、人物都在 boot / chars 两组
+  T.ready = function () { return A.groupState.boot === 'done' && A.groupState.chars === 'done'; };
+  T.progress = function () { var es = A.manifest.entries.filter(function (e) { return e.group === 'boot' || e.group === 'chars'; }), n = es.filter(function (e) { return A.loaded[e.id]; }).length; return es.length ? n / es.length : 1; };
   T.start = function (fn) { if (this.go) return; this.go = fn; Au.play('lamp'); Au.play('shutter_up', { vol: 0.7 }); };
   T.launch = function (o) { var app = this.app; this.start(function () { app.newRun(o); }); };
 
@@ -107,6 +110,7 @@ BSX.define('ui/s_title', function (require) {
     var ti = Math.floor(t / 6.5) % TEASE.length, tk = (t % 6.5), ta = Math.min(1, tk * 1.4) * Math.min(1, (6.5 - tk) * 1.4);
     U.text(ctx, TEASE[ti], 56, 668, { size: 25, kai: true, bold: true, color: '#fff3d6', stroke: 'rgba(30,18,8,.8)', strokeW: 5, alpha: ta });
     U.text(ctx, L.runs ? '第 ' + (L.runs + 1) + ' 个月 · 写过 ' + Object.keys(L.endings || {}).length + ' / 8 块招牌' : '短租二十八天 · 一块空招牌', 58, 700, { size: 16, color: '#e8d8b8', stroke: 'rgba(30,18,8,.7)', strokeW: 3 });
+    if (!this.ready()) { var pr = this.progress(); ctx.fillStyle = 'rgba(20,12,6,.55)'; U.rr(ctx, 900, 676, 344, 26, 13); ctx.fill(); ctx.fillStyle = '#e8b54a'; U.rr(ctx, 903, 679, 338 * pr, 20, 10); ctx.fill(); U.text(ctx, (this.go ? '还在备料，马上开门… ' : '后台备料中 ') + Math.round(pr * 100) + '%', 1072, 695, { size: 14, bold: true, align: 'center', color: '#fff8e8', stroke: 'rgba(30,18,8,.8)', strokeW: 3 }); }
     if (this.mode === 'main') this.drawMenu(ctx);
     else if (this.mode === 'new') this.drawNew(ctx);
     else if (this.mode === 'wall') this.drawWall(ctx);
