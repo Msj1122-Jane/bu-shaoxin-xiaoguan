@@ -112,7 +112,7 @@ BSX.define('game/shop', function (require) {
   var cleaned = {};
   Shop.place = function (id) {
     if (cleaned[id]) return cleaned[id];
-    var im = A.img(id); if (!im) return null;
+    var im = A.img(id); if (!im) return id !== 'bg_street' && A.failed && A.failed[id] ? Shop.place('bg_street') : null;
     if (id !== 'bg_street') return (cleaned[id] = im);
     var c = A.P.createCanvas(1280, 720), g = c.getContext('2d');
     g.drawImage(im, 0, 0, 1280, 720);
