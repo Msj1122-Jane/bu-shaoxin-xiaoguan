@@ -28,17 +28,18 @@ test('批发市场：同一天三份货是确定的；好货明天抵进货、�
   const b0 = s.burn; Run.openShop(s); assert.strictEqual(s.pantry, null);
   assert.ok(Math.abs(s.burn - Math.min(100, b0 + p.burn)) < 1e-9); assert.strictEqual(s.today.pantryQ, p.q);
 });
-test('7 路总站：接了包餐，明早自动多备，开门交货、钱当场结；交不齐扣口碑', () => {
+test('7 路总站：接了包餐，明早单独备一批料（进货小票上一行），开门前交货、钱当场结；不动晨备的份数', () => {
   const s = toAfternoon(9), of = T.offers(s);
   assert.ok(of.length >= 1, '第 9 天至少有一份包餐');
   const o = of[0]; T.accept(s, o); T.done(s, 'depot'); Run.nextDay(s);
-  assert.ok(s.plan.menu.includes(o.dish)); assert.ok(s.today.notes.some(n => n.kind === 'order' && n.text.includes(o.who)));
-  const c0 = s.cash, cost = Run.planCost(s); Run.openShop(s);
+  assert.ok(s.today.notes.some(n => n.kind === 'order' && n.text.includes(o.who)));
+  Sim.prep(s, Sim.policies.honest);
+  const stock0 = JSON.stringify(s.plan.stock), c0 = s.cash, cost = Run.planCost(s);
+  assert.strictEqual(cost.pre, o.n * Run.unitCost(s, o.dish)); assert.strictEqual(cost.total, cost.goods + cost.oil - cost.pantry + cost.pre);
+  Run.openShop(s);
+  assert.strictEqual(JSON.stringify(s.plan.stock), stock0, '晨备的份数没被动');
   assert.strictEqual(s.today.pre.got, o.n); assert.strictEqual(s.cash, c0 - cost.total + o.n * o.unit);
-  // 交不齐
-  const s2 = toAfternoon(9), o2 = T.offers(s2)[0]; T.accept(s2, o2); T.done(s2, 'depot'); Run.nextDay(s2);
-  Run.setStock(s2, o2.dish, 2); const r0 = s2.rep; Run.openShop(s2);
-  assert.strictEqual(s2.today.pre.got, 2); assert.ok(s2.rep < r0);
+  assert.ok(o.n * o.unit > cost.pre, '包餐有赚头');
 });
 test('桥头：听到的天气就是明天的天气', () => {
   for (const day of [5, 8, 11, 16, 20]) { const s = toAfternoon(day), f = T.bridge(s); T.done(s, 'bridge'); Run.nextDay(s); assert.strictEqual(s.today.weather, f.w, '第 ' + (day + 1) + ' 天'); }
@@ -53,4 +54,52 @@ test('串门：十六场都存在、说话的人都认得；好感不够去不�
 test('回店练手：最常用的灶熟练度 +8', () => {
   const s = toAfternoon(6), before = JSON.parse(JSON.stringify(s.stats.st)), r = T.practice(s);
   assert.strictEqual(s.stats.st[r.st], (before[r.st] || 0) + 8);
+});
+
+// ───────── V4 自由地图
+test('自由地图：13:00 从店里出发；走路按远近花时间；19:30 之后哪也去不了', () => {
+  const s = toAfternoon(10), st = T.ensure(s);
+  assert.strictEqual(st.clock, T.START); assert.strictEqual(st.at, 'shop');
+  const near = T.travelMins('shop', 'tailor'), far = T.travelMins('shop', 'whole');
+  assert.ok(near > 0 && near < far, '隔壁比批发市场近');
+  assert.strictEqual(T.travel(s, 'whole'), ''); assert.strictEqual(st.at, 'whole'); assert.strictEqual(st.clock, T.START + far);
+  T.spend(s, 9999); assert.strictEqual(st.clock, T.END); assert.ok(T.whyNot(s, 'shop').length > 0);
+});
+test('自由地图：营业时间和解锁——夜市 18 点后才开，何姨家要线索', () => {
+  const s = toAfternoon(10); T.ensure(s);
+  assert.match(T.whyNot(s, 'wharf'), /18/);
+  assert.ok(T.whyNot(s, 'heyi').length > 0);
+  s.flags.heyi_lead = s.day; assert.strictEqual(T.whyNot(s, 'heyi'), '');
+  assert.strictEqual(T.travelMins('shop', 'heyi'), 90);
+});
+test('自由地图：常客按作息出现；串门戏要人在场才演；晚点会来的人能等', () => {
+  const s = toAfternoon(14); T.ensure(s);
+  s.today.weather = 'sun';
+  assert.strictEqual(T.where(s, 'zhao', 14 * 60), null);
+  assert.strictEqual(T.where(s, 'zhao', 15 * 60 + 10), 'park');
+  s.today.weather = 'rain'; assert.strictEqual(T.where(s, 'zhao', 15 * 60 + 10), 'lane'); s.today.weather = 'sun';
+  const v = T.nextVisit(s, 'zhao');
+  if (v) {
+    assert.strictEqual(T.eventsAt(s, 'park', 14 * 60).length, 0, '人还没来，不演');
+    assert.strictEqual(T.eventsAt(s, 'park', 15 * 60 + 10).length, 1, '人来了就能演');
+    T.travel(s, 'park'); assert.ok(T.comingAt(s, 'park').some(c => c.id === 'zhao'));
+    assert.ok(T.actionsAt(s, 'park').some(a => a.kind === 'wait'));
+  }
+});
+test('自由地图：聊几句每人每天一次，好感 +0.15', () => {
+  const s = toAfternoon(14); T.ensure(s); s.today.weather = 'sun';
+  T.spend(s, 120); const at = T.where(s, 'man', T.ensure(s).clock); assert.strictEqual(at, 'tailor');
+  const a0 = s.reg.man.aff; assert.ok(T.doTalk(s, 'man')); assert.ok(Math.abs(s.reg.man.aff - Math.min(10, a0 + 0.15)) < 1e-9);
+  assert.strictEqual(T.doTalk(s, 'man'), null);
+});
+test('自由地图：第二回串门戏过期没看，第二天早上有人提一句；回店后不能再出门', () => {
+  const ms = Tn.miss.v_zhao_2, s = toAfternoon(ms.until);
+  s.reg.zhao.aff = 6; s.reg.zhao.met = s.reg.zhao.met || 1; delete s.seen.v_zhao_2;
+  T.done(s); Run.nextDay(s);
+  assert.strictEqual(s.day, ms.until + 1);
+  assert.ok(s.today.notes.some(n => n.kind === 'missed' && n.text.includes(ms.line)), '过期第二天早上有人提');
+  s.seen.v_zhao_1 = s.seen.v_zhao_1 || 1; assert.strictEqual(T.nextVisit(s, 'zhao'), null, '过期的戏不再出现');
+  s.seen.v_zhao_2 = 1; const s3 = toAfternoon(ms.until); s3.reg.zhao.aff = 6; s3.seen.v_zhao_2 = s3.day; T.done(s3); Run.nextDay(s3);
+  assert.ok(!s3.today.notes.some(n => n.kind === 'missed' && n.text.includes(ms.line)), '看过的不提');
+  const s2 = toAfternoon(8); T.done(s2); assert.strictEqual(s2.phase, 'night'); Run.toTown(s2); assert.strictEqual(s2.phase, 'night');
 });

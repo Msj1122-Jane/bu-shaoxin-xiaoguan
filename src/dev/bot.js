@@ -46,24 +46,40 @@ BSX.define('dev/bot', function (require) {
         break;
       }
       case 'town': {
-        var m = scr.mode, Tn = require('content/town'), self2 = this;
-        if (m === 'map') {
-          var want = this.o.town === 'home' ? 'home' : ['visit', 'depot', 'bridge', 'market'][s.day % 4], pl = scr.list.filter(function (p) { return p.id === want; })[0];
-          if (!pl || pl.why) want = 'home';
-          if (scr.sel !== want) this.tapId('pl_' + want); else { this.tapId('go'); this.log.push('d' + s.day + ' 下午 → ' + want); }
-          this.cool = this.o.fast ? 0.15 : 0.5; break;
-        }
+        var m = scr.mode, Tn = require('content/town'), T = require('core/town'), st = scr.st, self2 = this;
+        this.cool = this.o.fast ? 0.45 : 0.7;
+        if (m === 'note') { this.tapId('note_ok'); break; }
+        if (m === 'result') { if (scr.mt > 0.5) this.tapId('res_ok'); break; }
+        if (m === 'depot') { if (!this.tapId('acc_0')) this.tapId('dp_skip'); this.log.push('d' + s.day + ' 接包餐'); break; }
         if (m === 'market') {
           var li = scr.seen.map(function (x) { return x.some(Boolean); }).indexOf(false);
-          if (scr.looks > 0 && li >= 0) { this.tapId('look_' + li + '_' + (li === scr.lots[li].blank ? 1 : 0)); this.cool = 0.3; break; }
-          var todo = scr.lots.map(function (l, i) { var g = Tn.goods[l.item], seenBad = scr.seen[i].some(function (v, j) { return v && g.bad.indexOf(require('core/town').clue(l, j)) >= 0; }), seenGood = scr.seen[i].some(function (v, j) { return v && g.good.indexOf(require('core/town').clue(l, j)) >= 0; }); return (seenGood || (l.seller === 'qin' && !seenBad)) && !scr.take[i] && l.price < s.cash - 30000 ? i : -1; }).filter(function (i) { return i >= 0; });
-          if (todo.length) { this.tapId('take_' + todo[0]); this.cool = 0.3; break; }
-          this.tapId('pay'); this.log.push('d' + s.day + ' 验货收 ' + scr.take.filter(Boolean).length + ' 样'); this.cool = 0.5; break;
+          if (scr.looks > 0 && li >= 0) { this.tapId('look_' + li + '_' + (li === scr.lots[li].blank ? 1 : 0)); break; }
+          var todo = scr.lots.map(function (l, i) { var g = Tn.goods[l.item], seenBad = scr.seen[i].some(function (v, j) { return v && g.bad.indexOf(T.clue(l, j)) >= 0; }), seenGood = scr.seen[i].some(function (v, j) { return v && g.good.indexOf(T.clue(l, j)) >= 0; }); return (seenGood || (l.seller === 'qin' && !seenBad)) && !scr.take[i] && l.price < s.cash - 30000 ? i : -1; }).filter(function (i) { return i >= 0; });
+          if (todo.length) { this.tapId('take_' + todo[0]); break; }
+          this.tapId('pay'); this.log.push('d' + s.day + ' 验货收 ' + scr.take.filter(Boolean).length + ' 样'); break;
         }
-        if (m === 'depot') { this.tapId('acc_0'); this.cool = 0.5; break; }
-        if (m === 'visit') { this.tapId('vis_' + scr.vis[0].id); this.cool = 0.6; break; }
-        if (m === 'result' && scr.mt > 0.6) { this.tapId('town_done'); this.cool = 0.5; break; }
-        this.cool = 0.2; break;
+        if (m !== 'map' || scr.anim) break;
+        if (this.lastClock !== st.clock || this.lastAt !== st.at) { this.lastClock = st.clock; this.lastAt = st.at; this.stuck = 0; }
+        if (this.o.town === 'home') { this.tapId('end'); break; }
+        var acts = T.actionsAt(s, st.at), pick = function (f) { return acts.filter(function (x) { return !x.why && f(x); })[0]; };
+        var a = pick(function (x) { return x.kind === 'scene'; });
+        if (a) { this.tapId('act_' + a.id); this.log.push('d' + s.day + ' ' + T.clockText(st.clock) + ' ' + T.place(st.at).name + ' 看戏' + a.label); break; }
+        // 去下一个有戏的地方
+        var tgt = null, best = 1e9;
+        Tn.places.forEach(function (p) { if (p.id === st.at || T.whyNot(s, p.id)) return; var mm = T.travelMins(st.at, p.id), ev = T.eventsAt(s, p.id, st.clock + mm).length; if (ev && mm < best) { best = mm; tgt = p.id; } });
+        // 有人晚点会来带着戏：等
+        if (!tgt && T.comingAt(s, st.at).some(function (c) { var v = T.nextVisit(s, c.id); return v && Tn.sceneAt[c.id] === st.at; }) && pick(function (x) { return x.kind === 'wait'; })) { this.tapId('act_wait'); break; }
+        if (!tgt) {
+          var biz = s.day % 3 === 0 ? ['whole', 'depot'] : ['depot', 'whole'];
+          for (var i = 0; i < biz.length && !tgt; i++) { if (biz[i] === st.at) continue; var mk = T.markers(s, biz[i]); if (mk.biz && !T.whyNot(s, biz[i])) tgt = biz[i]; }
+          var here = pick(function (x) { return x.kind === 'market' || x.kind === 'depot'; });
+          if (here && (st.at === 'whole' || st.at === 'depot')) { this.tapId('act_' + here.id); break; }
+        }
+        var talk = pick(function (x) { return x.kind === 'talk'; });
+        if (!tgt && talk) { this.tapId('act_' + talk.id); break; }
+        this.stuck = (this.stuck || 0) + 1; if (this.stuck > 40) { this.stuck = 0; this.tapId('end'); break; }
+        if (tgt) { if (scr.sel !== tgt) this.tapId('pl_' + tgt); else { this.tapId('go'); this.log.push('d' + s.day + ' ' + T.clockText(st.clock) + ' 去' + T.place(tgt).name); } break; }
+        this.tapId('end'); this.log.push('d' + s.day + ' ' + T.clockText(st.clock) + ' 回店'); break;
       }
       case 'night': {
         if (!scr.botDone) { scr.botDone = true; (this.pol.buy || []).forEach(function (id) { var u = Cast.upgrades.filter(function (x) { return x.id === id; })[0]; if (Run.canBuy(s, id) && s.cash - 40000 > u.cost) Run.buy(s, id); }); this.cool = this.o.fast ? 0.1 : 1.2; break; }

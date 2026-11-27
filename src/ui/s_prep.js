@@ -152,6 +152,7 @@ BSX.define('ui/s_prep', function (require) {
     var ly = ry + 82, lh = cost.lines.length > 5 ? 28 : 32;
     cost.lines.forEach(function (l) { U.text(ctx, D.byId[l.id].name + ' ×' + l.n, rx + 22, ly, { size: 18, color: K.col.ink, maxW: 210 }); U.text(ctx, K.yuan(l.sum), rx + rw - 22, ly, { size: 18, align: 'right', color: K.col.ink }); ly += lh; });
     if (cost.oil) { U.text(ctx, p.oil === 'new' ? '新油一锅' : p.oil === 'bulk' ? '散装油' : '滤油', rx + 22, ly, { size: 18, color: K.col.ink }); U.text(ctx, K.yuan(cost.oil), rx + rw - 22, ly, { size: 18, align: 'right', color: K.col.ink }); ly += lh; }
+    if (cost.pre) { U.text(ctx, '包餐 · ' + cost.preLine.who + ' ' + D.byId[cost.preLine.dish].name + ' ×' + cost.preLine.n, rx + 22, ly, { size: 18, color: K.col.ink, maxW: 240 }); U.text(ctx, K.yuan(cost.pre), rx + rw - 22, ly, { size: 18, align: 'right', color: K.col.ink }); ly += lh; }
     if (cost.pantry) { U.text(ctx, '昨天市场收的货抵', rx + 22, ly, { size: 18, color: K.col.teal }); U.text(ctx, '−' + K.yuan(cost.pantry), rx + rw - 22, ly, { size: 18, align: 'right', color: K.col.teal }); ly += lh; }
     ctx.strokeStyle = '#a88a5a'; ctx.beginPath(); ctx.moveTo(rx + 16, ly - 14); ctx.lineTo(rx + rw - 16, ly - 14); ctx.stroke();
     U.text(ctx, '合计', rx + 22, ly + 14, { size: 21, bold: true, color: K.col.ink }); U.text(ctx, K.yuan(cost.total), rx + rw - 22, ly + 14, { size: 24, bold: true, align: 'right', color: K.col.red });

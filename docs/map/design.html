@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>柳河街地图设计</title>
+<style>
+  body { margin: 0; background: #2a211a; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .sheet { width: 1600px; height: 980px; position: relative; }
+  .ui { width: 1280px; height: 720px; position: relative; overflow: hidden; margin-top: 20px; }
+  text { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .kai { font-family: "STKaiti", "Kaiti SC", "KaiTi", serif; }
+</style></head><body>
+
+<!-- 图一：柳河街布局（给 Lovart 当构图参考，也给组员看位置关系） -->
+<div class="sheet" id="layout">
+<svg width="1600" height="980" viewBox="0 0 1600 980" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="paper" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#f3e7cc"/><circle cx="2" cy="3" r=".6" fill="#e5d4ae"/><circle cx="6" cy="6" r=".5" fill="#e9dab8"/></pattern>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fb2a8"/><stop offset="1" stop-color="#4f8a80"/></linearGradient>
+  </defs>
+  <rect width="1600" height="980" fill="url(#paper)"/>
+  <rect x="14" y="14" width="1572" height="952" fill="none" stroke="#8a6a3a" stroke-width="4"/>
+  <rect x="24" y="24" width="1552" height="932" fill="none" stroke="#8a6a3a" stroke-width="1.5"/>
+  <!-- 柳河 -->
+  <path d="M0,560 C240,520 420,600 640,575 C860,550 980,505 1200,540 C1380,568 1500,530 1600,520 L1600,640 C1480,650 1380,690 1200,668 C980,640 860,690 640,700 C420,712 240,650 0,690 Z" fill="url(#water)" opacity=".9"/>
+  <path d="M60,600 q40,-8 80,0 M300,640 q40,-8 80,0 M900,610 q40,-8 80,0 M1260,600 q40,-8 80,0" stroke="#d8efe8" stroke-width="3" fill="none" opacity=".7"/>
+  <text x="420" y="650" font-size="30" fill="#e8f6f1" class="kai" letter-spacing="14">柳　河</text>
+  <!-- 柳河街（北岸老街） -->
+  <path d="M120,470 C420,455 760,470 1500,440" stroke="#c9a46a" stroke-width="44" fill="none" stroke-linecap="round"/>
+  <path d="M120,470 C420,455 760,470 1500,440" stroke="#e8d3a8" stroke-width="36" fill="none" stroke-linecap="round"/>
+  <text x="980" y="472" font-size="22" fill="#7a5a2a" class="kai">柳 河 街（老街）</text>
+  <!-- 北边巷子 -->
+  <path d="M560,460 L560,250 M560,250 L900,230 M900,230 L1060,120 M300,465 L300,300 M1250,448 L1250,260" stroke="#e0c99c" stroke-width="22" fill="none" stroke-linecap="round"/>
+  <!-- 南岸 -->
+  <path d="M120,780 C500,760 900,790 1500,760" stroke="#e0c99c" stroke-width="26" fill="none" stroke-linecap="round"/>
+  <path d="M860,700 L880,780 M300,690 L300,780" stroke="#e0c99c" stroke-width="20" fill="none"/>
+  <!-- 石桥 -->
+  <rect x="820" y="520" width="80" height="200" rx="10" fill="#c8b48c" stroke="#7a6040" stroke-width="3" transform="rotate(-8 860 620)"/>
+  <path d="M822,560 l76,-10 M826,600 l76,-10 M830,640 l76,-10 M834,680 l76,-10" stroke="#9a8460" stroke-width="2" transform="rotate(-8 860 620)"/>
+  <!-- 7 路公交线 -->
+  <path d="M90,420 C420,400 760,418 1180,395" stroke="#b8432f" stroke-width="4" stroke-dasharray="14 10" fill="none"/>
+  <text x="760" y="392" font-size="18" fill="#b8432f">7 路公交线 · 月底撤站</text>
+  <!-- 地点 -->
+  <g id="places" font-size="20"></g>
+  <!-- 图例 -->
+  <g transform="translate(40,900)">
+    <rect width="1520" height="50" rx="10" fill="#fbf5e4" stroke="#8a6a3a" stroke-width="2"/>
+    <text x="20" y="32" font-size="19" font-weight="bold" fill="#3b2a1a">图例</text>
+    <circle cx="96" cy="25" r="12" fill="#2f6f66"/><text x="116" y="31" font-size="16" fill="#3b2a1a">白天能去</text>
+    <circle cx="226" cy="25" r="12" fill="#6a4a8a"/><text x="246" y="31" font-size="16" fill="#3b2a1a">傍晚以后才开</text>
+    <circle cx="388" cy="25" r="12" fill="#8d8370"/><text x="408" y="31" font-size="16" fill="#3b2a1a">要剧情线索才解锁</text>
+    <path d="M570,25 h28" stroke="#b8432f" stroke-width="4" stroke-dasharray="8 6"/><text x="608" y="31" font-size="16" fill="#3b2a1a">7 路公交（坐车去远处）</text>
+    <text x="840" y="31" font-size="16" fill="#8d7a60">地点下面的时间＝那个人常在那儿的时段；没写的全天都能去</text>
+  </g>
+  <text x="60" y="80" font-size="40" class="kai" fill="#3b2a1a">柳河街 · 地图布局草图</text>
+  <text x="62" y="112" font-size="17" fill="#8d7a60">给 Lovart 当构图参考：位置关系照这个，画风照游戏现有图。图上所有文字都不要画进成品。</text>
+</svg>
+</div>
+
+<!-- 图二：下午自由走动的界面示意 -->
+<div class="ui" id="ui">
+<svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="w2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#86b8a8"/><stop offset="1" stop-color="#4f8a80"/></linearGradient>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6d9a8"/><stop offset="1" stop-color="#efd2a0"/></linearGradient></defs>
+  <rect width="1280" height="720" fill="url(#sky)"/>
+  <!-- 简化地图 -->
+  <path d="M0,450 C200,420 340,480 520,460 C700,440 800,400 980,430 C1120,452 1200,425 1280,418 L1280,520 C1180,528 1100,552 980,535 C800,512 700,552 520,560 C340,570 200,520 0,552 Z" fill="url(#w2)"/>
+  <path d="M90,380 C340,368 620,380 1200,352" stroke="#e8d3a8" stroke-width="34" fill="none" stroke-linecap="round"/>
+  <path d="M450,372 L450,200 L720,185 L850,95 M240,376 L240,240 M1000,360 L1000,210" stroke="#ead9b4" stroke-width="18" fill="none" stroke-linecap="round"/>
+  <path d="M90,625 C400,610 720,635 1200,610" stroke="#ead9b4" stroke-width="22" fill="none"/>
+  <rect x="660" y="420" width="64" height="160" rx="8" fill="#c8b48c" stroke="#7a6040" stroke-width="3" transform="rotate(-8 692 500)"/>
+  <!-- 房子块 -->
+  <g fill="#c98a4e" stroke="#6e4224" stroke-width="2">
+    <rect x="380" y="300" width="90" height="56" rx="4"/><rect x="480" y="306" width="60" height="50" rx="4"/>
+    <rect x="160" y="300" width="70" height="56" rx="4"/><rect x="900" y="280" width="120" height="64" rx="4"/>
+    <rect x="640" y="140" width="80" height="54" rx="4"/><rect x="820" y="60" width="90" height="50" rx="4"/>
+    <rect x="1040" y="560" width="120" height="70" rx="4"/><rect x="200" y="650" width="90" height="50" rx="4"/><rect x="560" y="640" width="80" height="46" rx="4"/>
+  </g>
+  <g fill="#2f6f66" opacity=".9"><circle cx="560" cy="600" r="30"/><circle cx="600" cy="590" r="24"/><circle cx="120" cy="200" r="34"/><circle cx="1180" cy="150" r="30"/></g>
+  <!-- 老周的位置与走过的路 -->
+  <path d="M430,360 C450,420 560,440 640,470" stroke="#fff3d6" stroke-width="5" stroke-dasharray="2 10" stroke-linecap="round" fill="none"/>
+  <circle cx="640" cy="470" r="20" fill="#fff3d6" stroke="#b8432f" stroke-width="4"/><text x="640" y="478" font-size="18" text-anchor="middle" font-weight="bold" fill="#b8432f">周</text>
+  <!-- 地点图钉 -->
+  <g font-size="15" font-weight="bold">
+    <g transform="translate(425,290)"><circle r="22" fill="#2f6f66" stroke="#fff3d6" stroke-width="3"/><text y="7" text-anchor="middle" fill="#fff" font-size="20" class="kai">店</text><rect x="-34" y="26" width="68" height="22" rx="6" fill="#fff8e8"/><text y="42" text-anchor="middle" fill="#3b2a1a">小馆</text></g>
+    <g transform="translate(510,290)"><circle r="18" fill="#2f6f66" stroke="#fff3d6" stroke-width="3"/><text y="6" text-anchor="middle" fill="#fff" class="kai">衣</text></g>
+    <g transform="translate(595,560)"><circle r="22" fill="#b8432f" stroke="#fff3d6" stroke-width="3"/><text y="7" text-anchor="middle" fill="#fff" font-size="20" class="kai">桥</text><circle cx="20" cy="-20" r="12" fill="#e8b54a"/><text x="20" y="-15" text-anchor="middle" fill="#3b2a1a" font-size="15">!</text></g>
+    <g transform="translate(960,262)"><circle r="22" fill="#2f6f66" stroke="#fff3d6" stroke-width="3"/><text y="7" text-anchor="middle" fill="#fff" font-size="20" class="kai">市</text><rect x="12" y="-34" width="26" height="22" rx="6" fill="#fff8e8"/><text x="25" y="-18" text-anchor="middle" fill="#2f6f66">¥</text></g>
+    <g transform="translate(195,282)"><circle r="22" fill="#2f6f66" stroke="#fff3d6" stroke-width="3"/><text y="7" text-anchor="middle" fill="#fff" font-size="20" class="kai">站</text><rect x="12" y="-34" width="34" height="22" rx="6" fill="#fff8e8"/><text x="29" y="-18" text-anchor="middle" fill="#3b2a1a">…</text></g>
+    <g transform="translate(680,122)"><circle r="22" fill="#2f6f66" stroke="#fff3d6" stroke-width="3"/><text y="7" text-anchor="middle" fill="#fff" font-size="20" class="kai">楼</text></g>
+    <g transform="translate(865,48)"><circle r="22" fill="#2f6f66" stroke="#fff3d6" stroke-width="3"/><text y="7" text-anchor="middle" fill="#fff" font-size="20" class="kai">校</text></g>
+    <g transform="translate(1100,548)"><circle r="22" fill="#2f6f66" stroke="#fff3d6" stroke-width="3"/><text y="7" text-anchor="middle" fill="#fff" font-size="20" class="kai">医</text></g>
+    <g transform="translate(245,640)"><circle r="22" fill="#2f6f66" stroke="#fff3d6" stroke-width="3"/><text y="7" text-anchor="middle" fill="#fff" font-size="20" class="kai">才</text></g>
+    <g transform="translate(330,500)"><circle r="20" fill="#6a4a8a" stroke="#fff3d6" stroke-width="3" opacity=".7"/><text y="7" text-anchor="middle" fill="#fff" font-size="18" class="kai">夜</text></g>
+  </g>
+  <!-- 顶部：日历、钟、钱 -->
+  <rect x="14" y="12" width="168" height="54" rx="8" fill="#fbf5e4" stroke="#8a6a3a" stroke-width="2.5"/><rect x="17" y="15" width="58" height="48" rx="6" fill="#b8432f"/>
+  <text x="46" y="52" text-anchor="middle" font-size="30" font-weight="bold" fill="#fff8e8">17</text><text x="94" y="36" font-size="17" font-weight="bold" fill="#3b2a1a">晴 · 下午</text><text x="94" y="56" font-size="14" fill="#8d7a60">还剩 11 天</text>
+  <g transform="translate(640,36)"><rect x="-170" y="-22" width="340" height="44" rx="22" fill="rgba(28,22,16,.72)"/><text x="-150" y="8" font-size="22" font-weight="bold" fill="#fff8e8">14:20</text>
+  <rect x="-70" y="-6" width="220" height="12" rx="6" fill="rgba(255,240,210,.22)"/><rect x="-70" y="-6" width="80" height="12" rx="6" fill="#ffe28a"/></g><text x="640" y="80" font-size="14" text-anchor="middle" font-weight="bold" fill="#6e4224">天黑前还能走 4 小时 40 分</text>
+  <rect x="1060" y="10" width="206" height="56" rx="10" fill="#c98a4e" stroke="#6e4224" stroke-width="3"/><text x="1160" y="47" text-anchor="middle" font-size="24" font-weight="bold" fill="#fff8e8">¥ 1124.5</text>
+  <!-- 右侧：选中的地点卡 -->
+  <g transform="translate(860,300)">
+    <rect width="400" height="250" rx="12" fill="#fbf5e4" stroke="#7d5a35" stroke-width="3"/><circle cx="200" cy="14" r="6" fill="#b8432f"/>
+    <text x="26" y="52" font-size="28" font-weight="bold" class="kai" fill="#3b2a1a">桥头小公园</text><text x="374" y="50" font-size="15" text-anchor="end" fill="#8d7a60">走过去 15 分钟</text>
+    <text x="26" y="88" font-size="16" fill="#3b2a1a">现在在这儿：</text>
+    <rect x="26" y="98" width="54" height="54" rx="8" fill="#ecdcb8"/><text x="53" y="132" text-anchor="middle" font-size="13" fill="#8d7a60">赵爷爷</text>
+    <rect x="88" y="98" width="54" height="54" rx="8" fill="#ecdcb8"/><text x="115" y="132" text-anchor="middle" font-size="13" fill="#8d7a60">豆豆</text>
+    <rect x="160" y="98" width="214" height="54" rx="8" fill="#fff3c8" stroke="#e8b54a" stroke-width="2"/><text x="172" y="122" font-size="16" font-weight="bold" fill="#b8432f">! 走丢</text><text x="172" y="143" font-size="13" fill="#6e4224">豆豆一个人坐在台阶上……</text>
+    <text x="26" y="184" font-size="15" fill="#8d7a60">也能做：下棋看热闹（好感）· 打听明天天气</text>
+    <rect x="26" y="198" width="160" height="40" rx="10" fill="#fff8e8" stroke="#b48c5a" stroke-width="2"/><text x="106" y="224" text-anchor="middle" font-size="17" font-weight="bold" fill="#3b2a1a">看看别处</text>
+    <rect x="200" y="198" width="174" height="40" rx="10" fill="#2f6f66"/><text x="287" y="224" text-anchor="middle" font-size="18" font-weight="bold" fill="#fff8e8">走过去</text>
+  </g>
+  <!-- 左下：小本子里的线索 -->
+  <g transform="translate(14,590)">
+    <rect width="520" height="116" rx="10" fill="rgba(251,245,228,.95)" stroke="#7d5a35" stroke-width="2.5"/>
+    <text x="18" y="30" font-size="17" font-weight="bold" fill="#2f6f66">小本子 · 今天可能遇到</text>
+    <text x="18" y="58" font-size="15" fill="#3b2a1a">· 龚师傅 13–15 点在总站交班（还有话没说完）</text>
+    <text x="18" y="82" font-size="15" fill="#3b2a1a">· 老胡说批发市场明天有"便宜两成"的油</text>
+    <text x="18" y="106" font-size="15" fill="#8d7a60">· 小郑好几天没来了（？）</text>
+  </g>
+  <rect x="1090" y="650" width="174" height="52" rx="10" fill="#6e4224"/><text x="1177" y="683" text-anchor="middle" font-size="18" font-weight="bold" fill="#fff8e8">回店算账</text>
+  <text x="640" y="712" font-size="12" text-anchor="middle" fill="#6e4224" opacity=".7">界面示意（非成品美术）：底图将换成 Lovart 画的柳河街地图</text>
+</svg>
+</div>
+
+<script>
+  // 图一的地点
+  const P = [
+    [1, '小馆（自家店）', 430, 425, 'd', '全天'],
+    [2, '小满改衣', 610, 425, 'd', '9–19'],
+    [3, '7 路总站', 140, 360, 'd', '13–15 龚师傅'],
+    [4, '老小区（六楼吴奶奶 / 赵家）', 560, 250, 'd', ''],
+    [5, '学校与图书馆', 1060, 110, 'd', '14–18 小郑'],
+    [6, '菜市场', 1250, 300, 'd', '13–15 老秦'],
+    [7, '批发市场（老胡档口）', 1420, 400, 'd', '13–17 老胡'],
+    [8, '桥头小公园（黄桷树）', 980, 760, 'd', '15–17 赵爷爷'],
+    [9, '医院后门', 1360, 800, 'd', '15–16 小宋'],
+    [10, '人才市场', 300, 800, 'd', '14–17 老葛'],
+    [11, '河边码头旧址 · 夜市', 640, 745, 'n', '18 点后'],
+    [12, '何姨女儿家（城北）', 1060, 205, 'l', '坐 7 路，要线索']
+  ];
+  const g = document.getElementById('places'), NS = 'http://www.w3.org/2000/svg';
+  const col = { d: '#2f6f66', n: '#6a4a8a', l: '#8d8370' };
+  P.forEach(([n, name, x, y, k, hrs]) => {
+    const c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', 22); c.setAttribute('fill', col[k]); c.setAttribute('stroke', '#fff3d6'); c.setAttribute('stroke-width', 4); g.appendChild(c);
+    const t = document.createElementNS(NS, 'text'); t.setAttribute('x', x); t.setAttribute('y', y + 7); t.setAttribute('text-anchor', 'middle'); t.setAttribute('fill', '#fff'); t.setAttribute('font-weight', 'bold'); t.textContent = n; g.appendChild(t);
+    const w = name.length * 19 + 22, bx = x - w / 2, by = y + 28;
+    const r = document.createElementNS(NS, 'rect'); r.setAttribute('x', bx); r.setAttribute('y', by); r.setAttribute('width', w); r.setAttribute('height', hrs ? 50 : 30); r.setAttribute('rx', 7); r.setAttribute('fill', '#fbf5e4'); r.setAttribute('stroke', '#7d5a35'); r.setAttribute('stroke-width', 2); g.appendChild(r);
+    const t2 = document.createElementNS(NS, 'text'); t2.setAttribute('x', x); t2.setAttribute('y', by + 21); t2.setAttribute('text-anchor', 'middle'); t2.setAttribute('font-size', 18); t2.setAttribute('font-weight', 'bold'); t2.setAttribute('fill', '#3b2a1a'); t2.textContent = name; g.appendChild(t2);
+    if (hrs) { const t3 = document.createElementNS(NS, 'text'); t3.setAttribute('x', x); t3.setAttribute('y', by + 42); t3.setAttribute('text-anchor', 'middle'); t3.setAttribute('font-size', 14); t3.setAttribute('fill', '#8d7a60'); t3.textContent = hrs; g.appendChild(t3); }
+  });
+</script>
+</body></html>

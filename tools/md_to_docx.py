@@ -40,8 +40,39 @@ def add_runs(p, text, italic_all=False, color=None):
         if color and not r.font.color.rgb: r.font.color.rgb = RGBColor.from_string(color)
         r.font.name = FONT; r._element.get_or_add_rPr().get_or_add_rFonts().set(qn('w:eastAsia'), FONT)
 
-for raw in open(src, encoding='utf-8').read().split('\n'):
+import os
+from docx.shared import Inches
+base = os.path.dirname(os.path.abspath(src))
+lines = open(src, encoding='utf-8').read().split('\n')
+i = 0; incode = False; table = None
+def flush_table():
+    global table
+    if not table: return
+    rows = [r for r in table if not re.match(r'^\|\s*-', r)]
+    cells = [[c.strip() for c in r.strip().strip('|').split('|')] for r in rows]
+    t = doc.add_table(rows=len(cells), cols=max(len(c) for c in cells)); t.style = 'Table Grid'
+    for ri, row in enumerate(cells):
+        for ci, val in enumerate(row):
+            cell = t.cell(ri, ci); cell.text = ''
+            add_runs(cell.paragraphs[0], ('**' + val + '**') if ri == 0 and val else val)
+            for r in cell.paragraphs[0].runs: r.font.size = Pt(9)
+    doc.add_paragraph()
+    table = None
+for raw in lines:
     line = raw.rstrip()
+    if line.startswith('```'):
+        incode = not incode; continue
+    if incode:
+        p = doc.add_paragraph(); r = p.add_run(line if line else ' '); r.font.size = Pt(9.5); r.font.name = FONT; r._element.get_or_add_rPr().get_or_add_rFonts().set(qn('w:eastAsia'), FONT)
+        p.paragraph_format.left_indent = Cm(0.5); p.paragraph_format.space_after = Pt(0)
+        sh = p._p.get_or_add_pPr(); from docx.oxml import OxmlElement; shd = OxmlElement('w:shd'); shd.set(qn('w:val'), 'clear'); shd.set(qn('w:fill'), 'F3EBD8'); sh.append(shd)
+        continue
+    if line.startswith('|'):
+        table = (table or []) + [line]; continue
+    flush_table()
+    im = re.match(r'^!\[[^\]]*\]\(([^)]+)\)$', line.strip())
+    if im:
+        doc.add_picture(os.path.join(base, im.group(1)), width=Inches(6.3)); continue
     if not line.strip(): continue
     depth = 0
     while line.startswith('> '): depth += 1; line = line[2:]
@@ -57,5 +88,6 @@ for raw in open(src, encoding='utf-8').read().split('\n'):
         p = doc.add_paragraph(); add_runs(p, line)
     if depth:
         p.paragraph_format.left_indent = Cm(0.7 * depth)
+flush_table()
 doc.save(dst)
 print(dst)

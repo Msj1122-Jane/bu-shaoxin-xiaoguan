@@ -282,14 +282,72 @@ BSX.define('content/town', function () {
     ] }
   };
   var scenes = {};
-  Object.keys(visits).forEach(function (id) { visits[id].scenes.forEach(function (sc, i) { sc.when = 'town'; sc.who = id; sc.tier = i; sc.place = visits[id].bg; scenes[sc.id] = sc; }); });
 
+  // ───────── 自由地图（V4）：12 处地点，坐标是 1280×720 地图画面上的位置
+  // open/close：几点开门（24 小时制）；lock：要什么旗标才解锁；bus：坐 7 路去，固定花的分钟数
   var places = [
-    { id: 'market', name: '批发市场', mark: '市', x: 1168, y: 372, from: 4, desc: '三份货，只来得及细看两样。看准了，明天进货能省一截；看走眼，烧心。' },
-    { id: 'depot', name: '7 路总站', mark: '站', x: 236, y: 172, from: 5, desc: '有人要明早的包餐。接下来，开门前就有一笔进账，但得多备、按时交。' },
-    { id: 'visit', name: '街坊家', mark: '串', x: 1046, y: 206, from: 3, desc: '去熟客那里坐坐。看看他们不在店里的时候，是什么样子。' },
-    { id: 'bridge', name: '桥头', mark: '桥', x: 300, y: 520, from: 3, desc: '跟桥头的老头们摆龙门阵。能听到明天的天气。' },
-    { id: 'home', name: '回店练手', mark: '店', x: 600, y: 238, from: 3, desc: '关起门来练火候。最常用的那口灶，熟练度涨一截。' }
+    { id: 'shop', name: '小馆', full: '不烧心小馆（自家店）', mark: '店', x: 425, y: 318, desc: '自家的十平米。下午拉下一半卷帘门，没人来的时候能练练手。' },
+    { id: 'tailor', name: '小满改衣', full: '小满改衣（隔壁）', mark: '衣', x: 520, y: 318, open: 9, close: 19, desc: '隔壁的裁缝铺。缝纫机一下午不停，后窗开着一条缝。' },
+    { id: 'depot', name: '7 路总站', full: '7 路总站', mark: '站', x: 175, y: 300, desc: '西头的公交总站。司机们在调度室门口抽烟交班，有时有人问包餐。' },
+    { id: 'lane', name: '老小区', full: '老小区（六楼吴奶奶家）', mark: '楼', x: 660, y: 165, desc: '九十年代的六层楼，没电梯。阿力每天往六楼送一碗粥。' },
+    { id: 'school', name: '学校图书馆', full: '学校与图书馆', mark: '校', x: 930, y: 118, desc: '小学和老图书馆挨着。小郑下午在图书馆，豆豆四点半放学。' },
+    { id: 'veg', name: '菜市场', full: '菜市场', mark: '菜', x: 1015, y: 268, close: 17, desc: '露天的菜市场。老秦的三轮车停在角上，下午收摊前菜最便宜。' },
+    { id: 'whole', name: '批发市场', full: '批发市场（老胡档口）', mark: '批', x: 1170, y: 352, close: 18, desc: '东头的批发市场，老胡的档口最大。货要验，价要谈。' },
+    { id: 'park', name: '桥头公园', full: '桥头小公园（黄桷树）', mark: '桥', x: 565, y: 612, desc: '过了石桥就是小公园。黄桷树底下天天有人下棋。' },
+    { id: 'hospital', name: '医院后门', full: '医院后门', mark: '医', x: 805, y: 640, desc: '医院后门的花坛边。下了夜班的护士在这儿坐一会儿再回家。' },
+    { id: 'talent', name: '人才市场', full: '人才市场门口', mark: '才', x: 205, y: 640, close: 18, desc: '旧写字楼前的空地，公告栏贴满了招聘启事。' },
+    { id: 'wharf', name: '码头夜市', full: '河边码头旧址 · 夜市', mark: '夜', x: 355, y: 520, open: 18, desc: '废弃的码头石阶。天黑以后河边摆起小吃摊，灯泡一串一串亮起来。' },
+    { id: 'heyi', name: '何姨家', full: '何姨女儿家（城北）', mark: '北', x: 1180, y: 150, lock: 'heyi_lead', bus: 90, desc: '城北的老院子。坐 7 路过去要一个半钟头。' }
   ];
-  return { goods: goods, sellers: sellers, tools: tools, orders: orders, forecast: forecast, riverLines: riverLines, visits: visits, scenes: scenes, places: places };
+  // 常客下午在哪：from/to 为钟点；rain 为下雨天的去处（省略则同晴天）；until 为最后一天
+  var schedule = {
+    zhao: [{ at: 'park', from: 15, to: 17.5, rainAt: 'lane' }],
+    song: [{ at: 'hospital', from: 15, to: 17, since: 2 }],
+    ge: [{ at: 'talent', from: 14, to: 17, until: 25 }],
+    ali: [{ at: 'lane', from: 13, to: 15.5 }],
+    gong: [{ at: 'depot', from: 13, to: 15, until: 27 }],
+    man: [{ at: 'tailor', from: 13, to: 19 }],
+    zheng: [{ at: 'school', from: 14, to: 18 }],
+    qin: [{ at: 'veg', from: 13, to: 15 }]
+  };
+  // 串门戏放在哪：常客 id → 地点 id。第二回过了 until 还没看，第二天早上会有人提一句（miss）
+  var sceneAt = { zhao: 'park', song: 'hospital', ge: 'talent', ali: 'lane', gong: 'depot', man: 'tailor', zheng: 'school', qin: 'veg' };
+  var miss = {
+    v_zhao_2: { until: 21, who: '龚师傅', line: '老赵前天在菜市场转了一下午，豆豆满街喊爷爷。' },
+    v_song_2: { until: 22, who: '护士', line: '宋护士在花坛边坐了很久，手里一直捏着一张纸。' },
+    v_ge_2: { until: 22, who: '老葛', line: '劳驾，昨天那张表……算了，我自己填好了。' },
+    v_ali_2: { until: 20, who: '阿力', line: '周叔，昨天六楼那碗是我手磕着送上去的。没事。' },
+    v_gong_2: { until: 24, who: '龚师傅', line: '总站门口贴了张新通知，你怕是还不晓得。' },
+    v_man_2: { until: 22, who: '小满', line: '后窗的纱我换了。黄的，你那边的油烟。' },
+    v_zheng_2: { until: 24, who: '小郑', line: '周叔，我论文题目定了。改天给您看。' },
+    v_qin_2: { until: 24, who: '老秦', line: '秤杆上那张照片，你没看见也好。' }
+  };
+  // 和熟人聊几句（每人每天一次，好感一点点）
+  var talk = {
+    zhao: ['这步马跳哪里？……你也不会？那你站到起。', '豆豆四点半放学，我等哈去接。', '你这店叫啥子来着？哦，还没取。'],
+    song: ['刚睡醒。别跟我说话，五分钟。', '花坛边上晒太阳，比值班室的床舒服。', '今天的油，我早上闻了。还行。'],
+    ge: ['巧了，我在这儿……等个客户。', '公告栏上的字，我都背得出来了。', '按理说，这个年纪不该来这种地方。'],
+    ali: ['充电二十分钟，我睡十五。', '六楼，没电梯。我腿已经不是我的了。', '周叔你下午也出来逛？稀奇。'],
+    gong: ['交班了交班了！下午这趟我不跑。', '我在这条线上跑了三十一年，闭着眼都能开。', '你店门口那块，以前是码头，晓得不？'],
+    man: ['坐嘛。莫碰那个，针还没拔。', '你这围裙，肩宽差了四公分。', '糖糖在里屋写作业，小声点。'],
+    zheng: ['周叔！我能问个冒昧的问题吗？', '我算了一下午，还是那个数：一毛九。', '图书馆空调开得太猛，我出来透口气。'],
+    qin: ['收了。剩这些，蔫的自己吃。', '今天葱好。明早多给你一把。', '老胡的车又堵在路口。']
+  };
+  // 每个地点的日常小事（随便走走时遇到），没有大剧情的时候让这条街也有人气
+  var idle = {
+    shop: ['我把卷帘门拉下一半，一个人对着粥锅练搅。手腕酸了。', '我把何姨的粥谱又抄了一页，字比她的丑。'],
+    tailor: ['缝纫机哒哒哒，跟我油锅的声音一个节奏。', '小满在给人改裤脚，嘴里叼着三根针，还能骂人。'],
+    depot: ['两个司机在调度室门口下象棋，输的请对方一根烟。', '一辆空车慢慢开出站，车窗上贴着"7 路"两个字。'],
+    lane: ['楼道里一辆旧自行车，车筐里种着一盆葱。', '三楼有人在炒回锅肉，香得我站住了。'],
+    school: ['放学铃一响，一群娃儿从校门口冲出来。', '图书馆门口的梧桐树底下，有人在背单词。'],
+    veg: ['卖鱼的在吆喝"最后几条，便宜卖"。', '一个老太太为了一毛钱跟摊主说了五分钟。'],
+    whole: ['货车倒车的声音"倒车请注意"响了一下午。', '地上全是水，冻品箱子在往外冒白气。'],
+    park: ['黄桷树底下，两个老头为一步棋吵起来了。', '桥洞底下有人拉二胡，调子慢悠悠的。'],
+    hospital: ['花坛边上，一个病人家属在吃盒饭。', '救护车开进去，没响笛。'],
+    talent: ['公告栏前站着几个中年人，谁也不跟谁说话。', '一个年轻人把简历折成纸飞机，又展开抚平。'],
+    wharf: ['河边的小吃摊一串灯泡亮起来，烤红薯的味道飘过来。', '码头的石阶伸进水里，有人在最下面一级洗拖把。'],
+    heyi: ['院子里晒着小孩的衣服。']
+  };
+  Object.keys(visits).forEach(function (id) { visits[id].scenes.forEach(function (sc, i) { sc.when = 'town'; sc.who = id; sc.tier = i; sc.place = visits[id].bg; sc.at = sceneAt[id]; scenes[sc.id] = sc; }); });
+  return { goods: goods, sellers: sellers, tools: tools, orders: orders, forecast: forecast, riverLines: riverLines, visits: visits, scenes: scenes, places: places, schedule: schedule, sceneAt: sceneAt, miss: miss, talk: talk, idle: idle };
 });

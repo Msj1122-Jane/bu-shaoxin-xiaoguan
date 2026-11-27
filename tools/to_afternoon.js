@@ -1,0 +1,2 @@
+// 开发用：在页面里跳到第 day 天的下午（drive.cjs 里拼进 js 用）
+(function(day){ var app=__bsx.app, Run=BSX.require('core/run'), Sim=BSX.require('core/sim'); app.state=Run.create({seed:7}); var s=app.state; var pol=Sim.policies.honest; Sim.month(s,pol,day); var t=s.today; if(t.open){Sim.scene(s,t.open,pol.choose);t.openDone=true;} Sim.prep(s,pol); Run.openShop(s); var res=Sim.service(s,Run.buildService(s),pol.skill); Run.finishService(s,res); (t.closeList||[]).forEach(function(id){Sim.scene(s,id,pol.choose);}); Run.toTown(s); app.save(); app.route(false); return s.phase; })

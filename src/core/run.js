@@ -51,7 +51,9 @@ BSX.define('core/run', function (require) {
     var oil = 0;
     if (usesOil(s) && s.day > 1) oil = p.oil === 'new' ? C.oil.fresh : p.oil === 'filter' ? C.oil.filter : p.oil === 'bulk' ? C.oil.bulk : 0;
     var pan = s.pantry && s.pantry.day === s.day ? Math.min(s.pantry.credit, goods) : 0;
-    return { lines: lines, goods: goods, oil: oil, pantry: pan, total: goods + oil - pan };
+    // 包餐单独备一批料：不占菜单，也不动晨备的份数
+    var po = s.preorder && s.preorder.day === s.day ? s.preorder : null, pre = po ? po.n * unitCost(s, po.dish) : 0;
+    return { lines: lines, goods: goods, oil: oil, pantry: pan, pre: pre, preLine: po ? { who: po.who, dish: po.dish, n: po.n } : null, total: goods + oil - pan + pre };
   }
   // 晨备修改（界面调用）。返回 false 表示不允许。
   function setMenu(s, id, on) {
@@ -146,12 +148,11 @@ BSX.define('core/run', function (require) {
     if (day === 2) { s.plan.stock = { congee: 12, youtiao: 14, soy: 12 }; }
     var pre = s.preorder;
     if (pre && pre.day === day) {
-      if (s.plan.menu.indexOf(pre.dish) < 0 && available(s, pre.dish)) setMenu(s, pre.dish, true);
-      var on = s.plan.menu.indexOf(pre.dish) >= 0;
-      if (on) s.plan.stock[pre.dish] = (s.plan.stock[pre.dish] || suggest(s, pre.dish)) + pre.n;
-      s.today.notes.unshift({ text: '开门前要交' + pre.who + ' ' + pre.n + ' 份' + D.byId[pre.dish].name + (on ? '，已经多备了 ' + pre.n + ' 份。' : '。菜单上写不下，先腾一口灶。'), kind: 'order' });
+      s.today.notes.unshift({ text: '开门前要交' + pre.who + ' ' + pre.n + ' 份' + D.byId[pre.dish].name + '。料单独备，进货小票上有一行。', kind: 'order' });
     }
     if (s.pantry && s.pantry.day === day) s.pantry.notes.forEach(function (n) { s.today.notes.push({ text: n, kind: 'pantry' }); });
+    // 下午错过的串门戏：有人提一句
+    if (BSX.has('core/town')) require('core/town').missed(s).forEach(function (n) { s.today.notes.push(n); });
     s.phase = 'prep';
   }
 
@@ -169,8 +170,7 @@ BSX.define('core/run', function (require) {
     if (s.pantry && s.pantry.day === s.day) { s.today.pantryQ = s.pantry.q; s.burn = clamp(s.burn + s.pantry.burn, 0, 100); s.pantry = null; }
     var pre = s.preorder;
     if (pre && pre.day === s.day) {
-      var have = p.menu.indexOf(pre.dish) >= 0 ? (p.stock[pre.dish] || 0) : 0, got = Math.min(pre.n, have), rev = got * pre.unit;
-      if (got) p.stock[pre.dish] = have - got;
+      var got = pre.n, rev = got * pre.unit;
       s.cash += rev; s.today.pre = { who: pre.who, dish: pre.dish, n: pre.n, got: got, rev: rev };
       if (got < pre.n) { s.rep = clamp(s.rep - 2, 0, 100); if (pre.from && s.reg[pre.from]) s.reg[pre.from].aff = clamp(s.reg[pre.from].aff - 0.5, 0, 10); }
       else if (pre.from && s.reg[pre.from]) s.reg[pre.from].aff = clamp(s.reg[pre.from].aff + 0.2, 0, 10);
@@ -347,7 +347,7 @@ BSX.define('core/run', function (require) {
   function sceneDone(s, id, lines) { s.seen[id] = s.day; var sc = St.scenes[id]; if (lines && lines.length) addLog(s, sc ? sc.title : id, lines); }
   function toNight(s) { s.phase = 'night'; }
   // 收摊后：第 3–27 天可以出门半天（core/town）
-  function toTown(s) { s.phase = s.day >= 3 && s.day < s.days && !s.early && !s.today.closed && !s.today.town ? 'town' : 'night'; }
+  function toTown(s) { s.phase = s.day >= 3 && s.day < s.days && !s.early && !s.today.closed && !(s.today.town && s.today.town.over) ? 'town' : 'night'; }
 
   // ───────── 添置
   function canBuy(s, id) { var u = Cast.upgrades.filter(function (x) { return x.id === id; })[0]; return !!u && !s.upg[id] && s.day >= u.day && s.cash >= u.cost; }
