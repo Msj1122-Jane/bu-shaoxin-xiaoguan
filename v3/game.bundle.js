@@ -138,19 +138,21 @@ BSX.define('content/cast', function () {
   };
   var regIds = ['zhao', 'song', 'ge', 'ali', 'gong', 'man', 'zheng', 'qin'];
   var npcs = {
-    landlord: { name: '汪姐', body: '#8a5a6e', pants: '#3b3440', hair: 'bob', hairCol: '#4a3028', acc: 'keys', skin: 0 },
-    hu: { name: '老胡', body: '#3f6a8a', pants: '#2d3440', hair: 'cap', hairCol: '#27323c', acc: 'vest', skin: 1 },
+    landlord: { name: '汪姐', sprite: 'spr_landlord', body: '#8a5a6e', pants: '#3b3440', hair: 'bob', hairCol: '#4a3028', acc: 'keys', skin: 0 },
+    hu: { name: '老胡', sprite: 'spr_hu', body: '#3f6a8a', pants: '#2d3440', hair: 'cap', hairCol: '#27323c', acc: 'vest', skin: 1 },
     powder: { name: '推销员', body: '#c9b037', pants: '#3a3a44', hair: 'short', hairCol: '#1f1712', acc: 'tie', skin: 0 },
-    inspector: { name: '小陈', body: '#2f4f7a', pants: '#26303d', hair: 'short', hairCol: '#1f1712', acc: 'clip', skin: 0 },
+    inspector: { name: '小陈', sprite: 'spr_inspector', body: '#2f4f7a', pants: '#26303d', hair: 'short', hairCol: '#1f1712', acc: 'clip', skin: 0 },
     vlogger: { name: '探店博主', body: '#e07a5f', pants: '#3b3b58', hair: 'pony', hairCol: '#5a3020', acc: 'phone', skin: 0 },
     recycler: { name: '收油的', body: '#5c6b3c', pants: '#3e3a2c', hair: 'cap', hairCol: '#3a3a2a', acc: null, skin: 2 },
     guifen: { name: '桂芬', body: '#8a6aa0', pants: '#3e3348', hair: 'bun', hairCol: '#2a1a14', acc: 'apron', skin: 1 },
-    heyi: { name: '何姨', body: '#a05a4a', pants: '#4a3a34', hair: 'gray', hairCol: '#c8c2b8', acc: 'apron', skin: 1 },
-    peer: { name: '早餐车老板', body: '#a8423a', pants: '#3a2f2a', hair: 'short', hairCol: '#1a1410', acc: 'apron', skin: 2 },
-    doudou: { name: '豆豆', body: '#f0ede4', pants: '#2f4a7a', hair: 'short', hairCol: '#3a2418', acc: 'scarf', skin: 0, kid: true },
-    tangtang: { name: '糖糖', body: '#f2c6cf', pants: '#6a4a7a', hair: 'pony', hairCol: '#3a2418', acc: null, skin: 0, kid: true },
+    heyi: { name: '何姨', sprite: 'spr_heyi', body: '#a05a4a', pants: '#4a3a34', hair: 'gray', hairCol: '#c8c2b8', acc: 'apron', skin: 1 },
+    peer: { name: '早餐车老板', sprite: 'spr_peer', body: '#a8423a', pants: '#3a2f2a', hair: 'short', hairCol: '#1a1410', acc: 'apron', skin: 2 },
+    doudou: { name: '豆豆', sprite: 'spr_doudou', body: '#f0ede4', pants: '#2f4a7a', hair: 'short', hairCol: '#3a2418', acc: 'scarf', skin: 0, kid: true },
+    tangtang: { name: '糖糖', sprite: 'spr_tangtang', body: '#f2c6cf', pants: '#6a4a7a', hair: 'pony', hairCol: '#3a2418', acc: null, skin: 0, kid: true },
     aunty: { name: '刘姐', body: '#c86a8a', pants: '#3a3440', hair: 'bob', hairCol: '#3a2018', acc: 'phone', skin: 0 },
     tv: { name: '记者', body: '#4a5a6a', pants: '#2a2a30', hair: 'bob', hairCol: '#2a1a14', acc: 'cam', skin: 0 },
+    wu: { name: '吴奶奶', sprite: 'spr_wu', body: '#8a6a7a', pants: '#4a3a34', hair: 'gray', hairCol: '#d8d2c8', acc: 'cane', skin: 1, h: 0.86 },
+    wang: { name: '王阿姨', sprite: 'spr_wang', body: '#a05a5a', pants: '#3a3030', hair: 'bun', hairCol: '#a8a29a', acc: null, skin: 1 },
     neighbor: { name: '街坊', body: '#6e8a6a', pants: '#3a3a3a', hair: 'gray', hairCol: '#b8b0a4', acc: null, skin: 1 },
     kid: { name: '学生娃', body: '#f0ede4', pants: '#2f4a7a', hair: 'short', hairCol: '#2a1810', acc: 'pack', skin: 0, kid: true }
   };
@@ -3063,7 +3065,7 @@ BSX.define('content/town', function () {
     '桥洞底下有人在拉二胡。拉的什么我听不出，挺好听。'
   ];
   var visits = {
-    zhao: { place: '桥头小公园', bg: 'bg_street', scenes: [
+    zhao: { place: '桥头小公园', bg: 'bg_park', scenes: [
       { id: 'v_zhao_1', title: '树底下的棋', need: { aff: { zhao: 2 } }, beats: [
         ['n', '下午三点，桥头那棵黄桷树底下，一盘象棋围了五六个人。'],
         { enter: 'zhao', slot: 1 },
@@ -3095,7 +3097,7 @@ BSX.define('content/town', function () {
         { exit: 'zhao' }
       ] }
     ] },
-    song: { place: '医院后门', bg: 'bg_ext_dusk', scenes: [
+    song: { place: '医院后门', bg: 'bg_hospital', scenes: [
       { id: 'v_song_1', title: '食堂的粥', need: { aff: { song: 2 } }, beats: [
         ['n', '医院后门的台阶上，小宋穿着便服，端着一个饭盒。'],
         { enter: 'song', slot: 1 },
@@ -3123,7 +3125,7 @@ BSX.define('content/town', function () {
         { exit: 'song' }
       ] }
     ] },
-    ge: { place: '人才市场门口', bg: 'bg_street', scenes: [
+    ge: { place: '人才市场门口', bg: 'bg_talent', scenes: [
       { id: 'v_ge_1', title: '等客户', need: { aff: { ge: 2 } }, beats: [
         ['n', '人才市场门口的长椅上，坐着一件我认得的旧西装。'],
         { enter: 'ge', slot: 2 },
@@ -3151,7 +3153,7 @@ BSX.define('content/town', function () {
         { exit: 'ge' }
       ] }
     ] },
-    ali: { place: '电动车充电桩', bg: 'bg_street', scenes: [
+    ali: { place: '电动车充电桩', bg: 'bg_lane', scenes: [
       { id: 'v_ali_1', title: '充电二十分钟', need: { aff: { ali: 2 } }, beats: [
         { enter: 'ali', slot: 1 },
         ['ali', '周叔！你也来充电？哦你没车。那你来干啥？'],
@@ -3178,7 +3180,7 @@ BSX.define('content/town', function () {
         { exit: 'ali' }
       ] }
     ] },
-    gong: { place: '7 路总站', bg: 'bg_ext_dusk', scenes: [
+    gong: { place: '7 路总站', bg: 'bg_depot', scenes: [
       { id: 'v_gong_1', title: '交班', need: { aff: { gong: 2 } }, beats: [
         ['n', '7 路总站，龚师傅坐在调度室门口，刷他那个搪瓷缸。'],
         { enter: 'gong', slot: 1 },
@@ -3206,7 +3208,7 @@ BSX.define('content/town', function () {
         { exit: 'gong' }
       ] }
     ] },
-    man: { place: '小满改衣', bg: 'bg_ext_dusk', scenes: [
+    man: { place: '小满改衣', bg: 'bg_tailor', scenes: [
       { id: 'v_man_1', title: '一颗扣子', need: { aff: { man: 2 } }, beats: [
         ['n', '隔壁小满改衣，缝纫机哒哒响。我围裙上的扣子掉了一颗。'],
         { enter: 'man', slot: 1 },
@@ -3232,7 +3234,7 @@ BSX.define('content/town', function () {
         { exit: 'man' }
       ] }
     ] },
-    zheng: { place: '学校图书馆', bg: 'bg_street', scenes: [
+    zheng: { place: '学校图书馆', bg: 'bg_school', scenes: [
       { id: 'v_zheng_1', title: '一毛九', need: { aff: { zheng: 2 } }, beats: [
         { enter: 'zheng', slot: 2 },
         ['zheng', '周叔！你怎么在学校？是来……送外卖？'],
@@ -3258,7 +3260,7 @@ BSX.define('content/town', function () {
         { exit: 'zheng' }
       ] }
     ] },
-    qin: { place: '菜市场', bg: 'bg_street', scenes: [
+    qin: { place: '菜市场', bg: 'bg_veg', scenes: [
       { id: 'v_qin_1', title: '收摊的菜', need: { aff: { qin: 2 } }, beats: [
         ['n', '下午的菜市场，老秦在拣他卖剩的菜，好的一堆，蔫的一堆。'],
         { enter: 'qin', slot: 1 },
@@ -3288,18 +3290,18 @@ BSX.define('content/town', function () {
   };
   var scenes = {};
   var places = [
-    { id: 'shop', name: '小馆', full: '不烧心小馆（自家店）', mark: '店', x: 425, y: 318, desc: '自家的十平米。下午拉下一半卷帘门，没人来的时候能练练手。' },
-    { id: 'tailor', name: '小满改衣', full: '小满改衣（隔壁）', mark: '衣', x: 520, y: 318, open: 9, close: 19, desc: '隔壁的裁缝铺。缝纫机一下午不停，后窗开着一条缝。' },
-    { id: 'depot', name: '7 路总站', full: '7 路总站', mark: '站', x: 175, y: 300, desc: '西头的公交总站。司机们在调度室门口抽烟交班，有时有人问包餐。' },
-    { id: 'lane', name: '老小区', full: '老小区（六楼吴奶奶家）', mark: '楼', x: 660, y: 165, desc: '九十年代的六层楼，没电梯。阿力每天往六楼送一碗粥。' },
-    { id: 'school', name: '学校图书馆', full: '学校与图书馆', mark: '校', x: 930, y: 118, desc: '小学和老图书馆挨着。小郑下午在图书馆，豆豆四点半放学。' },
-    { id: 'veg', name: '菜市场', full: '菜市场', mark: '菜', x: 1015, y: 268, close: 17, desc: '露天的菜市场。老秦的三轮车停在角上，下午收摊前菜最便宜。' },
-    { id: 'whole', name: '批发市场', full: '批发市场（老胡档口）', mark: '批', x: 1170, y: 352, close: 18, desc: '东头的批发市场，老胡的档口最大。货要验，价要谈。' },
-    { id: 'park', name: '桥头公园', full: '桥头小公园（黄桷树）', mark: '桥', x: 565, y: 612, desc: '过了石桥就是小公园。黄桷树底下天天有人下棋。' },
-    { id: 'hospital', name: '医院后门', full: '医院后门', mark: '医', x: 805, y: 640, desc: '医院后门的花坛边。下了夜班的护士在这儿坐一会儿再回家。' },
-    { id: 'talent', name: '人才市场', full: '人才市场门口', mark: '才', x: 205, y: 640, close: 18, desc: '旧写字楼前的空地，公告栏贴满了招聘启事。' },
-    { id: 'wharf', name: '码头夜市', full: '河边码头旧址 · 夜市', mark: '夜', x: 355, y: 520, open: 18, desc: '废弃的码头石阶。天黑以后河边摆起小吃摊，灯泡一串一串亮起来。' },
-    { id: 'heyi', name: '何姨家', full: '何姨女儿家（城北）', mark: '北', x: 1180, y: 150, lock: 'heyi_lead', bus: 90, desc: '城北的老院子。坐 7 路过去要一个半钟头。' }
+    { id: 'shop', name: '小馆', full: '不烧心小馆（自家店）', mark: '店', x: 565, y: 300, desc: '自家的十平米。下午拉下一半卷帘门，没人来的时候能练练手。' },
+    { id: 'tailor', name: '小满改衣', full: '小满改衣（隔壁）', mark: '衣', x: 728, y: 300, open: 9, close: 19, desc: '隔壁的裁缝铺。缝纫机一下午不停，后窗开着一条缝。' },
+    { id: 'depot', name: '7 路总站', full: '7 路总站', mark: '站', x: 168, y: 178, desc: '西头的公交总站。司机们在调度室门口抽烟交班，有时有人问包餐。' },
+    { id: 'lane', name: '老小区', full: '老小区（六楼吴奶奶家）', mark: '楼', x: 345, y: 92, desc: '九十年代的六层楼，没电梯。阿力每天往六楼送一碗粥。' },
+    { id: 'school', name: '学校图书馆', full: '学校与图书馆', mark: '校', x: 1040, y: 140, desc: '小学和老图书馆挨着。小郑下午在图书馆，豆豆四点半放学。' },
+    { id: 'veg', name: '菜市场', full: '菜市场', mark: '菜', x: 1085, y: 232, close: 17, desc: '露天的菜市场。老秦的三轮车停在角上，下午收摊前菜最便宜。' },
+    { id: 'whole', name: '批发市场', full: '批发市场（老胡档口）', mark: '批', x: 1192, y: 330, close: 18, desc: '东头的批发市场，老胡的档口最大。货要验，价要谈。' },
+    { id: 'park', name: '桥头公园', full: '桥头小公园（黄桷树）', mark: '桥', x: 140, y: 548, desc: '过了石桥就是小公园。黄桷树底下天天有人下棋。' },
+    { id: 'hospital', name: '医院后门', full: '医院后门', mark: '医', x: 880, y: 602, desc: '医院后门的花坛边。下了夜班的护士在这儿坐一会儿再回家。' },
+    { id: 'talent', name: '人才市场', full: '人才市场门口', mark: '才', x: 1110, y: 652, close: 18, desc: '旧写字楼前的空地，公告栏贴满了招聘启事。' },
+    { id: 'wharf', name: '码头夜市', full: '河边码头旧址 · 夜市', mark: '夜', x: 1128, y: 468, open: 18, desc: '废弃的码头石阶。天黑以后河边摆起小吃摊，灯泡一串一串亮起来。' },
+    { id: 'heyi', name: '何姨家', full: '何姨女儿家（城北）', mark: '北', x: 62, y: 268, lock: 'heyi_lead', bus: 90, desc: '城北的老院子。坐 7 路过去要一个半钟头。' }
   ];
   var schedule = {
     zhao: [{ at: 'park', from: 15, to: 17.5, rainAt: 'lane' }],
@@ -5806,6 +5808,8 @@ BSX.define('game/people', function (require) {
     if (o.alpha != null) ctx.globalAlpha *= o.alpha;
     var sq = o.squash || 0, bob = o.bob || 0;
     if (reg) { A.sprite(ctx, reg.sprite, x, footY + bob, h, { flip: o.flip, squash: sq }); ctx.restore(); return; }
+    var np = !o.look && Cast.npcs[who];
+    if (np && np.sprite && A.img(np.sprite)) { A.sprite(ctx, np.sprite, x, footY + bob, h * (np.kid ? 0.66 : np.h || 0.94), { flip: o.flip, squash: sq }); ctx.restore(); return; }
     var c = canvasFor(who, o.look), kid = !o.look && Cast.npcs[who] && Cast.npcs[who].kid, hh = kid ? h * 0.7 : h * 0.84, s = hh / c.height, w = c.width * s;
     ctx.imageSmoothingEnabled = false;
     ctx.translate(x, footY + bob); ctx.scale((o.flip ? -1 : 1) * (1 + sq), 1 - sq);
@@ -5821,6 +5825,7 @@ BSX.define('game/people', function (require) {
     ctx.beginPath(); ctx.rect(x, y, size, size); ctx.clip();
     var reg = Cast.regulars[who];
     if (reg) { var hh = size * (who === 'zhao' ? 1.75 : who === 'qin' ? 2.0 : 2.15); A.sprite(ctx, reg.sprite, x + size / 2 + (who === 'zhao' ? size * 0.2 : who === 'qin' ? -size * 0.52 : 0), y + hh + size * 0.04, hh, {}); }
+    else if (!o.look && Cast.npcs[who] && Cast.npcs[who].sprite && A.img(Cast.npcs[who].sprite)) { var np = Cast.npcs[who], k = np.kid ? 1.55 : 2.0; A.sprite(ctx, np.sprite, x + size / 2, y + size * k * 0.98, size * k, {}); }
     else P.draw(ctx, who, x + size / 2, y + size * 2.25, size * 2.3, { look: o.look });
     ctx.restore();
   };
@@ -7404,6 +7409,11 @@ BSX.define('ui/s_town', function (require) {
     ctx.fillStyle = 'rgb(' + Math.round(255 - 30 * k) + ',' + Math.round(250 - 80 * k) + ',' + Math.round(240 - 120 * k) + ')'; ctx.fillRect(0, 0, 1280, 720); ctx.restore();
     if (!Fx.lowFx) { ctx.save(); ctx.globalAlpha = 0.25; ctx.fillStyle = '#e8f6f1'; for (var i = 0; i < 10; i++) { var x = (i * 137 + t * 22) % 1300 - 20, y = 470 + Math.sin(i * 1.7) * 30 + (x > 600 ? -20 : 0); ctx.fillRect(x, y, 14, 2); } ctx.restore(); }
   }
+  function placeBg(id, clock) {
+    if (id === 'shop') return 'bg_room_main';
+    if (id === 'wharf') return clock >= 18 * 60 + 30 ? 'bg_wharf_night' : 'bg_wharf_dusk';
+    return 'bg_' + id;
+  }
   function Town(app) {
     var s = app.state;
     this.app = app; this.name = 'town'; this.pausable = true; this.s = s; this.t = 0; this.mt = 0; this.mode = 'map';
@@ -7447,9 +7457,11 @@ BSX.define('ui/s_town', function (require) {
   };
   P.draw = function (ctx) {
     var s = this.s, app = this.app, self = this, st = this.st;
-    drawMap(ctx, this.t, st.clock);
+    var bgId = this.mode !== 'map' ? placeBg(st.at, st.clock) : null;
+    if (bgId && A.img(bgId)) { Shop.drawPlace(ctx, bgId, this.t, { tint: 'rgb(255,240,222)' }); }
+    else drawMap(ctx, this.t, st.clock);
     if (s.today.weather === 'rain' && !Fx.lowFx) { ctx.save(); ctx.strokeStyle = 'rgba(220,232,245,.35)'; ctx.lineWidth = 1.5; for (var r = 0; r < 70; r++) { var rx = (r * 97 + this.t * 420) % 1320 - 20, ry = (r * 53 + this.t * 900) % 760 - 20; ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + 16); ctx.stroke(); } ctx.restore(); }
-    this.drawPins(ctx);
+    if (this.mode === 'map' || !(bgId && A.img(bgId))) this.drawPins(ctx);
     this.drawHud(ctx);
     if (this.mode === 'map') { this.drawLeads(ctx); this.drawCard(ctx); }
     else if (this.mode === 'note') this.drawNote(ctx);
@@ -7483,13 +7495,19 @@ BSX.define('ui/s_town', function (require) {
       ctx.fillStyle = 'rgba(20,12,6,.3)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 6, 16, 6, 0, 0, 7); ctx.fill();
       if (on) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; Shop.glow(ctx, x, y - 36, 60, '255,220,140', 0.45); ctx.restore(); }
       ctx.fillStyle = on ? RED : (p.open != null && !T.isOpenAt(p, st.clock)) ? '#6a4a8a' : TEAL;
-      ctx.beginPath(); ctx.moveTo(x - 10, y - 26); ctx.lineTo(x, y); ctx.lineTo(x + 10, y - 26); ctx.fill();
-      ctx.beginPath(); ctx.arc(x, y - 38, 20, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff3d6'; ctx.lineWidth = 3; ctx.stroke();
-      U.text(ctx, p.mark, x, y - 31, { size: 20, bold: true, kai: true, align: 'center', color: '#fff8e8' });
+      ctx.beginPath(); ctx.moveTo(x - 10, y - 24); ctx.lineTo(x, y); ctx.lineTo(x + 10, y - 24); ctx.fill();
+      if (A.img('map_pins')) { ctx.beginPath(); ctx.arc(x, y - 42, 27, 0, 7); ctx.fill(); A.cell(ctx, 'map_pins', i, x - 24, y - 66, 48, 48, {}); }
+      else { ctx.beginPath(); ctx.arc(x, y - 38, 20, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff3d6'; ctx.lineWidth = 3; ctx.stroke(); U.text(ctx, p.mark, x, y - 31, { size: 20, bold: true, kai: true, align: 'center', color: '#fff8e8' }); }
       ctx.font = U.font(14, 'bold'); var nw = ctx.measureText(p.name).width + 16;
       ctx.fillStyle = on ? '#fff3d6' : 'rgba(255,248,232,.92)'; U.rr(ctx, x - nw / 2, y + 8, nw, 22, 6); ctx.fill(); ctx.strokeStyle = on ? RED : '#7d5a35'; ctx.lineWidth = 1.5; ctx.stroke();
       U.text(ctx, p.name, x, y + 24, { size: 14, bold: true, align: 'center', color: INK });
-      var bx = x + 16, by = y - 58;
+      var bx = x + 18, by = y - 64;
+      if (A.img('map_marks')) {
+        if (mk.event) { A.cell(ctx, 'map_marks', 0, bx - 14, by - 16, 28, 28, {}); bx += 26; }
+        if (mk.people.length) { A.cell(ctx, 'map_marks', 1, bx - 15, by - 15, 30, 30, {}); bx += 28; }
+        if (mk.biz) A.cell(ctx, 'map_marks', 2, bx - 13, by - 13, 26, 26, {});
+        mk = { people: [] };
+      }
       if (mk.event) { ctx.fillStyle = '#e8b54a'; ctx.beginPath(); ctx.arc(bx, by, 11, 0, 7); ctx.fill(); ctx.strokeStyle = '#6e4224'; ctx.lineWidth = 2; ctx.stroke(); U.text(ctx, '!', bx, by + 6, { size: 16, bold: true, align: 'center', color: INK }); bx += 24; }
       if (mk.people.length) { ctx.fillStyle = '#fff8e8'; U.rr(ctx, bx - 12, by - 10, 26, 20, 6); ctx.fill(); ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = 1.5; ctx.stroke(); U.text(ctx, '…', bx + 1, by + 4, { size: 14, bold: true, align: 'center', color: INK }); bx += 28; }
       if (mk.biz) { ctx.fillStyle = '#fff8e8'; U.rr(ctx, bx - 11, by - 10, 22, 20, 6); ctx.fill(); ctx.strokeStyle = TEAL; ctx.lineWidth = 1.5; ctx.stroke(); U.text(ctx, '¥', bx, by + 5, { size: 14, bold: true, align: 'center', color: TEAL }); }
@@ -7498,12 +7516,19 @@ BSX.define('ui/s_town', function (require) {
     var cur = T.place(st.at), zx = cur.x, zy = cur.y;
     if (this.anim) { var k = Fx.ease.inOut(Math.min(1, this.anim.t / this.anim.d)); zx = this.anim.ax + (this.anim.bx - this.anim.ax) * k; zy = this.anim.ay + (this.anim.by - this.anim.ay) * k; }
     var hop = this.anim ? Math.abs(Math.sin(this.t * 14)) * -5 : 0;
+    if (A.img('map_zhou')) {
+      var row = 0, an = this.anim; if (an) { var dx = an.bx - an.ax, dy = an.by - an.ay; row = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : (dy < 0 ? 3 : 0); this.facing = row; } else row = this.facing || 0;
+      var fr = an ? Math.floor(this.t * 9) % 4 : 0;
+      ctx.fillStyle = 'rgba(20,12,6,.35)'; ctx.beginPath(); ctx.ellipse(zx + 30, zy + 2, 15, 5, 0, 0, 7); ctx.fill();
+      A.cell(ctx, 'map_zhou', row * 4 + fr, zx + 30 - 19, zy + 4 - 60, 38, 60, {});
+      return;
+    }
     ctx.fillStyle = 'rgba(20,12,6,.35)'; ctx.beginPath(); ctx.ellipse(zx + 26, zy + 2, 12, 5, 0, 0, 7); ctx.fill();
     ctx.fillStyle = '#fff3d6'; ctx.beginPath(); ctx.arc(zx + 26, zy - 12 + hop, 15, 0, 7); ctx.fill(); ctx.strokeStyle = RED; ctx.lineWidth = 3; ctx.stroke();
     U.text(ctx, '周', zx + 26, zy - 6 + hop, { size: 15, bold: true, align: 'center', color: RED });
   };
   P.drawLeads = function (ctx) {
-    var s = this.s, self = this, ls = T.leads(s), x = 14, y = 76, w = 430, h = 34 + ls.length * 24;
+    var s = this.s, self = this, ls = T.leads(s), x = 448, y = 94, w = 384, h = 34 + ls.length * 24;
     ctx.fillStyle = 'rgba(251,245,228,.94)'; U.rr(ctx, x, y, w, h, 10); ctx.fill(); ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = 2; ctx.stroke();
     U.text(ctx, '小本子 · 今天可能遇到', x + 14, y + 24, { size: 15, bold: true, color: TEAL });
     ls.forEach(function (l, i) {
@@ -7514,11 +7539,12 @@ BSX.define('ui/s_town', function (require) {
   };
   P.drawCard = function (ctx) {
     var s = this.s, self = this, st = this.st, p = T.place(this.sel); if (!p) return;
-    var c = CARD, here = st.at === p.id, x = c.x, y = c.y;
+    var c = CARD, here = st.at === p.id, x = p.x >= 640 ? 14 : c.x, y = c.y;
     K.paper(ctx, x, y, c.w, c.h, { pin: RED });
+    K.iconBtn(ctx, 'card_x', x + c.w - 22, y - 18, 34, 'close', function () { self.sel = null; }, { label: '收起' });
     U.text(ctx, p.full || p.name, x + 22, y + 44, { size: 24, bold: true, kai: true, color: INK, maxW: c.w - 140 });
     var mins = T.travelMins(st.at, p.id), w = T.whyNot(s, p.id);
-    U.text(ctx, here ? '你在这儿' : (p.bus ? '坐 7 路 ' : '走过去 ') + mins + ' 分钟', x + c.w - 20, y + 42, { size: 14, align: 'right', color: here ? TEAL : MUTE, bold: here });
+    U.text(ctx, here ? '你在这儿' : (p.bus ? '坐 7 路 ' : '走过去 ') + mins + ' 分钟', x + c.w - 26, y + 42, { size: 14, align: 'right', color: here ? TEAL : MUTE, bold: here });
     if (!here) {
       U.para(ctx, p.desc, x + 22, y + 72, c.w - 44, { size: 15, lh: 22, color: INK });
       var arrive = st.clock + mins, ppl = T.presentAt(s, p.id, arrive), ev = T.eventsAt(s, p.id, arrive);
