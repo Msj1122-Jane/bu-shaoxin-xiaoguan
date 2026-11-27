@@ -4310,7 +4310,7 @@ BSX.define('core/town', function (require) {
 /* game/assets.js */
 BSX.define('game/assets', function (require) {
   var D = require('content/dishes');
-  var A = { manifest: null, imgs: {}, entries: {}, errors: [], loaded: {}, groupState: {}, procCache: {}, P: null, base: 'assets/runtime/' };
+  var A = { manifest: null, imgs: {}, entries: {}, errors: [], loaded: {}, failed: {}, groupState: {}, procCache: {}, P: null, base: 'assets/runtime/' };
   A.init = function (P, manifest) { A.P = P; A.manifest = manifest; manifest.entries.forEach(function (e) { A.entries[e.id] = e; }); };
   A.loadGroup = function (g, onProgress, done) {
     if (A.groupState[g] === 'done') return done && done();
@@ -4318,10 +4318,17 @@ BSX.define('game/assets', function (require) {
     var left = list.length, n = 0;
     A.groupState[g] = 'loading';
     if (!left) { A.groupState[g] = 'done'; return done && done(); }
+    function load(e, tries, cb) {
+      var url = A.base + e.path + (tries && A.P.name === 'web' ? '?r=' + tries : '');
+      A.P.loadImage(url, function (err, img) {
+        if (err && tries < 3) { setTimeout(function () { load(e, tries + 1, cb); }, 1200 * (tries + 1)); return; }
+        cb(err, img);
+      });
+    }
     list.forEach(function (e) {
-      A.P.loadImage(A.base + e.path, function (err, img) {
+      load(e, 0, function (err, img) {
         n++;
-        if (err) { A.errors.push({ id: e.id, path: e.path, msg: String(err.message || err) }); A.imgs[e.id] = placeholder(e); }
+        if (err) { A.errors.push({ id: e.id, path: e.path, msg: String(err.message || err) }); A.imgs[e.id] = A.P.devMode ? placeholder(e) : null; A.failed[e.id] = true; }
         else A.imgs[e.id] = img;
         A.loaded[e.id] = true;
         onProgress && onProgress(n / list.length, e.id);
@@ -4339,7 +4346,7 @@ BSX.define('game/assets', function (require) {
   A.ready = function (id) { return !!A.imgs[id]; };
   A.cell = function (ctx, id, idx, x, y, w, h, opts) {
     var e = A.entries[id], im = A.imgs[id];
-    if (!e || !im) { if (e && !A.loaded[id]) return; ctx.fillStyle = 'rgba(255,0,255,.5)'; ctx.fillRect(x, y, w, h); return; }
+    if (!e || !im) { if (e && (!A.loaded[id] || A.failed[id])) return; ctx.fillStyle = 'rgba(255,0,255,.5)'; ctx.fillRect(x, y, w, h); return; }
     var cw = e.cellW, ch = e.cellH, cx = (idx % e.cols) * cw, cy = Math.floor(idx / e.cols) * ch;
     opts = opts || {};
     if (opts.trim && e.cellTrim) { var t = e.cellTrim[idx]; cx += t[0]; cy += t[1]; cw = t[2] - t[0]; ch = t[3] - t[1]; }
@@ -4353,7 +4360,7 @@ BSX.define('game/assets', function (require) {
   A.sprite = function (ctx, id, cx, footY, h, opts) {
     var e = A.entries[id], im = A.imgs[id];
     opts = opts || {};
-    if (!im && e && !A.loaded[id]) return;
+    if (!im && e && (!A.loaded[id] || A.failed[id])) return;
     if (!im) { ctx.fillStyle = 'rgba(255,0,255,.6)'; ctx.fillRect(cx - h * 0.2, footY - h, h * 0.4, h); ctx.fillStyle = '#fff'; ctx.font = '14px sans-serif'; ctx.fillText('缺 ' + id, cx - h * 0.2, footY - h / 2); return; }
     var t = e.trim || [0, 0, im.width, im.height];
     var sh = t[3] - t[1], s = h / sh, sw = im.width * s;
@@ -5636,7 +5643,7 @@ BSX.define('game/shop', function (require) {
   var cleaned = {};
   Shop.place = function (id) {
     if (cleaned[id]) return cleaned[id];
-    var im = A.img(id); if (!im) return null;
+    var im = A.img(id); if (!im) return id !== 'bg_street' && A.failed && A.failed[id] ? Shop.place('bg_street') : null;
     if (id !== 'bg_street') return (cleaned[id] = im);
     var c = A.P.createCanvas(1280, 720), g = c.getContext('2d');
     g.drawImage(im, 0, 0, 1280, 720);
