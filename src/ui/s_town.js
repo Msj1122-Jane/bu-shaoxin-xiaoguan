@@ -66,6 +66,12 @@ BSX.define('ui/s_town', function (require) {
     if (!Fx.lowFx) { ctx.save(); ctx.globalAlpha = 0.25; ctx.fillStyle = '#e8f6f1'; for (var i = 0; i < 10; i++) { var x = (i * 137 + t * 22) % 1300 - 20, y = 470 + Math.sin(i * 1.7) * 30 + (x > 600 ? -20 : 0); ctx.fillRect(x, y, 14, 2); } ctx.restore(); }
   }
 
+  // 每个地点的场景图
+  function placeBg(id, clock) {
+    if (id === 'shop') return 'bg_room_main';
+    if (id === 'wharf') return clock >= 18 * 60 + 30 ? 'bg_wharf_night' : 'bg_wharf_dusk';
+    return 'bg_' + id;
+  }
   function Town(app) {
     var s = app.state;
     this.app = app; this.name = 'town'; this.pausable = true; this.s = s; this.t = 0; this.mt = 0; this.mode = 'map';
@@ -111,9 +117,11 @@ BSX.define('ui/s_town', function (require) {
   // ───────── 绘制
   P.draw = function (ctx) {
     var s = this.s, app = this.app, self = this, st = this.st;
-    drawMap(ctx, this.t, st.clock);
+    var bgId = this.mode !== 'map' ? placeBg(st.at, st.clock) : null;
+    if (bgId && A.img(bgId)) { Shop.drawPlace(ctx, bgId, this.t, { tint: 'rgb(255,240,222)' }); }
+    else drawMap(ctx, this.t, st.clock);
     if (s.today.weather === 'rain' && !Fx.lowFx) { ctx.save(); ctx.strokeStyle = 'rgba(220,232,245,.35)'; ctx.lineWidth = 1.5; for (var r = 0; r < 70; r++) { var rx = (r * 97 + this.t * 420) % 1320 - 20, ry = (r * 53 + this.t * 900) % 760 - 20; ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + 16); ctx.stroke(); } ctx.restore(); }
-    this.drawPins(ctx);
+    if (this.mode === 'map' || !(bgId && A.img(bgId))) this.drawPins(ctx);
     this.drawHud(ctx);
     if (this.mode === 'map') { this.drawLeads(ctx); this.drawCard(ctx); }
     else if (this.mode === 'note') this.drawNote(ctx);
@@ -148,14 +156,20 @@ BSX.define('ui/s_town', function (require) {
       ctx.fillStyle = 'rgba(20,12,6,.3)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 6, 16, 6, 0, 0, 7); ctx.fill();
       if (on) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; Shop.glow(ctx, x, y - 36, 60, '255,220,140', 0.45); ctx.restore(); }
       ctx.fillStyle = on ? RED : (p.open != null && !T.isOpenAt(p, st.clock)) ? '#6a4a8a' : TEAL;
-      ctx.beginPath(); ctx.moveTo(x - 10, y - 26); ctx.lineTo(x, y); ctx.lineTo(x + 10, y - 26); ctx.fill();
-      ctx.beginPath(); ctx.arc(x, y - 38, 20, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff3d6'; ctx.lineWidth = 3; ctx.stroke();
-      U.text(ctx, p.mark, x, y - 31, { size: 20, bold: true, kai: true, align: 'center', color: '#fff8e8' });
+      ctx.beginPath(); ctx.moveTo(x - 10, y - 24); ctx.lineTo(x, y); ctx.lineTo(x + 10, y - 24); ctx.fill();
+      if (A.img('map_pins')) { ctx.beginPath(); ctx.arc(x, y - 42, 27, 0, 7); ctx.fill(); A.cell(ctx, 'map_pins', i, x - 24, y - 66, 48, 48, {}); }
+      else { ctx.beginPath(); ctx.arc(x, y - 38, 20, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff3d6'; ctx.lineWidth = 3; ctx.stroke(); U.text(ctx, p.mark, x, y - 31, { size: 20, bold: true, kai: true, align: 'center', color: '#fff8e8' }); }
       ctx.font = U.font(14, 'bold'); var nw = ctx.measureText(p.name).width + 16;
       ctx.fillStyle = on ? '#fff3d6' : 'rgba(255,248,232,.92)'; U.rr(ctx, x - nw / 2, y + 8, nw, 22, 6); ctx.fill(); ctx.strokeStyle = on ? RED : '#7d5a35'; ctx.lineWidth = 1.5; ctx.stroke();
       U.text(ctx, p.name, x, y + 24, { size: 14, bold: true, align: 'center', color: INK });
       // 标记：! 有戏，… 有熟人，¥ 有生意
-      var bx = x + 16, by = y - 58;
+      var bx = x + 18, by = y - 64;
+      if (A.img('map_marks')) {
+        if (mk.event) { A.cell(ctx, 'map_marks', 0, bx - 14, by - 16, 28, 28, {}); bx += 26; }
+        if (mk.people.length) { A.cell(ctx, 'map_marks', 1, bx - 15, by - 15, 30, 30, {}); bx += 28; }
+        if (mk.biz) A.cell(ctx, 'map_marks', 2, bx - 13, by - 13, 26, 26, {});
+        mk = { people: [] };
+      }
       if (mk.event) { ctx.fillStyle = '#e8b54a'; ctx.beginPath(); ctx.arc(bx, by, 11, 0, 7); ctx.fill(); ctx.strokeStyle = '#6e4224'; ctx.lineWidth = 2; ctx.stroke(); U.text(ctx, '!', bx, by + 6, { size: 16, bold: true, align: 'center', color: INK }); bx += 24; }
       if (mk.people.length) { ctx.fillStyle = '#fff8e8'; U.rr(ctx, bx - 12, by - 10, 26, 20, 6); ctx.fill(); ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = 1.5; ctx.stroke(); U.text(ctx, '…', bx + 1, by + 4, { size: 14, bold: true, align: 'center', color: INK }); bx += 28; }
       if (mk.biz) { ctx.fillStyle = '#fff8e8'; U.rr(ctx, bx - 11, by - 10, 22, 20, 6); ctx.fill(); ctx.strokeStyle = TEAL; ctx.lineWidth = 1.5; ctx.stroke(); U.text(ctx, '¥', bx, by + 5, { size: 14, bold: true, align: 'center', color: TEAL }); }
@@ -165,12 +179,19 @@ BSX.define('ui/s_town', function (require) {
     var cur = T.place(st.at), zx = cur.x, zy = cur.y;
     if (this.anim) { var k = Fx.ease.inOut(Math.min(1, this.anim.t / this.anim.d)); zx = this.anim.ax + (this.anim.bx - this.anim.ax) * k; zy = this.anim.ay + (this.anim.by - this.anim.ay) * k; }
     var hop = this.anim ? Math.abs(Math.sin(this.t * 14)) * -5 : 0;
+    if (A.img('map_zhou')) {
+      var row = 0, an = this.anim; if (an) { var dx = an.bx - an.ax, dy = an.by - an.ay; row = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : (dy < 0 ? 3 : 0); this.facing = row; } else row = this.facing || 0;
+      var fr = an ? Math.floor(this.t * 9) % 4 : 0;
+      ctx.fillStyle = 'rgba(20,12,6,.35)'; ctx.beginPath(); ctx.ellipse(zx + 30, zy + 2, 15, 5, 0, 0, 7); ctx.fill();
+      A.cell(ctx, 'map_zhou', row * 4 + fr, zx + 30 - 19, zy + 4 - 60, 38, 60, {});
+      return;
+    }
     ctx.fillStyle = 'rgba(20,12,6,.35)'; ctx.beginPath(); ctx.ellipse(zx + 26, zy + 2, 12, 5, 0, 0, 7); ctx.fill();
     ctx.fillStyle = '#fff3d6'; ctx.beginPath(); ctx.arc(zx + 26, zy - 12 + hop, 15, 0, 7); ctx.fill(); ctx.strokeStyle = RED; ctx.lineWidth = 3; ctx.stroke();
     U.text(ctx, '周', zx + 26, zy - 6 + hop, { size: 15, bold: true, align: 'center', color: RED });
   };
   P.drawLeads = function (ctx) {
-    var s = this.s, self = this, ls = T.leads(s), x = 14, y = 76, w = 430, h = 34 + ls.length * 24;
+    var s = this.s, self = this, ls = T.leads(s), x = 448, y = 94, w = 384, h = 34 + ls.length * 24;
     ctx.fillStyle = 'rgba(251,245,228,.94)'; U.rr(ctx, x, y, w, h, 10); ctx.fill(); ctx.strokeStyle = '#7d5a35'; ctx.lineWidth = 2; ctx.stroke();
     U.text(ctx, '小本子 · 今天可能遇到', x + 14, y + 24, { size: 15, bold: true, color: TEAL });
     ls.forEach(function (l, i) {
@@ -181,11 +202,12 @@ BSX.define('ui/s_town', function (require) {
   };
   P.drawCard = function (ctx) {
     var s = this.s, self = this, st = this.st, p = T.place(this.sel); if (!p) return;
-    var c = CARD, here = st.at === p.id, x = c.x, y = c.y;
+    var c = CARD, here = st.at === p.id, x = p.x >= 640 ? 14 : c.x, y = c.y;
     K.paper(ctx, x, y, c.w, c.h, { pin: RED });
+    K.iconBtn(ctx, 'card_x', x + c.w - 22, y - 18, 34, 'close', function () { self.sel = null; }, { label: '收起' });
     U.text(ctx, p.full || p.name, x + 22, y + 44, { size: 24, bold: true, kai: true, color: INK, maxW: c.w - 140 });
     var mins = T.travelMins(st.at, p.id), w = T.whyNot(s, p.id);
-    U.text(ctx, here ? '你在这儿' : (p.bus ? '坐 7 路 ' : '走过去 ') + mins + ' 分钟', x + c.w - 20, y + 42, { size: 14, align: 'right', color: here ? TEAL : MUTE, bold: here });
+    U.text(ctx, here ? '你在这儿' : (p.bus ? '坐 7 路 ' : '走过去 ') + mins + ' 分钟', x + c.w - 26, y + 42, { size: 14, align: 'right', color: here ? TEAL : MUTE, bold: here });
     if (!here) {
       U.para(ctx, p.desc, x + 22, y + 72, c.w - 44, { size: 15, lh: 22, color: INK });
       var arrive = st.clock + mins, ppl = T.presentAt(s, p.id, arrive), ev = T.eventsAt(s, p.id, arrive);

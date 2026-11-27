@@ -86,6 +86,9 @@ BSX.define('game/people', function (require) {
     if (o.alpha != null) ctx.globalAlpha *= o.alpha;
     var sq = o.squash || 0, bob = o.bob || 0;
     if (reg) { A.sprite(ctx, reg.sprite, x, footY + bob, h, { flip: o.flip, squash: sq }); ctx.restore(); return; }
+    // 有 Lovart 立绘的配角：用立绘（孩子矮一些）
+    var np = !o.look && Cast.npcs[who];
+    if (np && np.sprite && A.img(np.sprite)) { A.sprite(ctx, np.sprite, x, footY + bob, h * (np.kid ? 0.66 : np.h || 0.94), { flip: o.flip, squash: sq }); ctx.restore(); return; }
     var c = canvasFor(who, o.look), kid = !o.look && Cast.npcs[who] && Cast.npcs[who].kid, hh = kid ? h * 0.7 : h * 0.84, s = hh / c.height, w = c.width * s;
     ctx.imageSmoothingEnabled = false;
     ctx.translate(x, footY + bob); ctx.scale((o.flip ? -1 : 1) * (1 + sq), 1 - sq);
@@ -102,6 +105,7 @@ BSX.define('game/people', function (require) {
     ctx.beginPath(); ctx.rect(x, y, size, size); ctx.clip();
     var reg = Cast.regulars[who];
     if (reg) { var hh = size * (who === 'zhao' ? 1.75 : who === 'qin' ? 2.0 : 2.15); A.sprite(ctx, reg.sprite, x + size / 2 + (who === 'zhao' ? size * 0.2 : who === 'qin' ? -size * 0.52 : 0), y + hh + size * 0.04, hh, {}); }
+    else if (!o.look && Cast.npcs[who] && Cast.npcs[who].sprite && A.img(Cast.npcs[who].sprite)) { var np = Cast.npcs[who], k = np.kid ? 1.55 : 2.0; A.sprite(ctx, np.sprite, x + size / 2, y + size * k * 0.98, size * k, {}); }
     else P.draw(ctx, who, x + size / 2, y + size * 2.25, size * 2.3, { look: o.look });
     ctx.restore();
   };

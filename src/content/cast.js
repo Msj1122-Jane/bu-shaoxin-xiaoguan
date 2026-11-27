@@ -24,19 +24,21 @@ BSX.define('content/cast', function () {
   // 配角与散客的像素小人参数（game/people 按此生成）
   // hair: short | bun | bob | cap | gray | pony | bald | helmet | straw ；acc: tie | apron | glasses | pack | scarf | keys | clip | phone | cam | basket | cane | vest
   var npcs = {
-    landlord: { name: '汪姐', body: '#8a5a6e', pants: '#3b3440', hair: 'bob', hairCol: '#4a3028', acc: 'keys', skin: 0 },
-    hu: { name: '老胡', body: '#3f6a8a', pants: '#2d3440', hair: 'cap', hairCol: '#27323c', acc: 'vest', skin: 1 },
+    landlord: { name: '汪姐', sprite: 'spr_landlord', body: '#8a5a6e', pants: '#3b3440', hair: 'bob', hairCol: '#4a3028', acc: 'keys', skin: 0 },
+    hu: { name: '老胡', sprite: 'spr_hu', body: '#3f6a8a', pants: '#2d3440', hair: 'cap', hairCol: '#27323c', acc: 'vest', skin: 1 },
     powder: { name: '推销员', body: '#c9b037', pants: '#3a3a44', hair: 'short', hairCol: '#1f1712', acc: 'tie', skin: 0 },
-    inspector: { name: '小陈', body: '#2f4f7a', pants: '#26303d', hair: 'short', hairCol: '#1f1712', acc: 'clip', skin: 0 },
+    inspector: { name: '小陈', sprite: 'spr_inspector', body: '#2f4f7a', pants: '#26303d', hair: 'short', hairCol: '#1f1712', acc: 'clip', skin: 0 },
     vlogger: { name: '探店博主', body: '#e07a5f', pants: '#3b3b58', hair: 'pony', hairCol: '#5a3020', acc: 'phone', skin: 0 },
     recycler: { name: '收油的', body: '#5c6b3c', pants: '#3e3a2c', hair: 'cap', hairCol: '#3a3a2a', acc: null, skin: 2 },
     guifen: { name: '桂芬', body: '#8a6aa0', pants: '#3e3348', hair: 'bun', hairCol: '#2a1a14', acc: 'apron', skin: 1 },
-    heyi: { name: '何姨', body: '#a05a4a', pants: '#4a3a34', hair: 'gray', hairCol: '#c8c2b8', acc: 'apron', skin: 1 },
-    peer: { name: '早餐车老板', body: '#a8423a', pants: '#3a2f2a', hair: 'short', hairCol: '#1a1410', acc: 'apron', skin: 2 },
-    doudou: { name: '豆豆', body: '#f0ede4', pants: '#2f4a7a', hair: 'short', hairCol: '#3a2418', acc: 'scarf', skin: 0, kid: true },
-    tangtang: { name: '糖糖', body: '#f2c6cf', pants: '#6a4a7a', hair: 'pony', hairCol: '#3a2418', acc: null, skin: 0, kid: true },
+    heyi: { name: '何姨', sprite: 'spr_heyi', body: '#a05a4a', pants: '#4a3a34', hair: 'gray', hairCol: '#c8c2b8', acc: 'apron', skin: 1 },
+    peer: { name: '早餐车老板', sprite: 'spr_peer', body: '#a8423a', pants: '#3a2f2a', hair: 'short', hairCol: '#1a1410', acc: 'apron', skin: 2 },
+    doudou: { name: '豆豆', sprite: 'spr_doudou', body: '#f0ede4', pants: '#2f4a7a', hair: 'short', hairCol: '#3a2418', acc: 'scarf', skin: 0, kid: true },
+    tangtang: { name: '糖糖', sprite: 'spr_tangtang', body: '#f2c6cf', pants: '#6a4a7a', hair: 'pony', hairCol: '#3a2418', acc: null, skin: 0, kid: true },
     aunty: { name: '刘姐', body: '#c86a8a', pants: '#3a3440', hair: 'bob', hairCol: '#3a2018', acc: 'phone', skin: 0 },
     tv: { name: '记者', body: '#4a5a6a', pants: '#2a2a30', hair: 'bob', hairCol: '#2a1a14', acc: 'cam', skin: 0 },
+    wu: { name: '吴奶奶', sprite: 'spr_wu', body: '#8a6a7a', pants: '#4a3a34', hair: 'gray', hairCol: '#d8d2c8', acc: 'cane', skin: 1, h: 0.86 },
+    wang: { name: '王阿姨', sprite: 'spr_wang', body: '#a05a5a', pants: '#3a3030', hair: 'bun', hairCol: '#a8a29a', acc: null, skin: 1 },
     neighbor: { name: '街坊', body: '#6e8a6a', pants: '#3a3a3a', hair: 'gray', hairCol: '#b8b0a4', acc: null, skin: 1 },
     kid: { name: '学生娃', body: '#f0ede4', pants: '#2f4a7a', hair: 'short', hairCol: '#2a1810', acc: 'pack', skin: 0, kid: true }
   };

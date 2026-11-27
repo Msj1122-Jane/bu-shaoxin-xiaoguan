@@ -58,7 +58,7 @@ BSX.define('content/town', function () {
 
   // ───────── 串门：每位常客两回。第一回好感 ≥ 2；第二回好感 ≥ 5、第 12 天以后。
   var visits = {
-    zhao: { place: '桥头小公园', bg: 'bg_street', scenes: [
+    zhao: { place: '桥头小公园', bg: 'bg_park', scenes: [
       { id: 'v_zhao_1', title: '树底下的棋', need: { aff: { zhao: 2 } }, beats: [
         ['n', '下午三点，桥头那棵黄桷树底下，一盘象棋围了五六个人。'],
         { enter: 'zhao', slot: 1 },
@@ -90,7 +90,7 @@ BSX.define('content/town', function () {
         { exit: 'zhao' }
       ] }
     ] },
-    song: { place: '医院后门', bg: 'bg_ext_dusk', scenes: [
+    song: { place: '医院后门', bg: 'bg_hospital', scenes: [
       { id: 'v_song_1', title: '食堂的粥', need: { aff: { song: 2 } }, beats: [
         ['n', '医院后门的台阶上，小宋穿着便服，端着一个饭盒。'],
         { enter: 'song', slot: 1 },
@@ -118,7 +118,7 @@ BSX.define('content/town', function () {
         { exit: 'song' }
       ] }
     ] },
-    ge: { place: '人才市场门口', bg: 'bg_street', scenes: [
+    ge: { place: '人才市场门口', bg: 'bg_talent', scenes: [
       { id: 'v_ge_1', title: '等客户', need: { aff: { ge: 2 } }, beats: [
         ['n', '人才市场门口的长椅上，坐着一件我认得的旧西装。'],
         { enter: 'ge', slot: 2 },
@@ -146,7 +146,7 @@ BSX.define('content/town', function () {
         { exit: 'ge' }
       ] }
     ] },
-    ali: { place: '电动车充电桩', bg: 'bg_street', scenes: [
+    ali: { place: '电动车充电桩', bg: 'bg_lane', scenes: [
       { id: 'v_ali_1', title: '充电二十分钟', need: { aff: { ali: 2 } }, beats: [
         { enter: 'ali', slot: 1 },
         ['ali', '周叔！你也来充电？哦你没车。那你来干啥？'],
@@ -173,7 +173,7 @@ BSX.define('content/town', function () {
         { exit: 'ali' }
       ] }
     ] },
-    gong: { place: '7 路总站', bg: 'bg_ext_dusk', scenes: [
+    gong: { place: '7 路总站', bg: 'bg_depot', scenes: [
       { id: 'v_gong_1', title: '交班', need: { aff: { gong: 2 } }, beats: [
         ['n', '7 路总站，龚师傅坐在调度室门口，刷他那个搪瓷缸。'],
         { enter: 'gong', slot: 1 },
@@ -201,7 +201,7 @@ BSX.define('content/town', function () {
         { exit: 'gong' }
       ] }
     ] },
-    man: { place: '小满改衣', bg: 'bg_ext_dusk', scenes: [
+    man: { place: '小满改衣', bg: 'bg_tailor', scenes: [
       { id: 'v_man_1', title: '一颗扣子', need: { aff: { man: 2 } }, beats: [
         ['n', '隔壁小满改衣，缝纫机哒哒响。我围裙上的扣子掉了一颗。'],
         { enter: 'man', slot: 1 },
@@ -227,7 +227,7 @@ BSX.define('content/town', function () {
         { exit: 'man' }
       ] }
     ] },
-    zheng: { place: '学校图书馆', bg: 'bg_street', scenes: [
+    zheng: { place: '学校图书馆', bg: 'bg_school', scenes: [
       { id: 'v_zheng_1', title: '一毛九', need: { aff: { zheng: 2 } }, beats: [
         { enter: 'zheng', slot: 2 },
         ['zheng', '周叔！你怎么在学校？是来……送外卖？'],
@@ -253,7 +253,7 @@ BSX.define('content/town', function () {
         { exit: 'zheng' }
       ] }
     ] },
-    qin: { place: '菜市场', bg: 'bg_street', scenes: [
+    qin: { place: '菜市场', bg: 'bg_veg', scenes: [
       { id: 'v_qin_1', title: '收摊的菜', need: { aff: { qin: 2 } }, beats: [
         ['n', '下午的菜市场，老秦在拣他卖剩的菜，好的一堆，蔫的一堆。'],
         { enter: 'qin', slot: 1 },
@@ -286,18 +286,18 @@ BSX.define('content/town', function () {
   // ───────── 自由地图（V4）：12 处地点，坐标是 1280×720 地图画面上的位置
   // open/close：几点开门（24 小时制）；lock：要什么旗标才解锁；bus：坐 7 路去，固定花的分钟数
   var places = [
-    { id: 'shop', name: '小馆', full: '不烧心小馆（自家店）', mark: '店', x: 425, y: 318, desc: '自家的十平米。下午拉下一半卷帘门，没人来的时候能练练手。' },
-    { id: 'tailor', name: '小满改衣', full: '小满改衣（隔壁）', mark: '衣', x: 520, y: 318, open: 9, close: 19, desc: '隔壁的裁缝铺。缝纫机一下午不停，后窗开着一条缝。' },
-    { id: 'depot', name: '7 路总站', full: '7 路总站', mark: '站', x: 175, y: 300, desc: '西头的公交总站。司机们在调度室门口抽烟交班，有时有人问包餐。' },
-    { id: 'lane', name: '老小区', full: '老小区（六楼吴奶奶家）', mark: '楼', x: 660, y: 165, desc: '九十年代的六层楼，没电梯。阿力每天往六楼送一碗粥。' },
-    { id: 'school', name: '学校图书馆', full: '学校与图书馆', mark: '校', x: 930, y: 118, desc: '小学和老图书馆挨着。小郑下午在图书馆，豆豆四点半放学。' },
-    { id: 'veg', name: '菜市场', full: '菜市场', mark: '菜', x: 1015, y: 268, close: 17, desc: '露天的菜市场。老秦的三轮车停在角上，下午收摊前菜最便宜。' },
-    { id: 'whole', name: '批发市场', full: '批发市场（老胡档口）', mark: '批', x: 1170, y: 352, close: 18, desc: '东头的批发市场，老胡的档口最大。货要验，价要谈。' },
-    { id: 'park', name: '桥头公园', full: '桥头小公园（黄桷树）', mark: '桥', x: 565, y: 612, desc: '过了石桥就是小公园。黄桷树底下天天有人下棋。' },
-    { id: 'hospital', name: '医院后门', full: '医院后门', mark: '医', x: 805, y: 640, desc: '医院后门的花坛边。下了夜班的护士在这儿坐一会儿再回家。' },
-    { id: 'talent', name: '人才市场', full: '人才市场门口', mark: '才', x: 205, y: 640, close: 18, desc: '旧写字楼前的空地，公告栏贴满了招聘启事。' },
-    { id: 'wharf', name: '码头夜市', full: '河边码头旧址 · 夜市', mark: '夜', x: 355, y: 520, open: 18, desc: '废弃的码头石阶。天黑以后河边摆起小吃摊，灯泡一串一串亮起来。' },
-    { id: 'heyi', name: '何姨家', full: '何姨女儿家（城北）', mark: '北', x: 1180, y: 150, lock: 'heyi_lead', bus: 90, desc: '城北的老院子。坐 7 路过去要一个半钟头。' }
+    { id: 'shop', name: '小馆', full: '不烧心小馆（自家店）', mark: '店', x: 565, y: 300, desc: '自家的十平米。下午拉下一半卷帘门，没人来的时候能练练手。' },
+    { id: 'tailor', name: '小满改衣', full: '小满改衣（隔壁）', mark: '衣', x: 728, y: 300, open: 9, close: 19, desc: '隔壁的裁缝铺。缝纫机一下午不停，后窗开着一条缝。' },
+    { id: 'depot', name: '7 路总站', full: '7 路总站', mark: '站', x: 168, y: 178, desc: '西头的公交总站。司机们在调度室门口抽烟交班，有时有人问包餐。' },
+    { id: 'lane', name: '老小区', full: '老小区（六楼吴奶奶家）', mark: '楼', x: 345, y: 92, desc: '九十年代的六层楼，没电梯。阿力每天往六楼送一碗粥。' },
+    { id: 'school', name: '学校图书馆', full: '学校与图书馆', mark: '校', x: 1040, y: 140, desc: '小学和老图书馆挨着。小郑下午在图书馆，豆豆四点半放学。' },
+    { id: 'veg', name: '菜市场', full: '菜市场', mark: '菜', x: 1085, y: 232, close: 17, desc: '露天的菜市场。老秦的三轮车停在角上，下午收摊前菜最便宜。' },
+    { id: 'whole', name: '批发市场', full: '批发市场（老胡档口）', mark: '批', x: 1192, y: 330, close: 18, desc: '东头的批发市场，老胡的档口最大。货要验，价要谈。' },
+    { id: 'park', name: '桥头公园', full: '桥头小公园（黄桷树）', mark: '桥', x: 140, y: 548, desc: '过了石桥就是小公园。黄桷树底下天天有人下棋。' },
+    { id: 'hospital', name: '医院后门', full: '医院后门', mark: '医', x: 880, y: 602, desc: '医院后门的花坛边。下了夜班的护士在这儿坐一会儿再回家。' },
+    { id: 'talent', name: '人才市场', full: '人才市场门口', mark: '才', x: 1110, y: 652, close: 18, desc: '旧写字楼前的空地，公告栏贴满了招聘启事。' },
+    { id: 'wharf', name: '码头夜市', full: '河边码头旧址 · 夜市', mark: '夜', x: 1128, y: 468, open: 18, desc: '废弃的码头石阶。天黑以后河边摆起小吃摊，灯泡一串一串亮起来。' },
+    { id: 'heyi', name: '何姨家', full: '何姨女儿家（城北）', mark: '北', x: 62, y: 268, lock: 'heyi_lead', bus: 90, desc: '城北的老院子。坐 7 路过去要一个半钟头。' }
   ];
   // 常客下午在哪：from/to 为钟点；rain 为下雨天的去处（省略则同晴天）；until 为最后一天
   var schedule = {
